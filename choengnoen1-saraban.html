@@ -367,252 +367,10 @@
       </div>
 
       <div class="sec-tabs no-print" id="sec-tabs">
-        <div class="sec-tab active" data-sec="overview">ภาพรวม</div>
-        <div class="sec-tab" data-sec="saraban">หนังสือรับ-ส่ง</div>
-        <div class="sec-tab" data-sec="complaints">ติดตามคำร้องทุกข์</div>
-        <div class="sec-tab" data-sec="due-tracking">ติดตามกำหนดดำเนินการ</div>
+        <div class="sec-tab active" data-sec="complaints">ติดตามคำร้องทุกข์</div>
         <div class="sec-tab" data-sec="staff">ฐานข้อมูลบุคลากร</div>
         <div class="sec-tab" data-sec="leave-request">การลา</div>
         <div class="sec-tab" data-sec="leave-registry">ทะเบียนคุมลา</div>
-        <div class="sec-tab" data-sec="contracts">สัญญาจ้าง ลูกจ้างชั่วคราว</div>
-      </div>
-
-      <!-- ============ OVERVIEW ============ -->
-      <div class="panel active" id="panel-overview">
-        <div id="overview-stats"></div>
-        <div style="display:grid;grid-template-columns:1fr 1.3fr;gap:16px;">
-          <div class="section">
-            <div class="section-head"><h2>สัดส่วนบุคลากรตามประเภท</h2></div>
-            <div id="chart-donut" style="padding:20px;display:flex;align-items:center;gap:20px;flex-wrap:wrap;justify-content:center;"></div>
-          </div>
-          <div class="section">
-            <div class="section-head"><h2>จำนวนวันลาสะสมรายเดือน — ปีงบประมาณ <span id="chart-bar-fy"></span></h2></div>
-            <div id="chart-bar" style="padding:20px;"></div>
-          </div>
-        </div>
-      </div>
-
-      <!-- ============ SARABAN ============ -->
-      <div class="panel" id="panel-saraban">
-        <div class="section">
-          <div class="section-head">
-            <h2><span class="section-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#f2a930" stroke-width="2"><path d="M7 3h7l5 5v13H7z"/><path d="M14 3v5h5"/></svg></span>
-              ทะเบียนหนังสือ รับ-ส่ง
-            </h2>
-            <div class="toolbar" id="doc-toolbar">
-              <div class="search-box">🔍 <input id="doc-search" placeholder="ค้นหาเลขทะเบียน / เรื่อง"></div>
-              <select id="doc-month-filter" class="edit-input" style="min-width:160px;" onchange="renderDocs()">
-                <option value="all">ทุกเดือน</option>
-              </select>
-              <button class="btn btn-primary" onclick="toggleDocForm()">+ บันทึกหนังสือใหม่</button>
-            </div>
-          </div>
-          <div class="tabs">
-            <div class="tab active" data-doctab="all">ทั้งหมด</div>
-            <div class="tab" data-doctab="in">หนังสือรับ</div>
-            <div class="tab" data-doctab="out">หนังสือส่ง</div>
-            <div class="tab" data-doctab="waiting_order">รอ ผอ.สั่งการ</div>
-            <div class="tab" data-doctab="closed">เสร็จสิ้น (จบเรื่อง)</div>
-          </div>
-          <div class="table-wrap table-wrap-scroll"><table style="table-layout:fixed;">
-            <colgroup>
-              <col style="width:13%;">
-              <col style="width:6%;">
-              <col style="width:8%;">
-              <col style="width:15%;">
-              <col style="width:9%;">
-              <col style="width:35%;">
-              <col style="width:14%;">
-            </colgroup>
-            <thead><tr><th>เลขที่หนังสือ</th><th>ประเภท</th><th>วันที่</th><th>เลขรับแขวง/หมวด</th><th>จาก / ถึง</th><th>เรื่อง</th><th></th></tr></thead>
-            <tbody id="doc-body"></tbody>
-          </table></div>
-          <div class="legend-block" id="doc-foot-block">
-            <button type="button" class="legend-dot-btn no-print" id="doc-foot-toggle" onclick="__toggleNote('doc-foot',this)" aria-expanded="false" title="แสดง/ซ่อนหมายเหตุ">⋮</button>
-            <div class="foot-note" id="doc-foot" style="display:none;background:transparent;border-top:none;"></div>
-          </div>
-        </div>
-      </div>
-
-      <!-- ============ NEW DOC MODAL (บันทึกหนังสือใหม่) ============ -->
-      <div id="doc-modal" class="modal-overlay hidden no-print">
-        <div class="modal-box">
-          <div class="modal-head">
-            <div class="modal-head-icon">📄</div>
-            <h3>บันทึกหนังสือใหม่</h3>
-            <button type="button" class="modal-close" onclick="toggleDocForm()">✕</button>
-          </div>
-          <div class="modal-body">
-            <div class="two-col">
-              <div class="f-row"><label>ประเภทหนังสือ</label>
-                <select id="nd-type" onchange="__ndTypeChanged()"><option value="in">หนังสือรับ</option><option value="out">หนังสือส่ง</option></select>
-              </div>
-              <div class="f-row" style="position:relative;">
-                <label>เลขที่หนังสือ (ต้นเรื่อง)</label>
-                <input id="nd-no" placeholder="เช่น DOH ......../25.." autocomplete="off" oninput="__filterNoSuggest()">
-                <div id="nd-no-suggest" class="ac-suggest hidden"></div>
-              </div>
-            </div>
-            <div class="two-col">
-              <div class="f-row"><label>วันที่หนังสือ</label><input type="date" id="nd-date"></div>
-              <div class="f-row" style="position:relative;"><label id="nd-party-label">จากหน่วยงาน</label><input id="nd-party" placeholder="ชื่อหน่วยงานต้นทาง" autocomplete="off" oninput="__filterPartySuggest()"><div id="nd-party-suggest" class="ac-suggest hidden"></div></div>
-            </div>
-
-            <div id="nd-receive-group" class="field-group">
-              <p class="field-group-title">📥 ข้อมูลการรับหนังสือ</p>
-              <div class="receive-subgrid">
-                <div class="receive-sub receive-sub-province">
-                  <p class="receive-sub-title">🏢 แขวงทางหลวงระยอง</p>
-                  <div class="f-row"><label>เลขรับ</label><input id="nd-province-no" placeholder="เลขรับที่แขวงทางหลวงระยอง"></div>
-                  <div class="f-row"><label>วันที่รับ</label><input type="date" id="nd-province-date"></div>
-                </div>
-                <div class="receive-sub receive-sub-section">
-                  <p class="receive-sub-title">🚧 หมวดทางหลวงเชิงเนิน</p>
-                  <div class="f-row"><label>เลขรับ</label><input id="nd-section-no" placeholder="เลขรับที่หมวดทางหลวงเชิงเนิน"></div>
-                  <div class="f-row"><label>วันที่รับ</label><input type="date" id="nd-section-date"></div>
-                </div>
-              </div>
-            </div>
-
-            <div class="f-row" style="position:relative;"><label>เรื่องของหนังสือ</label><input id="nd-subj" placeholder="เรื่องของหนังสือ" autocomplete="off" oninput="__filterSubjSuggest()"><div id="nd-subj-suggest" class="ac-suggest hidden"></div></div>
-            <div class="two-col">
-              <div class="f-row"><label>หมายเลขสายทาง</label>
-                <select id="nd-route" onchange="onRouteSelectChange('nd-route');validateRouteKm('nd-route','nd-km','nd-km-msg')"></select>
-                <input id="nd-route-other" class="hidden" placeholder="ระบุชื่อ/หมายเลขถนนอื่น (นอกฐานข้อมูลควบคุม)" style="margin-top:6px;">
-              </div>
-              <div class="f-row"><label>กม.</label><input id="nd-km" placeholder="เช่น กม.12+300" oninput="validateRouteKm('nd-route','nd-km','nd-km-msg')">
-                <div id="nd-km-msg" style="margin-top:4px;"></div>
-              </div>
-            </div>
-            <div class="f-row"><label>หมายเหตุ</label><input id="nd-note" placeholder="หมายเหตุเพิ่มเติม (ถ้ามี)"></div>
-
-            <p style="font-size:11.5px;font-weight:600;color:var(--ink-400);margin:18px 0 10px;letter-spacing:.2px;">— การจำแนกและติดตามเรื่อง (เลือกเฉพาะข้อที่เกี่ยวข้อง) —</p>
-
-            <div id="nd-complaint-box" class="complaint-toggle-box">
-              <label><input type="checkbox" id="nd-complaint"> 🚩 บันทึกคำร้องทุกข์</label>
-              <p style="margin:6px 0 0;font-size:11.5px;font-weight:400;color:var(--ink-600);">ข้อมูลนี้จะถูกคัดกรองไปแสดงในหัวข้อ "ติดตามคำร้องทุกข์" โดยอัตโนมัติ โดยใช้หมายเลขสายทาง/กม. ที่กรอกไว้ด้านบน</p>
-            </div>
-
-            <div id="nd-order-box" class="order-toggle-box">
-              <label><input type="checkbox" id="nd-order" onchange="__ndOrderToggled()"> 📋 มีคำสั่งการจาก ผอ.แขวง</label>
-              <p style="margin:6px 0 0;font-size:11.5px;font-weight:400;color:var(--ink-600);">บันทึกคำสั่งการที่ ผอ.ขท.ระยอง เขียนกำกับมาพร้อมหนังสือฉบับนี้</p>
-              <div id="nd-order-fields" class="hidden" style="margin-top:12px;">
-                <div class="f-row" style="margin-bottom:10px;"><label>สั่งการให้หน่วยงาน</label>
-                  <div class="check-chip-group" id="nd-order-units"></div>
-                  <input id="nd-order-units-other" class="edit-input" placeholder="อื่นๆ ระบุ" style="margin-top:8px;">
-                </div>
-                <div class="f-row" style="margin-bottom:10px;"><label>ประเภทคำสั่งการ</label>
-                  <div class="check-chip-group" id="nd-order-types"></div>
-                  <input id="nd-order-types-other" class="edit-input" placeholder="อื่นๆ ระบุ" style="margin-top:8px;">
-                </div>
-                <div class="two-col">
-                  <div class="f-row" style="margin-bottom:0;"><label>กำหนดรายงานผล/ดำเนินการ</label><input type="date" id="nd-order-due-date"></div>
-                  <div class="f-row" style="margin-bottom:0;"><label>รายละเอียดกำหนด</label><input id="nd-order-due-note" placeholder="เช่น ภายใน 10 วัน"></div>
-                </div>
-                <div class="f-row" style="margin-top:10px;margin-bottom:0;"><label>หมายเหตุคำสั่งการ (ถ้ามี)</label><input id="nd-order-note" placeholder="ข้อความเพิ่มเติมจาก ผอ."></div>
-              </div>
-            </div>
-
-            <div class="field-group" style="background:#fff;border-color:var(--navy-700);">
-              <p class="field-group-title" style="color:var(--navy-700);">⏱ การติดตามความคืบหน้า</p>
-              <div class="f-row" style="margin-bottom:0;">
-                <label style="display:flex;align-items:center;gap:8px;font-weight:600;cursor:pointer;margin:0;font-size:12.5px;color:var(--ink-600);">
-                  <input type="checkbox" id="nd-needs-reply" style="width:16px;height:16px;accent-color:var(--navy-700);cursor:pointer;"> 📮 ต้องมีการตอบกลับ (ติดตามในไทม์ไลน์จนกว่าจะบันทึกว่าตอบกลับแล้ว)
-                </label>
-              </div>
-            </div>
-          </div>
-          <div class="modal-foot">
-            <button class="btn btn-ghost" onclick="toggleDocForm()">ยกเลิก</button>
-            <button class="btn btn-primary" onclick="saveNewDoc()">บันทึกหนังสือ</button>
-          </div>
-        </div>
-      </div>
-
-      <!-- ============ EDIT DOC MODAL (แก้ไขหนังสือ) ============ -->
-      <div id="edit-doc-modal" class="modal-overlay hidden no-print">
-        <div class="modal-box" style="max-width:520px;">
-          <div class="modal-head">
-            <div class="modal-head-icon">✏️</div>
-            <h3>แก้ไขหนังสือ <span id="ed-no-tag" style="font-weight:400;font-size:13px;opacity:.75;"></span></h3>
-            <button type="button" class="modal-close" onclick="closeEditDoc()">✕</button>
-          </div>
-          <div class="modal-body">
-            <div class="two-col">
-              <div class="f-row"><label>เลขที่หนังสือ</label><input id="ed-no" placeholder="เลขที่หนังสือ"></div>
-              <div class="f-row"><label>วันที่หนังสือ</label><input type="date" id="ed-date"></div>
-            </div>
-            <div id="ed-receive-group" class="field-group hidden">
-              <p class="field-group-title">📥 เลขรับ</p>
-              <div class="receive-subgrid">
-                <div class="receive-sub receive-sub-province">
-                  <p class="receive-sub-title">🏢 แขวงทางหลวงระยอง</p>
-                  <div class="f-row" style="margin-bottom:0;"><label>เลขรับ</label><input id="ed-province-no" placeholder="เลขรับที่แขวงทางหลวงระยอง"></div>
-                </div>
-                <div class="receive-sub receive-sub-section">
-                  <p class="receive-sub-title">🚧 หมวดทางหลวงเชิงเนิน</p>
-                  <div class="f-row" style="margin-bottom:0;"><label>เลขรับ</label><input id="ed-section-no" placeholder="เลขรับที่หมวดทางหลวงเชิงเนิน"></div>
-                </div>
-              </div>
-            </div>
-            <div class="f-row"><label>เรื่อง</label><input id="ed-subj" placeholder="เรื่องของหนังสือ"></div>
-            <div class="f-row"><label id="ed-party-label">จาก/ถึงหน่วยงาน</label><input id="ed-party" placeholder="ชื่อหน่วยงาน"></div>
-            <div class="two-col">
-              <div class="f-row" style="margin-bottom:0;"><label>หมายเลขสายทาง</label>
-                <select id="ed-route" onchange="onRouteSelectChange('ed-route');validateRouteKm('ed-route','ed-km','ed-km-msg')"></select>
-                <input id="ed-route-other" class="hidden" placeholder="ระบุชื่อ/หมายเลขถนนอื่น (นอกฐานข้อมูลควบคุม)" style="margin-top:6px;">
-              </div>
-              <div class="f-row" style="margin-bottom:0;"><label>กม.</label><input id="ed-km" placeholder="เช่น กม.12+300" oninput="validateRouteKm('ed-route','ed-km','ed-km-msg')">
-                <div id="ed-km-msg" style="margin-top:4px;"></div>
-              </div>
-            </div>
-
-            <div id="ed-order-box" class="order-toggle-box" style="margin-top:16px;margin-bottom:0;">
-              <label><input type="checkbox" id="ed-order" onchange="__edOrderToggled()"> 📋 มีคำสั่งการจาก ผอ.ขท.ระยอง</label>
-              <p style="margin:6px 0 0;font-size:11.5px;font-weight:400;color:var(--ink-600);">บันทึก/แก้ไขคำสั่งการที่ ผอ.ขท.ระยอง สั่งการมาสำหรับหนังสือฉบับนี้</p>
-              <div id="ed-order-fields" class="hidden" style="margin-top:12px;">
-                <div class="f-row" style="margin-bottom:10px;"><label>วันที่ได้รับคำสั่งการ/เรื่องกลับจากแขวง</label><input type="date" id="ed-order-recorded-date"></div>
-                <div class="f-row" style="margin-bottom:10px;"><label>สั่งการให้หน่วยงาน</label>
-                  <div class="check-chip-group" id="ed-order-units"></div>
-                  <input id="ed-order-units-other" class="edit-input" placeholder="อื่นๆ ระบุ" style="margin-top:8px;">
-                </div>
-                <div class="f-row" style="margin-bottom:10px;"><label>ประเภทคำสั่งการ</label>
-                  <div class="check-chip-group" id="ed-order-types"></div>
-                  <input id="ed-order-types-other" class="edit-input" placeholder="อื่นๆ ระบุ" style="margin-top:8px;">
-                </div>
-                <div class="two-col">
-                  <div class="f-row" style="margin-bottom:0;"><label>กำหนดรายงานผล/ดำเนินการ</label><input type="date" id="ed-order-due-date"></div>
-                  <div class="f-row" style="margin-bottom:0;"><label>รายละเอียดกำหนด</label><input id="ed-order-due-note" placeholder="เช่น ภายใน 10 วัน"></div>
-                </div>
-                <div class="f-row" style="margin-top:10px;margin-bottom:0;"><label>หมายเหตุคำสั่งการ (ถ้ามี)</label><input id="ed-order-note" placeholder="ข้อความเพิ่มเติมจาก ผอ."></div>
-              </div>
-            </div>
-          </div>
-          <div class="modal-foot">
-            <button class="btn btn-danger" id="ed-delete-doc-btn" style="margin-right:auto;" onclick="deleteDocFromEdit()" title="ลบหนังสือฉบับนี้ออกจากทะเบียนทั้งหมด">🗑 ลบหนังสือนี้</button>
-            <button class="btn btn-ghost hidden" id="ed-order-remove-btn" onclick="removeOrderInEditDoc()">ลบคำสั่งการ</button>
-            <button class="btn btn-ghost" onclick="closeEditDoc()">ยกเลิก</button>
-            <button class="btn btn-primary" onclick="saveEditDoc()">บันทึกการแก้ไข</button>
-          </div>
-        </div>
-      </div>
-
-      <!-- ============ TIMELINE MODAL (ไทม์ไลน์เอกสาร) ============ -->
-      <div id="timeline-modal" class="modal-overlay hidden no-print">
-        <div class="modal-box" style="max-width:480px;">
-          <div class="modal-head">
-            <div class="modal-head-icon">🕓</div>
-            <h3>ไทม์ไลน์เอกสาร <span id="tl-no-tag" style="font-weight:400;font-size:13px;opacity:.75;"></span></h3>
-            <button type="button" class="modal-close" onclick="closeTimeline()">✕</button>
-          </div>
-          <div class="modal-body">
-            <div id="tl-steps"></div>
-            <div id="tl-admin-controls"></div>
-          </div>
-          <div class="modal-foot">
-            <button class="btn btn-ghost" onclick="closeTimeline()">ปิด</button>
-          </div>
-        </div>
       </div>
 
       <!-- ============ STAFF DETAIL / EDIT MODAL ============ -->
@@ -673,7 +431,7 @@
       </div>
 
       <!-- ============ COMPLAINTS TRACKING ============ -->
-      <div class="panel" id="panel-complaints">
+      <div class="panel active" id="panel-complaints">
         <div class="section">
           <div class="section-head">
             <h2><span class="section-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#f2a930" stroke-width="2"><path d="M12 9v4M12 17h.01"/><path d="M10.3 4.3 2.6 18a1.8 1.8 0 0 0 1.6 2.7h15.6a1.8 1.8 0 0 0 1.6-2.7L13.7 4.3a1.8 1.8 0 0 0-3.4 0Z"/></svg></span>
@@ -695,33 +453,6 @@
           </div>
         </div>
       </div>
-
-      <!-- ============ DUE-DATE TRACKING (ติดตามกำหนดดำเนินการ) ============ -->
-      <div class="panel" id="panel-due-tracking">
-        <div class="section">
-          <div class="section-head">
-            <h2><span class="section-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#f2a930" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg></span>
-              ติดตามกำหนดดำเนินการ
-            </h2>
-            <div class="toolbar">
-              <select id="due-filter" class="edit-input" onchange="renderDueTracking()">
-                <option value="pending">ยังไม่เสร็จ</option>
-                <option value="all">ทั้งหมด</option>
-                <option value="done">ดำเนินการแล้วเสร็จ</option>
-              </select>
-            </div>
-          </div>
-          <div class="table-wrap"><table>
-            <thead><tr><th>เลขที่หนังสือ</th><th>ประเภท</th><th>เรื่อง</th><th>รายละเอียดกำหนด</th><th>กำหนดวันที่</th><th>สถานะ</th><th></th></tr></thead>
-            <tbody id="due-body"></tbody>
-          </table></div>
-          <div class="legend-block" id="due-foot-block">
-            <button type="button" class="legend-dot-btn no-print" id="due-foot-toggle" onclick="__toggleNote('due-foot',this)" aria-expanded="false" title="แสดง/ซ่อนหมายเหตุ">⋮</button>
-            <div class="foot-note" id="due-foot" style="display:none;background:transparent;border-top:none;"></div>
-          </div>
-        </div>
-      </div>
-
       <!-- ============ STAFF ============ -->
       <div class="panel" id="panel-staff">
         <div class="section">
@@ -971,25 +702,6 @@
         </div>
       </div>
 
-      <!-- ============ CONTRACTS ============ -->
-      <div class="panel" id="panel-contracts">
-        <div class="section">
-          <div class="section-head">
-            <h2><span class="section-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#f2a930" stroke-width="2"><path d="M4 4h16v16H4z"/><path d="M8 9h8M8 13h5"/></svg></span>
-              สัญญาจ้าง ลูกจ้างชั่วคราว
-            </h2>
-          </div>
-          <div class="table-wrap"><table>
-            <thead><tr><th>ลำดับ</th><th>ชื่อลูกจ้าง</th><th>งวดการจ้าง</th><th>วันเริ่มสัญญา</th><th>วันสิ้นสุดสัญญา</th><th>เหลือเวลา</th><th>หนังสือแสดงเจตนาฯ</th></tr></thead>
-            <tbody id="contract-body"></tbody>
-          </table></div>
-          <div class="legend-block" id="contract-foot-block">
-            <button type="button" class="legend-dot-btn no-print" id="contract-foot-toggle" onclick="__toggleNote('contract-foot',this)" aria-expanded="false" title="แสดง/ซ่อนหมายเหตุ">⋮</button>
-            <div class="foot-note" id="contract-foot" style="display:none;background:transparent;border-top:none;">แสดงลูกจ้างชั่วคราวที่ยังปฏิบัติงานอยู่เท่านั้น (ไม่รวมผู้ที่ขึ้นสถานะลาออก)</div>
-          </div>
-        </div>
-      </div>
-
     </div>
   </div>
 </div>
@@ -1007,6 +719,38 @@
    DATA
    ============================================================ */
 const TODAY = new Date();
+
+/* ============================================================
+   เชื่อมต่อฐานข้อมูลกลาง (Google Sheets ผ่าน Google Apps Script Web App)
+   ใช้แทน localStorage สำหรับ 3 ตาราง: staff, leave_requests, public_holidays
+   หมายเหตุ: ต้องส่ง Content-Type เป็น text/plain;charset=utf-8 ตอน POST
+   (ไม่ใช่ application/json) ไม่งั้น Apps Script จะโดน CORS preflight บล็อก
+   ============================================================ */
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbwFxTEynojnNy4bHIS5ZQ9N7aBrsAFDT7a3Vcxugy7KGodhLZ18DNdj-v4MYPOGtBtL/exec';
+const APP_TOKEN = '5UWqjtNRWO59wZlnoN1Ysn0FxdTOGm';
+function apiCurrentUsername(){
+  const s = __getSharedSession();
+  return (s && s.name) || 'ไม่ระบุผู้ใช้';
+}
+async function apiGet(table){
+  const res = await fetch(GAS_URL + '?token=' + encodeURIComponent(APP_TOKEN) + '&table=' + encodeURIComponent(table));
+  const json = await res.json();
+  if(!json.ok) throw new Error(json.error || 'โหลดข้อมูลจากฐานข้อมูลกลางไม่สำเร็จ');
+  return json.data;
+}
+async function apiPost(action, table, data, id){
+  const body = { token: APP_TOKEN, username: apiCurrentUsername(), table, action, data };
+  if(id!==undefined) body.id = id;
+  const res = await fetch(GAS_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify(body)
+  });
+  const json = await res.json();
+  if(!json.ok) throw new Error(json.error || 'บันทึกข้อมูลไปยังฐานข้อมูลกลางไม่สำเร็จ');
+  return json.result;
+}
+/* ============ จบส่วนเชื่อมต่อฐานข้อมูลกลาง ============ */
 
 /* ============================================================
    ตรวจสอบสายทาง/กม. กับฐานข้อมูล "ทางหลวงควบคุม" ของระบบรองที่ 2 (งานสถิติและบริการประชาชน)
@@ -1182,73 +926,54 @@ function setRouteSelectFromStored(routeSelId, storedText){
   }
 }
 
-let staff = [
-  {name:"นายอิศรินทร์  อรุณสวัสดิ์",nickname:"อิศ",birth:null,role:"นายช่างโยธาชำนาญงาน",ptype:"ข้าราชการ",rate:null,shirt:"XL",med:null,status:"ok"},
-  {name:"นางสาวนันท์นภัสธ์  รัตนเสถียร",nickname:"ป่าน",birth:"1993-03-27",role:"นายช่างโยธาปฏิบัติงาน",ptype:"ข้าราชการ",rate:null,shirt:"L",med:null,status:"ok"},
-  {name:"นางธนิภา  พึ่งผล",nickname:"ปุ๊",birth:null,role:"พนักงานบำรุงทาง ช.2",ptype:"ลูกจ้างประจำ",rate:null,shirt:"2XL",med:"PA (บัตร ATM)",status:"ok"},
-  {name:"นางสาวประภาพร  สุดแสง",nickname:"หน่า",birth:null,role:"พนักงานโยธา",ptype:"พนักงานราชการ",rate:null,shirt:"F",med:"PA (บัตร ATM)",status:"ok"},
-  {name:"นายเอนก  แย้มสอิ๊ง",nickname:"อเนก",birth:null,role:"พนักงานราชการ",ptype:"พนักงานราชการ",rate:null,shirt:null,med:null,status:"ok"},
-  {name:"นางสาววันทนา  มีมานะ",nickname:"บุตร",birth:"1980-05-31",role:"คนงาน",ptype:"ลูกจ้างชั่วคราว",rate:377.85,shirt:"XL",med:"ประกันสังคม",status:"ok"},
-  {name:"นางอุบลจันทน์  สุขคุ้ม",nickname:"จิน",birth:"1975-01-01",role:"คนงาน",ptype:"ลูกจ้างชั่วคราว",rate:377.85,shirt:"2XL",med:"PA (บัตร ATM)",status:"ok"},
-  {name:"นางเพียงใจ  เงินแท้",nickname:"ตุ๊ก",birth:"1974-11-18",role:"คนงาน",ptype:"ลูกจ้างชั่วคราว",rate:377.85,shirt:"L",med:"ประกันสังคม",status:"ok"},
-  {name:"นางสาวพนารี แวววงษ์",nickname:"เบย์",birth:"1994-03-24",role:"คนงาน",ptype:"ลูกจ้างชั่วคราว",rate:377.85,shirt:null,med:"ประกันสังคม",status:"ok",startDate:"2026-04-01"},
-  {name:"นายดำรัส ทิพนาค",nickname:"ดำ",birth:"1967-03-04",role:"คนงาน",ptype:"ลูกจ้างชั่วคราว",rate:377.85,shirt:"4XL",med:"PA (บัตร ATM)",status:"ok"},
-  {name:"นายธานี  เนตรหลับ",nickname:"ธานี",birth:"1965-11-05",role:"คนงาน",ptype:"ลูกจ้างชั่วคราว",rate:377.85,shirt:"L",med:"PA (บัตร ATM)",status:"ok"},
-  {name:"นายสายยัน  วิเชียรรัตน์",nickname:"ดำ",birth:"1971-02-06",role:"คนงาน",ptype:"ลูกจ้างชั่วคราว",rate:377.85,shirt:"2XL",med:"PA (บัตร ATM)",status:"ok"},
-  {name:"นางสำเนียง  นุ่มดี",nickname:"เนียง",birth:"1966-05-04",role:"คนงาน",ptype:"ลูกจ้างชั่วคราว",rate:377.85,shirt:"3XL",med:"PA (บัตร ATM)",status:"ok"},
-  {name:"นางดวงใจ  ช่างไม้",nickname:"ช้อย",birth:"1977-01-12",role:"คนงาน",ptype:"ลูกจ้างชั่วคราว",rate:377.85,shirt:"3XL",med:"PA (บัตร ATM)",status:"ok"},
-  {name:"นายประเสริฐ  งามสุวรรณ์",nickname:"เสริฐ",birth:"1966-08-06",role:"คนงาน",ptype:"ลูกจ้างชั่วคราว",rate:377.85,shirt:"XL",med:"PA (บัตร ATM)",status:"ok"},
-  {name:"นางสมเพชร  เนตรหลับ",nickname:"ออน",birth:"1969-03-09",role:"คนงาน",ptype:"ลูกจ้างชั่วคราว",rate:377.85,shirt:"2XL",med:"PA (บัตร ATM)",status:"ok"},
-  {name:"นายอรัญ สุขคุ้ม",nickname:"โก",birth:"1976-07-13",role:"คนงาน",ptype:"ลูกจ้างชั่วคราว",rate:377.85,shirt:null,med:"PA (บัตร ATM)",status:"ok"},
-  {name:"นางสาวพรนพิน  คุชนาค",nickname:"พิน",birth:"1974-02-01",role:"คนงาน",ptype:"ลูกจ้างชั่วคราว",rate:377.85,shirt:"2XL",med:"PA (บัตร ATM)",status:"ok"},
-  {name:"นางมาลินี  ท้าวธรรมศรี",nickname:"นก",birth:"1973-06-19",role:"คนงาน",ptype:"ลูกจ้างชั่วคราว",rate:377.85,shirt:"2XL",med:"PA (บัตร ATM)",status:"ok"},
-  {name:"นางพิศมัย  ประสิทธิ์",nickname:"พิศ",birth:"1977-11-02",role:"คนงาน",ptype:"ลูกจ้างชั่วคราว",rate:377.85,shirt:"4XL",med:"PA (บัตร ATM)",status:"ok"},
-  {name:"นายสมเดช  ประสิทธิ์",nickname:"เดช",birth:"1971-11-23",role:"คนงาน",ptype:"ลูกจ้างชั่วคราว",rate:377.85,shirt:"L",med:"PA (บัตร ATM)",status:"ok"},
-  {name:"นายทูล  กุยแก้วพะเนา",nickname:"ทูล",birth:"1973-09-12",role:"คนงาน",ptype:"ลูกจ้างชั่วคราว",rate:377.85,shirt:"XL",med:"PA (บัตร ATM)",status:"ok"},
-  {name:"นายณภัทร  ประสิทธิ์",nickname:"พี",birth:"2002-06-06",role:"คนงาน",ptype:"ลูกจ้างชั่วคราว",rate:377.85,shirt:null,med:null,status:"ok"},
-  {name:"นางธนัญกรณ์  ธูปขุนทด",nickname:"จุ๊",birth:"1973-01-29",role:"คนงาน",ptype:"ลูกจ้างชั่วคราว",rate:377.85,shirt:"L",med:"PA (บัตร ATM)",status:"ok"},
-  {name:"นายสุรศักดิ์  สุขคุ้ม",nickname:"เจี๊ยบ",birth:"1972-12-01",role:"คนงาน",duty:"ยาม",ptype:"ลูกจ้างชั่วคราว",rate:377.85,shirt:"3XL",med:"PA (บัตร ATM)",status:"ok"},
-  {name:"นายเอกวิทย์  นุ่มดี",nickname:null,birth:null,role:"คนงาน",ptype:"ลูกจ้างชั่วคราว",rate:null,shirt:null,med:null,status:"resigned"},
-  {name:"นางสาวชุติกาญจน์  ชูชุ่ม",nickname:null,birth:null,role:"คนงาน",ptype:"ลูกจ้างชั่วคราว",rate:null,shirt:null,med:null,status:"resigned"},
-  {name:"นายวรพล  ยมจินดา",nickname:null,birth:null,role:"คนงาน",ptype:"ลูกจ้างชั่วคราว",rate:null,shirt:null,med:null,status:"resigned"},
-  {name:"นางสาวกฤษณา  ดีดวงพันธ์",nickname:null,birth:null,role:"คนงาน",ptype:"ลูกจ้างชั่วคราว",rate:null,shirt:null,med:null,status:"resigned"},
-  {name:"นายเจือ  จีนกระจัน",nickname:null,birth:null,role:"คนงาน",ptype:"ลูกจ้างชั่วคราว",rate:null,shirt:null,med:null,status:"resigned"},
-  {name:"นายก้องภพ  หลอดคำ",nickname:null,birth:null,role:"คนงาน",ptype:"ลูกจ้างชั่วคราว",rate:null,shirt:null,med:null,status:"resigned"},
-  {name:"นายสุพรรณ  มีราคา",nickname:null,birth:null,role:"คนงาน",ptype:"ลูกจ้างชั่วคราว",rate:null,shirt:null,med:null,status:"resigned"},
-  {name:"นางชุลีพร  เสียงประเสริฐ",nickname:null,birth:null,role:"คนงาน",ptype:"ลูกจ้างชั่วคราว",rate:null,shirt:null,med:null,status:"resigned"}
-];
+/* ข้อมูลพนักงานจริง 33 คน ย้ายไปอยู่ที่ Google Sheets แท็บ "staff" แล้ว (นำเข้าผ่าน seedStaffOnce() ใน Code.gs)
+   หน้านี้โหลดจาก API ตอนเปิดหน้าเสมอ ดูฟังก์ชัน loadStaffFromApi() ด้านล่าง */
+let staff = [];
+async function loadStaffFromApi(){
+  try{
+    staff = await apiGet('staff');
+  }catch(err){
+    console.error('โหลดข้อมูลพนักงานจากฐานข้อมูลกลางล้มเหลว', err);
+    alert('โหลดข้อมูลพนักงานจากฐานข้อมูลกลางไม่สำเร็จ: ' + err.message + '\nกรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ตแล้วรีเฟรชหน้าใหม่');
+  }
+}
 
-let leaveHistory = [];
+/* leaveHistory ไม่ใช่ตารางแยกอีกต่อไป — คำนวณสดจาก leaveRequests ที่ status==='approved'
+   ทุกครั้งที่ต้องใช้ (ดูรายละเอียด REGISTRY_LEAVE_TYPES ด้านล่าง) แทนการเก็บเป็นอาร์เรย์แยก */
+function computeLeaveHistory(){
+  return leaveRequests
+    .filter(r=>r.status==='approved' && REGISTRY_LEAVE_TYPES.includes(r.type))
+    .map(r=>({fy:fiscalYearOf(r.from), name:r.name, type:r.type, from:r.from, to:r.to}));
+}
 
 let docs = [];
 
+/* ข้อมูลคำขอลาจริงย้ายไปอยู่ที่ Google Sheets แท็บ "leave_requests" แล้ว
+   หน้านี้โหลดจาก API ตอนเปิดหน้าเสมอ ดูฟังก์ชัน loadLeaveRequestsFromApi() ด้านล่าง */
 let leaveRequests = [];
-let contractData = {}; // name -> {batch,start,end,doc}
+async function loadLeaveRequestsFromApi(){
+  try{
+    leaveRequests = await apiGet('leave_requests');
+  }catch(err){
+    console.error('โหลดข้อมูลคำขอลาจากฐานข้อมูลกลางล้มเหลว', err);
+    alert('โหลดข้อมูลการลาจากฐานข้อมูลกลางไม่สำเร็จ: ' + err.message + '\nกรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ตแล้วรีเฟรชหน้าใหม่');
+  }
+}
 
 /* วันหยุดนักขัตฤกษ์ที่ใช้คำนวณจำนวนวันลาแบบต่อเนื่องหลายวัน (ไม่นับเป็นวันลา เช่นเดียวกับวันเสาร์-อาทิตย์)
-   ชุดเริ่มต้นอ้างอิงวันหยุดราชการตามมติคณะรัฐมนตรี ครอบคลุมปีงบประมาณ 2569 (ต.ค. 2568 - ก.ย. 2569)
-   ดู/เพิ่ม/ลบได้ที่ปุ่ม "🗓 วันหยุดนักขัตฤกษ์" ในหน้าการลา (แก้ไขได้เฉพาะผู้มีสิทธิ์แก้ไข) */
-let publicHolidays = [
-  {date:'2025-10-13', name:'วันคล้ายวันสวรรคต ร.9'},
-  {date:'2025-10-23', name:'วันปิยมหาราช'},
-  {date:'2025-12-05', name:'วันพ่อแห่งชาติ'},
-  {date:'2025-12-10', name:'วันรัฐธรรมนูญ'},
-  {date:'2025-12-31', name:'วันสิ้นปี'},
-  {date:'2026-01-01', name:'วันขึ้นปีใหม่'},
-  {date:'2026-01-02', name:'วันหยุดพิเศษ (ชดเชยวันขึ้นปีใหม่)'},
-  {date:'2026-03-03', name:'วันมาฆบูชา'},
-  {date:'2026-04-06', name:'วันจักรี'},
-  {date:'2026-04-13', name:'วันสงกรานต์'},
-  {date:'2026-04-14', name:'วันสงกรานต์'},
-  {date:'2026-04-15', name:'วันสงกรานต์'},
-  {date:'2026-05-04', name:'วันฉัตรมงคล'},
-  {date:'2026-06-02', name:'วันหยุดพิเศษ (ตามมติ ครม.)'},
-  {date:'2026-06-03', name:'วันเฉลิมพระชนมพรรษา สมเด็จพระนางเจ้าฯ พระบรมราชินี'},
-  {date:'2026-07-28', name:'วันเฉลิมพระชนมพรรษา พระบาทสมเด็จพระเจ้าอยู่หัว'},
-  {date:'2026-07-29', name:'วันอาสาฬหบูชา'},
-  {date:'2026-07-30', name:'วันเข้าพรรษา'},
-  {date:'2026-08-12', name:'วันแม่แห่งชาติ'}
-];
+   ข้อมูลจริง 18 รายการย้ายไปอยู่ที่ Google Sheets แท็บ "public_holidays" แล้ว (นำเข้าผ่าน
+   seedPublicHolidaysOnce() ใน Code.gs — ดูไฟล์ seedLeaveAndHolidaysOnce.gs.txt ในโฟลเดอร์เดียวกัน)
+   หน้านี้โหลดจาก API ตอนเปิดหน้าเสมอ ดู/เพิ่ม/ลบได้ที่ปุ่ม "🗓 วันหยุดนักขัตฤกษ์" ในหน้าการลา
+   (แก้ไขได้เฉพาะผู้มีสิทธิ์แก้ไข) — ตารางนี้ใช้ "date" เป็นกุญแจแทน id (ไม่มีคอลัมน์ id) */
+let publicHolidays = [];
+async function loadPublicHolidaysFromApi(){
+  try{
+    publicHolidays = await apiGet('public_holidays');
+  }catch(err){
+    console.error('โหลดข้อมูลวันหยุดนักขัตฤกษ์จากฐานข้อมูลกลางล้มเหลว', err);
+    alert('โหลดข้อมูลวันหยุดนักขัตฤกษ์จากฐานข้อมูลกลางไม่สำเร็จ: ' + err.message + '\nกรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ตแล้วรีเฟรชหน้าใหม่');
+  }
+}
 
 /* ============================================================
    HELPERS
@@ -1288,7 +1013,7 @@ function __leaveRestrictionInfo(name, asOfISO){
   return null;
 }
 function __workerLeaveUsed(name, type, fy){
-  return leaveHistory.filter(r=>r.name===name && r.fy===fy && r.type===type).reduce((a,r)=>a+daysBetween(r.from,r.to),0);
+  return computeLeaveHistory().filter(r=>r.name===name && r.fy===fy && r.type===type).reduce((a,r)=>a+daysBetween(r.from,r.to),0);
 }
 // ระบบเตือนใกล้เกษียณอายุ (60 ปีบริบูรณ์) — วันที่เกษียณอายุราชการจริงคือวันสิ้นปีงบประมาณ (30 กันยายน)
 // ของปีงบประมาณที่บุคคลนั้นมีอายุครบ 60 ปีบริบูรณ์ ตามระเบียบราชการ
@@ -1521,343 +1246,6 @@ document.querySelectorAll('.sec-tab').forEach(t=>{
 });
 
 /* ============================================================
-   OVERVIEW
-   ============================================================ */
-function renderOverview(){
-  const act = activeStaff().length;
-  const pending = leaveRequests.filter(r=>r.status==='pending').length;
-  const noContract = tempActive().filter(s=>!contractData[s.name] || !contractData[s.name].end).length;
-  const nearOrOverdueRetire = activeStaff().filter(s=>{ const ri=__retirementInfo(s); return !!ri; }).length;
-  const dueEntries = collectDueEntries();
-  const dueUrgent = dueEntries.filter(e=>!e.done && dueStage(e.date)>=1).length;
-  const waitingOrder = docs.filter(d=>d.type==='out' && !d.order && !isDocClosed(d)).length;
-  const dueOpen = dueEntries.filter(e=>!e.done).length;
-  document.getElementById('overview-stats').innerHTML = `
-    <div class="ov-grid">
-      <div class="ov-card accent-navy">
-        <div class="ov-card-head">
-          <span class="ov-icon" style="background:var(--navy-900);"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg></span>
-          <h3>งานสารบรรณ</h3>
-        </div>
-        <div class="ov-metrics">
-          <div class="ov-metric"><div class="ov-metric-val">${docs.length}</div><div class="ov-metric-label">หนังสือรับ ${docs.filter(d=>d.type==='in').length} · ส่ง ${docs.filter(d=>d.type==='out').length}</div></div>
-          <div class="ov-metric ${dueUrgent?'warn':''}"><div class="ov-metric-val">${dueUrgent}</div><div class="ov-metric-label">ใกล้/เกินกำหนด จาก ${dueOpen} รายการ</div></div>
-          <div class="ov-metric ${waitingOrder?'warn':''}"><div class="ov-metric-val">${waitingOrder}</div><div class="ov-metric-label">หนังสือส่งรอ ผอ.สั่งการ</div></div>
-        </div>
-      </div>
-      <div class="ov-card accent-orange">
-        <div class="ov-card-head">
-          <span class="ov-icon" style="background:var(--orange-600);"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><circle cx="9" cy="8" r="4"/><path d="M2 21v-1a6 6 0 0 1 6-6h2a6 6 0 0 1 6 6v1"/><path d="M17 11a4 4 0 0 0 0-8"/><path d="M22 21v-1a5.5 5.5 0 0 0-4-5.3"/></svg></span>
-          <h3>งานบุคลากร</h3>
-        </div>
-        <div class="ov-metrics">
-          <div class="ov-metric"><div class="ov-metric-val">${act}</div><div class="ov-metric-label">บุคลากรที่ปฏิบัติงานอยู่</div></div>
-          <div class="ov-metric ${pending?'warn':''}"><div class="ov-metric-val">${pending}</div><div class="ov-metric-label">คำขอลารออนุมัติ</div></div>
-          <div class="ov-metric ${noContract?'warn':''}"><div class="ov-metric-val">${noContract}</div><div class="ov-metric-label">ลูกจ้างชั่วคราวยังไม่มีสัญญา จาก ${tempActive().length} คน</div></div>
-          <div class="ov-metric ${nearOrOverdueRetire?'warn':''}"><div class="ov-metric-val">${nearOrOverdueRetire}</div><div class="ov-metric-label">ใกล้/ถึงกำหนดเกษียณอายุ (ภายใน 1 ปี)</div></div>
-        </div>
-      </div>
-    </div>
-  `;
-  renderDonutChart();
-  renderLeaveBarChart();
-}
-function renderDonutChart(){
-  const types = ['ข้าราชการ','ลูกจ้างประจำ','พนักงานราชการ','ลูกจ้างชั่วคราว'];
-  const colors = ['#0a2540','#1c4b73','#f2a930','#e0620f'];
-  const data = types.map(t=>staff.filter(s=>s.ptype===t && s.status==='ok').length);
-  const total = data.reduce((a,b)=>a+b,0) || 1;
-  const r=54, cx=64, cy=64, circ=2*Math.PI*r;
-  let offset=0, segs='';
-  data.forEach((v,i)=>{
-    const len = circ*(v/total);
-    segs += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${colors[i]}" stroke-width="20" stroke-dasharray="${len} ${circ-len}" stroke-dashoffset="${-offset}" transform="rotate(-90 ${cx} ${cy})"/>`;
-    offset += len;
-  });
-  const legend = types.map((t,i)=>`<div style="display:flex;align-items:center;gap:7px;font-size:12.5px;margin-bottom:6px;"><span style="width:10px;height:10px;border-radius:3px;background:${colors[i]};display:inline-block;"></span>${t} — <b>${data[i]}</b> คน</div>`).join('');
-  document.getElementById('chart-donut').innerHTML = `
-    <svg width="128" height="128" viewBox="0 0 128 128">${segs}
-      <text x="64" y="60" text-anchor="middle" font-family="Kanit" font-size="22" font-weight="600" fill="var(--navy-900)">${total}</text>
-      <text x="64" y="76" text-anchor="middle" font-family="Sarabun" font-size="11" fill="var(--ink-400)">ปฏิบัติงาน</text>
-    </svg>
-    <div>${legend}</div>`;
-}
-function renderLeaveBarChart(){
-  const fy = fiscalYearOf(TODAY.toISOString().slice(0,10));
-  document.getElementById('chart-bar-fy').textContent = fy;
-  const monthOrder = [10,11,12,1,2,3,4,5,6,7,8,9]; // ต.ค.-ก.ย.
-  const monthLabel = {1:'ม.ค.',2:'ก.พ.',3:'มี.ค.',4:'เม.ย.',5:'พ.ค.',6:'มิ.ย.',7:'ก.ค.',8:'ส.ค.',9:'ก.ย.',10:'ต.ค.',11:'พ.ย.',12:'ธ.ค.'};
-  const recs = leaveHistory.filter(r=>r.fy===fy);
-  const totals = monthOrder.map(m=>{
-    return recs.filter(r=>{
-      const rm = parseInt(r.from.slice(5,7));
-      return rm===m;
-    }).reduce((a,r)=>a+daysBetween(r.from,r.to),0);
-  });
-  const max = Math.max(...totals,1);
-  const bars = monthOrder.map((m,i)=>{
-    const h = Math.round((totals[i]/max)*90);
-    return `<div style="display:flex;flex-direction:column;align-items:center;gap:4px;flex:1;min-width:0;">
-      <div style="font-size:11px;color:var(--ink-600);">${totals[i]||''}</div>
-      <div style="width:100%;max-width:26px;height:${Math.max(h,totals[i]>0?4:0)}px;background:${totals[i]>0?'var(--orange-600)':'var(--paper-100)'};border-radius:4px 4px 0 0;"></div>
-      <div style="font-size:10.5px;color:var(--ink-400);">${monthLabel[m]}</div>
-    </div>`;
-  }).join('');
-  document.getElementById('chart-bar').innerHTML = `<div style="display:flex;align-items:flex-end;gap:6px;height:150px;">${bars}</div>
-    <div class="foot-note" style="border-top:none;padding:10px 0 0;">รวมวันลา (ป่วย+พักผ่อน) ที่บันทึกไว้ในระบบ ต่อเดือน ตามปีงบประมาณ ${fy}</div>`;
-}
-
-
-/* ============================================================
-   SARABAN
-   ============================================================ */
-/* ============================================================
-   ไทม์ไลน์เอกสาร (จาก / รับเข้าหมวด / ดำเนินการ / ตอบกลับ)
-   เมื่อจบเรื่อง (ดำเนินการแล้วเสร็จ + ตอบกลับแล้ว ถ้าต้องตอบกลับ) จะย้ายไปแท็บ "เสร็จสิ้น"
-   ============================================================ */
-function ensureProcess(d){
-  if(!d.process) d.process = {status:'in_progress', statusDate:'', needsReply:false, replied:false, repliedDate:'', repliedNote:''};
-  return d.process;
-}
-
-/* ============================================================
-   คำสั่งการ ผอ.ขท.ระยอง (บนหนังสือรับ-ส่ง)
-   หนังสือรับ: บันทึกพร้อมตอนลงทะเบียนรับ (รู้ผลทันที ไม่มีช่วงรอ)
-   หนังสือส่ง: ทุกฉบับเรียน ผอ.ขท.ระยอง เสมอ — บันทึกทีหลังเมื่อได้เรื่องกลับจากแขวง (มีช่วงรอจริง)
-   ============================================================ */
-const ORDER_UNIT_GROUPS = [
-  {head:'รอ.ขท.(บ)', label:'ฝ่ายบริหาร', items:['งานสารบรรณ','งานการเงิน','งานพัสดุและสัญญา','งานสารสนเทศ']},
-  {head:'รอ.ขท.(ว)', label:'ฝ่ายวิศวกรรม', items:['งานแผนงาน','งานไฟฟ้า','งานอำนวยฯ','งานปรับซ่อม']},
-  {head:'รอ.ขท.(ป)', label:'ฝ่ายปฏิบัติการ', items:['ชม.ขท.เชิงเนิน','ชม.ขท.ทับมา','ชม.ขท.แกลง','ชม.ขท.ปลวกแดง','ชม.ขท.วังจันทร์','ชม.ขท.บ้านฉาง']}
-];
-const ORDER_UNIT_STANDALONE = ['ทุกฝ่ายงาน'];
-const ORDER_TYPES = ['เพื่อทราบ','ดำเนินการ','รายงานผล','ถือปฏิบัติ','ตรวจสอบและรายงานผลให้ทราบ','ตรวจสอบและแก้ไข'];
-function renderCheckChips(containerId, options, idPrefix, breakAfterIdx){
-  document.getElementById(containerId).innerHTML = options.map((opt,idx)=>`
-    <label class="check-chip" id="${idPrefix}-${idx}-wrap">
-      <input type="checkbox" id="${idPrefix}-${idx}" value="${opt.replace(/"/g,'&quot;')}" onchange="this.parentElement.classList.toggle('checked',this.checked)">
-      ${opt}
-    </label>${idx===breakAfterIdx ? '<span class="chip-break"></span>' : ''}`).join('');
-}
-/* ชุดตัวเลือก "สั่งการให้หน่วยงาน" แบบแบ่งหมวดตามสายบังคับบัญชา (รอ.ขท.(บ)/(ว)/(ป)) — แต่ละหัวข้อกลุ่มเลือกได้เองด้วย (หมายถึงทั้งฝ่าย) พร้อมหน่วยงานย่อยด้านล่าง
-   ใช้ id/value เดียวกับระบบ checkbox เดิมทุกประการ (getCheckedChipValues/setCheckChipValues อ่าน/ตั้งค่าจาก input ทุกตัวในคอนเทนเนอร์อยู่แล้ว ไม่ขึ้นกับโครงสร้าง HTML) */
-function renderGroupedCheckChips(containerId, groups, standalone, idPrefix){
-  let idx = 0;
-  const chip = (opt) => {
-    const i2 = idx++;
-    return `<label class="check-chip" id="${idPrefix}-${i2}-wrap">
-      <input type="checkbox" id="${idPrefix}-${i2}" value="${opt.replace(/"/g,'&quot;')}" onchange="this.parentElement.classList.toggle('checked',this.checked)">
-      ${opt}
-    </label>`;
-  };
-  let html = groups.map(g=>`
-    <div class="chip-group-block">
-      <div class="chip-group-head">${(() => {
-        const i2 = idx++;
-        return `<label class="check-chip" id="${idPrefix}-${i2}-wrap">
-          <input type="checkbox" id="${idPrefix}-${i2}" value="${g.head.replace(/"/g,'&quot;')}" onchange="this.parentElement.classList.toggle('checked',this.checked)">
-          <b>${g.head}</b>&nbsp;— ${g.label}
-        </label>`;
-      })()}</div>
-      <div class="chip-group-sub">${g.items.map(chip).join('')}</div>
-    </div>`).join('');
-  html += `<div class="chip-group-block"><div class="chip-group-sub" style="margin-left:0;">${standalone.map(chip).join('')}</div></div>`;
-  document.getElementById(containerId).innerHTML = html;
-}
-function getCheckedChipValues(containerId){
-  return Array.from(document.querySelectorAll('#'+containerId+' input[type=checkbox]:checked')).map(el=>el.value);
-}
-function setCheckChipValues(containerId, values){
-  document.querySelectorAll('#'+containerId+' input[type=checkbox]').forEach(el=>{
-    el.checked = (values||[]).includes(el.value);
-    el.parentElement.classList.toggle('checked', el.checked);
-  });
-}
-function orderSummaryParts(o){
-  if(!o) return null;
-  const units = [...(o.units||[]), o.unitsOther].filter(Boolean).join(', ');
-  const types = [...(o.types||[]), o.typesOther].filter(Boolean).join(', ');
-  return {units: units||'—', types: types||'—'};
-}
-function orderBadgeHtml(d){
-  if(!d.order) return '';
-  const s = orderSummaryParts(d.order);
-  let due = '';
-  if(d.order.dueDate) due = ` · กำหนด ${fmtDate(d.order.dueDate)}`;
-  else if(d.order.dueNote) due = ` · ${d.order.dueNote}`;
-  return `<div class="order-badge">📋 สั่งการ: ${s.units} · ${s.types}${due}</div>`;
-}
-function toggleOrderDueDone(i){
-  if(!isAdmin()) return;
-  docs[i].order.dueDone = !docs[i].order.dueDone;
-  renderDueTracking(); renderDocs(); renderOverview();
-}
-function isDocClosed(d){
-  const p = ensureProcess(d);
-  return p.status==='done' && (!p.needsReply || p.replied);
-}
-function docStatusPill(d){
-  const p = ensureProcess(d);
-  if(isDocClosed(d)) return `<span class="pill pill-ok">✅ เสร็จสิ้น</span>`;
-  if(p.needsReply && p.status==='done' && !p.replied) return `<span class="pill pill-warn">📮 รอตอบกลับ</span>`;
-  return ''; // สถานะปกติ "กำลังดำเนินการ" ไม่แสดงป้าย — เป็นค่าเริ่มต้นของแทบทุกแถว ไม่ให้ข้อมูลเพิ่มและทำให้ท้ายตารางดูรก
-}
-function buildTimeline(d){
-  const p = ensureProcess(d);
-  const steps = [];
-  steps.push({icon:'📨', label: d.type==='in' ? `จาก ${d.party||'-'}` : `ส่งถึง ${d.party||'-'}`, date: d.provinceDate || d.date || null, done:true});
-  if(d.type==='in'){
-    if(d.sectionDate){
-      steps.push({icon:'📥', label:`รับเข้าหมวด${d.sectionNo?' (เลขรับ '+d.sectionNo+')':''}`, date:d.sectionDate, done:true});
-    } else {
-      steps.push({icon:'📥', label:'รับเข้าหมวด', date:null, done:false});
-    }
-  } else {
-    // หนังสือส่ง: ทุกฉบับเรียน ผอ.ขท.ระยอง เสมอ ต้องผ่านขั้นตอนสั่งการก่อนจะกลับมาปฏิบัติที่หมวด
-    if(d.order){
-      const s = orderSummaryParts(d.order);
-      steps.push({icon:'📋', label:`ผอ.สั่งการแล้ว — ${s.units} · ${s.types}`, date:d.order.recordedDate||null, done:true});
-      steps.push({icon:'📥', label:'รับกลับหมวดพร้อมดำเนินการ', date:d.order.recordedDate||null, done:true});
-    } else {
-      steps.push({icon:'⏳', label:'รอ ผอ.สั่งการ', date:null, done:false, current:true});
-    }
-  }
-  const blockedByOrder = d.type==='out' && !d.order;
-  if(p.status==='done'){
-    steps.push({icon:'✅', label:'ดำเนินการแล้วเสร็จ', date:p.statusDate?fmtDate(p.statusDate):null, done:true});
-  } else {
-    steps.push({icon:'🔧', label:'กำลังดำเนินการ', date:null, done:false, current:!blockedByOrder});
-  }
-  if(p.needsReply){
-    if(p.replied){
-      steps.push({icon:'📤', label:`ตอบกลับแล้ว${p.repliedNote?' — '+p.repliedNote:''}`, date:p.repliedDate?fmtDate(p.repliedDate):null, done:true});
-    } else {
-      steps.push({icon:'📮', label:'รอตอบกลับ', date:null, done:false, current:p.status==='done'});
-    }
-  }
-  return steps;
-}
-let __timelineDocIndex = null;
-function openTimeline(i){
-  __timelineDocIndex = i;
-  const d = docs[i];
-  ensureProcess(d);
-  document.getElementById('tl-no-tag').textContent = '· '+d.no;
-  document.getElementById('tl-steps').innerHTML = buildTimeline(d).map(s=>`
-    <div class="tl-step ${s.done?'done':''} ${s.current?'current':''}">
-      <div class="tl-dot">${s.done?'✓':(s.current?'●':'')}</div>
-      <div><div class="tl-label">${s.icon} ${s.label}</div><div class="tl-date">${s.date ? s.date : (s.current?'อยู่ระหว่างดำเนินการ':'ยังไม่ถึงขั้นตอนนี้')}</div></div>
-    </div>`).join('');
-  document.getElementById('tl-admin-controls').innerHTML = isAdmin() ? renderTimelineAdminControls(d) : '';
-  document.getElementById('timeline-modal').classList.remove('hidden');
-}
-function closeTimeline(){ __timelineDocIndex = null; document.getElementById('timeline-modal').classList.add('hidden'); }
-function renderTimelineAdminControls(d){
-  const p = ensureProcess(d);
-  const i = docs.indexOf(d);
-  let html = '<div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--line);">';
-  html += p.status!=='done'
-    ? `<button class="btn btn-primary btn-sm" onclick="markDocStage(${i},'done')">✓ ทำเครื่องหมายดำเนินการแล้วเสร็จ</button>`
-    : `<button class="btn btn-ghost btn-sm" onclick="markDocStage(${i},'reopen')">↺ เปิดดำเนินการต่อ</button>`;
-  html += `<label style="display:flex;align-items:center;gap:8px;margin-top:12px;font-size:12.5px;cursor:pointer;">
-    <input type="checkbox" ${p.needsReply?'checked':''} onchange="toggleNeedsReply(${i},this.checked)"> ต้องมีการตอบกลับ
-  </label>`;
-  if(p.needsReply){
-    if(!p.replied){
-      html += `<div class="two-col" style="margin-top:8px;">
-        <div class="f-row" style="margin-bottom:0;"><label>วันที่ตอบกลับ</label><input type="date" id="tl-reply-date" value="${new Date().toISOString().slice(0,10)}"></div>
-        <div class="f-row" style="margin-bottom:0;"><label>หมายเหตุ/เลขที่หนังสือตอบกลับ</label><input id="tl-reply-note" placeholder="เช่น เลขที่หนังสือตอบกลับ"></div>
-      </div>
-      <button class="btn btn-primary btn-sm" style="margin-top:8px;" onclick="markReplied(${i})">📤 บันทึกการตอบกลับ</button>`;
-    } else {
-      html += `<div class="p-sub" style="margin-top:8px;">ตอบกลับแล้วเมื่อ ${fmtDate(p.repliedDate)}${p.repliedNote?' — '+p.repliedNote:''}</div>
-      <button class="btn btn-ghost btn-sm" style="margin-top:6px;" onclick="unmarkReplied(${i})">↺ ยกเลิกการตอบกลับ</button>`;
-    }
-  }
-  html += '</div>';
-  return html;
-}
-function __refreshTimelineAndDocs(i){
-  if(__timelineDocIndex===i) openTimeline(i);
-  renderDocs();
-}
-function markDocStage(i, action){
-  if(!isAdmin()) return;
-  const p = ensureProcess(docs[i]);
-  if(action==='done'){ p.status='done'; p.statusDate = new Date().toISOString().slice(0,10); }
-  else if(action==='reopen'){ p.status='in_progress'; p.statusDate=''; }
-  __refreshTimelineAndDocs(i);
-}
-function toggleNeedsReply(i, val){
-  if(!isAdmin()) return;
-  const p = ensureProcess(docs[i]);
-  p.needsReply = val;
-  if(!val){ p.replied=false; p.repliedDate=''; p.repliedNote=''; }
-  __refreshTimelineAndDocs(i);
-}
-function markReplied(i){
-  if(!isAdmin()) return;
-  const p = ensureProcess(docs[i]);
-  const dateEl = document.getElementById('tl-reply-date'), noteEl = document.getElementById('tl-reply-note');
-  p.replied = true;
-  p.repliedDate = (dateEl && dateEl.value) || new Date().toISOString().slice(0,10);
-  p.repliedNote = noteEl ? noteEl.value.trim() : '';
-  __refreshTimelineAndDocs(i);
-}
-function unmarkReplied(i){
-  if(!isAdmin()) return;
-  const p = ensureProcess(docs[i]);
-  p.replied=false; p.repliedDate=''; p.repliedNote='';
-  __refreshTimelineAndDocs(i);
-}
-
-function renderDocs(filter, q){
-  filter = filter || document.querySelector('[data-doctab].active')?.dataset.doctab || 'all';
-  q = (q!==undefined ? q : (document.getElementById('doc-search')?.value||'')).toLowerCase();
-  renderDocMonthOptions();
-  const monthSel = document.getElementById('doc-month-filter')?.value || 'all';
-  let rows = docs.filter(d => {
-    const closed = isDocClosed(d);
-    if(filter==='closed') return closed;
-    if(closed) return false;
-    if(filter==='waiting_order') return d.type==='out' && !d.order;
-    return (filter==='all'||d.type===filter);
-  }).filter(d => (d.subj.toLowerCase().includes(q)||d.no.toLowerCase().includes(q)||(d.route||'').toLowerCase().includes(q)) && (monthSel==='all' || docMonthKey(d)===monthSel));
-  rows = rows.slice().sort((a,b)=>{
-    const ka = docSortKeyISO(a), kb = docSortKeyISO(b);
-    if(ka !== kb) return kb.localeCompare(ka); // วันที่ล่าสุดอยู่บนสุด
-    const na = docSortSecondaryNum(a), nb = docSortSecondaryNum(b);
-    if(!isNaN(na) && !isNaN(nb) && na!==nb) return nb-na; // วันเดียวกัน — เลขรับหมวด/แขวงที่มากกว่า (รับทีหลัง) ขึ้นก่อน
-    return 0;
-  });
-  const dis = isAdmin() ? '' : 'disabled';
-  document.getElementById('doc-body').innerHTML = rows.map((d)=>{
-    const i = docs.indexOf(d);
-    const recv = (d.provinceNo||d.sectionNo) ? `
-        ${d.provinceNo?`<div class="p-sub" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="แขวง: ${d.provinceNo}${d.provinceDate?' ('+d.provinceDate+')':''}">แขวง: ${d.provinceNo}${d.provinceDate?' ('+d.provinceDate+')':''}</div>`:''}
-        ${d.sectionNo?`<div class="p-sub" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="หมวด: ${d.sectionNo}${d.sectionDate?' ('+d.sectionDate+')':''}">หมวด: ${d.sectionNo}${d.sectionDate?' ('+d.sectionDate+')':''}</div>`:''}
-      ` : '<span style="color:var(--ink-400);font-size:12px">—</span>';
-    return `
-    <tr>
-      <td style="font-weight:600;font-family:'Kanit';font-size:12.5px;color:var(--navy-900);word-break:break-word;">${d.no}${d.complaint?' <span class="pill pill-warn">🚩 คำร้องทุกข์</span>':''}${(d.due && !d.due.done) ? ' '+dueStatusPill(d.due) : ''}</td>
-      <td><span class="pill ${d.type==='in'?'pill-in':'pill-out'}">${d.type==='in'?'รับ':'ส่ง'}</span></td>
-      <td style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${d.date}">${d.date}</td>
-      <td style="overflow:hidden;">${recv}</td>
-      <td style="word-break:break-word;">${d.party}</td>
-      <td style="word-break:break-word;">${d.subj}${(d.route||d.km)?`<div class="p-sub">📍 ${[formatRouteDisplay(d.route),formatKmDisplay(d.km)].filter(Boolean).join(' ')}</div>`:''}${orderBadgeHtml(d)}</td>
-      <td style="text-align:right;">
-        ${(() => { const sp = docStatusPill(d); return sp ? `<div style="margin-bottom:6px;">${sp}</div>` : ''; })()}
-        <div class="row-actions">
-          <button class="btn btn-ghost btn-sm" onclick="openTimeline(${i})" title="ดูไทม์ไลน์เอกสาร">🕓 ไทม์ไลน์</button>
-          ${isAdmin() ? `<button class="btn btn-ghost btn-sm" onclick="editDoc(${i})" title="แก้ไขข้อมูลหนังสือ / คำสั่งการ">✏️ แก้ไข</button>` : ''}
-        </div>
-      </td>
-    </tr>`;
-  }).join('') || '<tr><td colspan="7" style="text-align:center;color:var(--ink-400);padding:20px;">ไม่พบรายการ</td></tr>';
-  document.getElementById('doc-foot').textContent = `แสดง ${rows.length} จาก ${docs.length} รายการ`;
-}
-
-/* ============================================================
    COMPLAINTS TRACKING (คัดจากหนังสือรับที่เป็นเรื่องร้องเรียน)
    ============================================================ */
 function complaintStatusPill(st){
@@ -1904,386 +1292,6 @@ function updateComplaintField(docIdx, field, val){
   docs[docIdx].complaint[field] = val;
   renderComplaints();
 }
-
-/* ============================================================
-   ติดตามกำหนดดำเนินการ (deadline tracking บนหนังสือรับ-ส่ง)
-   แจ้งเตือน 2 ระยะ: ระยะที่ 1 เหลือ ≤ 7 วัน · ระยะที่ 2 เหลือ ≤ 3 วัน หรือเกินกำหนดแล้ว
-   ============================================================ */
-function dueDaysRemaining(dueDateISO){
-  if(!dueDateISO) return null;
-  return Math.ceil((new Date(dueDateISO+'T00:00:00') - TODAY) / 86400000);
-}
-function dueStage(dueDateISO){
-  // 0 = ยังไม่เข้าเกณฑ์แจ้งเตือน, 1 = ใกล้ครบกำหนด (≤7 วัน), 2 = เร่งด่วน/เกินกำหนด (≤3 วัน หรือเกิน)
-  const days = dueDaysRemaining(dueDateISO);
-  if(days===null) return 0;
-  if(days<=3) return 2;
-  if(days<=7) return 1;
-  return 0;
-}
-function dueStatusPill(due){
-  if(due.done) return `<span class="pill pill-ok">✅ เสร็จสิ้น</span>`;
-  const days = dueDaysRemaining(due.date);
-  const stage = dueStage(due.date);
-  if(days<0) return `<span class="pill pill-danger">🔴 เกินกำหนด ${Math.abs(days)} วัน</span>`;
-  if(stage===2) return `<span class="pill pill-danger">🔴 เร่งด่วน เหลือ ${days} วัน</span>`;
-  if(stage===1) return `<span class="pill pill-warn">⏰ ใกล้ครบกำหนด เหลือ ${days} วัน</span>`;
-  return `<span class="pill pill-neutral">เหลือ ${days} วัน</span>`;
-}
-function collectDueEntries(){
-  // รวมกำหนดทั่วไป (d.due) กับกำหนดรายงานผลตามคำสั่งการ ผอ. (d.order.dueDate) เป็นรายการเดียวกัน
-  const list = [];
-  docs.forEach((d,i)=>{
-    if(d.due) list.push({i, d, date:d.due.date, note:d.due.note, done:d.due.done, source:'general'});
-    if(d.order && d.order.dueDate) list.push({i, d, date:d.order.dueDate, note:d.order.dueNote || 'รายงานผลตามคำสั่งการ ผอ.', done:!!d.order.dueDone, source:'order'});
-  });
-  return list;
-}
-function renderDueTracking(){
-  const filter = document.getElementById('due-filter')?.value || 'pending';
-  let list = collectDueEntries();
-  if(filter==='pending') list = list.filter(e=>!e.done);
-  else if(filter==='done') list = list.filter(e=>e.done);
-  list = list.slice().sort((a,b)=> new Date(a.date+'T00:00:00') - new Date(b.date+'T00:00:00'));
-  document.getElementById('due-body').innerHTML = list.map(e=>{
-    const d = e.d, i = e.i;
-    return `<tr>
-      <td style="font-weight:600;font-family:'Kanit';font-size:12.5px;color:var(--navy-900)">${d.no}${e.source==='order'?' <span class="pill pill-neutral">📋 ผอ.สั่งการ</span>':''}</td>
-      <td><span class="pill ${d.type==='in'?'pill-in':'pill-out'}">${d.type==='in'?'รับ':'ส่ง'}</span></td>
-      <td style="max-width:220px">${d.subj}</td>
-      <td style="max-width:200px">${e.note||'—'}</td>
-      <td>${fmtDate(e.date)}</td>
-      <td>${dueStatusPill({date:e.date, done:e.done})}</td>
-      <td>${isAdmin()?`<button class="btn btn-ghost btn-sm" onclick="${e.source==='order'?'toggleOrderDueDone':'toggleDueDone'}(${i})">${e.done?'เปิดใหม่':'ทำเครื่องหมายเสร็จสิ้น'}</button>`:''}</td>
-    </tr>`;
-  }).join('') || `<tr><td colspan="7" style="text-align:center;color:var(--ink-400);padding:20px;">ไม่พบรายการ</td></tr>`;
-  const all = collectDueEntries();
-  const total = all.length;
-  const pendingCount = all.filter(e=>!e.done).length;
-  const urgent = all.filter(e=>!e.done && dueStage(e.date)>=1).length;
-  document.getElementById('due-foot').innerHTML = `ทั้งหมด ${total} รายการ · ยังไม่เสร็จ ${pendingCount} รายการ · ใกล้/เกินกำหนด ${urgent} รายการ<br>แจ้งเตือน 2 ระยะ : <span class="pill pill-warn">≤ 7 วัน</span> และ <span class="pill pill-danger">≤ 3 วัน หรือเลยกำหนด</span>`;
-}
-function toggleDueDone(i){
-  if(!isAdmin()) return;
-  docs[i].due.done = !docs[i].due.done;
-  renderDueTracking(); renderDocs(); renderOverview();
-}
-
-let __editDocIndex = null;
-function editDoc(i){
-  if(!isAdmin()) return;
-  const d = docs[i];
-  __editDocIndex = i;
-  document.getElementById('ed-no-tag').textContent = d.no ? '· '+d.no : '';
-  document.getElementById('ed-party-label').textContent = d.type==='in' ? 'จากหน่วยงาน' : 'ถึงหน่วยงาน';
-  document.getElementById('ed-no').value = d.no||'';
-  document.getElementById('ed-date').value = d.dateISO||'';
-  document.getElementById('ed-receive-group').classList.toggle('hidden', d.type!=='in');
-  document.getElementById('ed-province-no').value = d.provinceNo||'';
-  document.getElementById('ed-section-no').value = d.sectionNo||'';
-  document.getElementById('ed-subj').value = d.subj||'';
-  document.getElementById('ed-party').value = d.party||'';
-  setRouteSelectFromStored('ed-route', d.route);
-  document.getElementById('ed-km').value = d.km||'';
-  document.getElementById('ed-km-msg').innerHTML = '';
-  renderGroupedCheckChips('ed-order-units', ORDER_UNIT_GROUPS, ORDER_UNIT_STANDALONE, 'ed-ou');
-  renderCheckChips('ed-order-types', ORDER_TYPES, 'ed-ot', 3);
-  const o = d.order;
-  document.getElementById('ed-order').checked = !!o;
-  document.getElementById('ed-order-recorded-date').value = (o && o.recordedDateISO) || new Date().toISOString().slice(0,10);
-  setCheckChipValues('ed-order-units', o ? o.units : []);
-  document.getElementById('ed-order-units-other').value = (o && o.unitsOther) || '';
-  setCheckChipValues('ed-order-types', o ? o.types : []);
-  document.getElementById('ed-order-types-other').value = (o && o.typesOther) || '';
-  document.getElementById('ed-order-due-date').value = (o && o.dueDate) || '';
-  document.getElementById('ed-order-due-note').value = (o && o.dueNote) || '';
-  document.getElementById('ed-order-note').value = (o && o.note) || '';
-  document.getElementById('ed-order-fields').classList.toggle('hidden', !o);
-  document.getElementById('ed-order-remove-btn').classList.toggle('hidden', !o);
-  document.getElementById('edit-doc-modal').classList.remove('hidden');
-}
-function closeEditDoc(){
-  __editDocIndex = null;
-  document.getElementById('edit-doc-modal').classList.add('hidden');
-}
-function __edOrderToggled(){
-  document.getElementById('ed-order-fields').classList.toggle('hidden', !document.getElementById('ed-order').checked);
-}
-function removeOrderInEditDoc(){
-  if(__editDocIndex===null) return;
-  showConfirm({
-    title:'ลบข้อมูลคำสั่งการ',
-    message:'ยืนยันลบข้อมูลคำสั่งการของเอกสารนี้?',
-    onConfirm:()=>{
-      docs[__editDocIndex].order = null;
-      closeEditDoc();
-      renderAll();
-    }
-  });
-}
-function deleteDocFromEdit(){
-  if(!isAdmin() || __editDocIndex===null) return;
-  const d = docs[__editDocIndex];
-  if(!d) return;
-  showConfirm({
-    title:'ลบหนังสือออกจากทะเบียน',
-    message:`ยืนยันลบหนังสือ "${d.no||'(ไม่มีเลขที่)'}" — ${d.subj||'(ไม่มีเรื่อง)'} ออกจากทะเบียน?`,
-    warn:'การลบไม่สามารถย้อนกลับได้ ข้อมูลไทม์ไลน์ คำสั่งการ และคำร้องทุกข์ที่ผูกกับหนังสือฉบับนี้จะหายไปด้วย',
-    onConfirm:()=>{
-      docs.splice(__editDocIndex,1);
-      __editDocIndex = null;
-      closeEditDoc();
-      renderAll();
-    }
-  });
-}
-function saveEditDoc(){
-  if(__editDocIndex===null) return;
-  const no = document.getElementById('ed-no').value.trim();
-  const dateISO = document.getElementById('ed-date').value;
-  if(!no){ alert('กรุณากรอกเลขที่หนังสือ'); return; }
-  if(!dateISO){ alert('กรุณาระบุวันที่หนังสือ'); return; }
-  if(!confirmRouteSave('ed-route','ed-km')) return;
-  const hasOrder = document.getElementById('ed-order').checked;
-  const orderUnits = hasOrder ? getCheckedChipValues('ed-order-units') : [];
-  const orderUnitsOther = hasOrder ? document.getElementById('ed-order-units-other').value.trim() : '';
-  const orderTypes = hasOrder ? getCheckedChipValues('ed-order-types') : [];
-  const orderTypesOther = hasOrder ? document.getElementById('ed-order-types-other').value.trim() : '';
-  if(hasOrder && !orderUnits.length && !orderUnitsOther){ alert('กรุณาระบุหน่วยงานที่สั่งการให้อย่างน้อย 1 รายการ'); return; }
-  if(hasOrder && !orderTypes.length && !orderTypesOther){ alert('กรุณาระบุประเภทคำสั่งการอย่างน้อย 1 รายการ'); return; }
-  const d = docs[__editDocIndex];
-  d.no = no;
-  d.dateISO = dateISO;
-  d.date = fmtDate(dateISO);
-  if(d.type==='in'){
-    d.provinceNo = document.getElementById('ed-province-no').value.trim();
-    d.sectionNo = document.getElementById('ed-section-no').value.trim();
-  }
-  d.subj = document.getElementById('ed-subj').value.trim();
-  d.party = document.getElementById('ed-party').value.trim();
-  d.route = routeSelectValue('ed-route');
-  d.km = document.getElementById('ed-km').value.trim();
-  if(hasOrder){
-    const recordedDateISO = document.getElementById('ed-order-recorded-date').value;
-    d.order = {
-      recordedDateISO,
-      recordedDate: recordedDateISO ? fmtDate(recordedDateISO) : '',
-      units: orderUnits, unitsOther: orderUnitsOther, types: orderTypes, typesOther: orderTypesOther,
-      dueDate: document.getElementById('ed-order-due-date').value,
-      dueNote: document.getElementById('ed-order-due-note').value.trim(),
-      note: document.getElementById('ed-order-note').value.trim(),
-      dueDone: (d.order && d.order.dueDone) || false
-    };
-  } else {
-    d.order = null;
-  }
-  closeEditDoc();
-  renderAll();
-}
-function __ndTypeChanged(){
-  const isIn = document.getElementById('nd-type').value === 'in';
-  document.getElementById('nd-receive-group').classList.toggle('hidden', !isIn);
-  document.getElementById('nd-complaint-box').classList.toggle('hidden', !isIn);
-  document.getElementById('nd-order-box').classList.toggle('hidden', !isIn);
-  document.getElementById('nd-party-label').textContent = isIn ? 'จากหน่วยงาน' : 'ถึงหน่วยงาน';
-  document.getElementById('nd-party').placeholder = isIn ? 'ชื่อหน่วยงานต้นทาง' : 'ชื่อหน่วยงานปลายทาง';
-  if(!isIn){
-    document.getElementById('nd-complaint').checked = false;
-    document.getElementById('nd-order').checked = false;
-    __ndOrderToggled();
-  }
-}
-function __ndOrderToggled(){
-  document.getElementById('nd-order-fields').classList.toggle('hidden', !document.getElementById('nd-order').checked);
-}
-function toggleDocForm(){
-  if(!isAdmin()){ alert('ต้องเข้าสู่ระบบด้วยสิทธิ์แก้ไข (หัวหน้าหมวด/ผู้ช่วยหัวหน้าหมวด) จึงจะบันทึกหนังสือได้'); return; }
-  const modal = document.getElementById('doc-modal');
-  const willShow = modal.classList.contains('hidden');
-  modal.classList.toggle('hidden');
-  if(willShow){
-    document.getElementById('nd-type').value = 'in';
-    ['nd-no','nd-party','nd-subj','nd-note','nd-route','nd-route-other','nd-km','nd-province-no','nd-section-no','nd-date','nd-province-date','nd-section-date','nd-order-units-other','nd-order-types-other','nd-order-due-date','nd-order-due-note','nd-order-note'].forEach(id=>document.getElementById(id).value='');
-    populateRouteSelects();
-    document.getElementById('nd-route-other').classList.add('hidden');
-    document.getElementById('nd-km-msg').innerHTML = '';
-    document.getElementById('nd-section-date').value = new Date().toISOString().slice(0,10); // วันที่รับของหมวดทางหลวงเชิงเนิน ใช้วันที่ปัจจุบันเป็นค่าเริ่มต้นเหมือนวันที่หนังสือ
-    document.getElementById('nd-party-suggest').innerHTML = '';
-    document.getElementById('nd-party-suggest').classList.add('hidden');
-    document.getElementById('nd-no-suggest').innerHTML = '';
-    document.getElementById('nd-no-suggest').classList.add('hidden');
-    document.getElementById('nd-subj-suggest').innerHTML = '';
-    document.getElementById('nd-subj-suggest').classList.add('hidden');
-    document.getElementById('nd-complaint').checked = false;
-    document.getElementById('nd-needs-reply').checked = false;
-    document.getElementById('nd-order').checked = false;
-    renderGroupedCheckChips('nd-order-units', ORDER_UNIT_GROUPS, ORDER_UNIT_STANDALONE, 'nd-ou');
-    renderCheckChips('nd-order-types', ORDER_TYPES, 'nd-ot', 3);
-    __ndTypeChanged();
-    __ndOrderToggled();
-  }
-}
-function __partyHistoryList(){
-  // ดึงรายชื่อหน่วยงานที่เคยประสาน จากประวัติหนังสือทั้งหมด (docs) เรียงจากล่าสุดไปเก่าสุด ไม่ซ้ำ
-  const seen = new Set();
-  const list = [];
-  docs.forEach(d=>{
-    const p = (d.party||'').trim();
-    if(p && p!=='-' && !seen.has(p)){ seen.add(p); list.push(p); }
-  });
-  return list;
-}
-function __filterPartySuggest(){
-  const input = document.getElementById('nd-party');
-  const box = document.getElementById('nd-party-suggest');
-  const q = input.value.trim();
-  if(!q){ box.innerHTML=''; box.classList.add('hidden'); return; }
-  const names = __partyHistoryList().filter(n=>n.toLowerCase().includes(q.toLowerCase()));
-  if(!names.length){ box.innerHTML=''; box.classList.add('hidden'); return; }
-  box.innerHTML = names.slice(0,8).map(n=>`<div class="ac-item" title="${n}" onmousedown="__pickParty('${n.replace(/'/g,"\\'")}')">${n}</div>`).join('');
-  box.classList.remove('hidden');
-}
-function __pickParty(name){
-  document.getElementById('nd-party').value = name;
-  const box = document.getElementById('nd-party-suggest');
-  box.innerHTML=''; box.classList.add('hidden');
-}
-document.addEventListener('click', function(e){
-  const box = document.getElementById('nd-party-suggest');
-  const input = document.getElementById('nd-party');
-  if(box && input && e.target!==input && !box.contains(e.target)){
-    box.classList.add('hidden');
-  }
-});
-/* ============ เลขที่หนังสือ (ต้นเรื่อง): ประวัติเลขที่เดิมเพื่อลดการพิมพ์ ============ */
-function __noHistoryList(){
-  // ดึงเลขที่หนังสือที่เคยบันทึกไว้ (docs) เรียงจากล่าสุดไปเก่าสุด ไม่ซ้ำ — ช่วยให้เรียกดูรูปแบบเดิมได้เร็วขึ้น
-  const seen = new Set();
-  const list = [];
-  docs.forEach(d=>{
-    const n = (d.no||'').trim();
-    if(n && !seen.has(n)){ seen.add(n); list.push(n); }
-  });
-  return list;
-}
-function __filterNoSuggest(){
-  const input = document.getElementById('nd-no');
-  const box = document.getElementById('nd-no-suggest');
-  const q = input.value.trim();
-  if(!q){ box.innerHTML=''; box.classList.add('hidden'); return; }
-  const names = __noHistoryList().filter(n=>n.toLowerCase().includes(q.toLowerCase()) && n.toLowerCase()!==q.toLowerCase());
-  if(!names.length){ box.innerHTML=''; box.classList.add('hidden'); return; }
-  box.innerHTML = names.slice(0,8).map(n=>`<div class="ac-item" title="${n}" onmousedown="__pickNo('${n.replace(/'/g,"\\'")}')">${n}</div>`).join('');
-  box.classList.remove('hidden');
-}
-function __pickNo(name){
-  document.getElementById('nd-no').value = name;
-  const box = document.getElementById('nd-no-suggest');
-  box.innerHTML=''; box.classList.add('hidden');
-}
-document.addEventListener('click', function(e){
-  const box = document.getElementById('nd-no-suggest');
-  const input = document.getElementById('nd-no');
-  if(box && input && e.target!==input && !box.contains(e.target)){
-    box.classList.add('hidden');
-  }
-});
-/* ============ เรื่องของหนังสือ: ประวัติชื่อเรื่องเดิมเพื่อลดการพิมพ์ (รูปแบบเดียวกับเลขที่หนังสือ) ============ */
-function __subjHistoryList(){
-  const seen = new Set();
-  const list = [];
-  docs.forEach(d=>{
-    const s = (d.subj||'').trim();
-    if(s && !seen.has(s)){ seen.add(s); list.push(s); }
-  });
-  return list;
-}
-function __filterSubjSuggest(){
-  const input = document.getElementById('nd-subj');
-  const box = document.getElementById('nd-subj-suggest');
-  const q = input.value.trim();
-  if(!q){ box.innerHTML=''; box.classList.add('hidden'); return; }
-  const names = __subjHistoryList().filter(n=>n.toLowerCase().includes(q.toLowerCase()) && n.toLowerCase()!==q.toLowerCase());
-  if(!names.length){ box.innerHTML=''; box.classList.add('hidden'); return; }
-  box.innerHTML = names.slice(0,8).map(n=>`<div class="ac-item" title="${n}" onmousedown="__pickSubj('${n.replace(/'/g,"\\'")}')">${n}</div>`).join('');
-  box.classList.remove('hidden');
-}
-function __pickSubj(name){
-  document.getElementById('nd-subj').value = name;
-  const box = document.getElementById('nd-subj-suggest');
-  box.innerHTML=''; box.classList.add('hidden');
-}
-document.addEventListener('click', function(e){
-  const box = document.getElementById('nd-subj-suggest');
-  const input = document.getElementById('nd-subj');
-  if(box && input && e.target!==input && !box.contains(e.target)){
-    box.classList.add('hidden');
-  }
-});
-function saveNewDoc(){
-  const no = document.getElementById('nd-no').value.trim();
-  const subj = document.getElementById('nd-subj').value.trim();
-  const docDateISO = document.getElementById('nd-date').value;
-  if(!no || !subj){ alert('กรุณากรอกเลขที่หนังสือและเรื่องอย่างน้อย'); return; }
-  if(!docDateISO){ alert('กรุณาระบุวันที่หนังสือ'); return; }
-  const type = document.getElementById('nd-type').value;
-  const isIn = type === 'in';
-  const provinceDateISO = isIn ? document.getElementById('nd-province-date').value : '';
-  const sectionDateISO = isIn ? document.getElementById('nd-section-date').value : '';
-  const isComplaint = isIn && document.getElementById('nd-complaint').checked;
-  const hasOrder = isIn && document.getElementById('nd-order').checked;
-  const orderUnits = hasOrder ? getCheckedChipValues('nd-order-units') : [];
-  const orderUnitsOther = hasOrder ? document.getElementById('nd-order-units-other').value.trim() : '';
-  const orderTypes = hasOrder ? getCheckedChipValues('nd-order-types') : [];
-  const orderTypesOther = hasOrder ? document.getElementById('nd-order-types-other').value.trim() : '';
-  if(hasOrder && !orderUnits.length && !orderUnitsOther){ alert('กรุณาระบุหน่วยงานที่ ผอ.สั่งการให้อย่างน้อย 1 รายการ'); return; }
-  if(hasOrder && !orderTypes.length && !orderTypesOther){ alert('กรุณาระบุประเภทคำสั่งการอย่างน้อย 1 รายการ'); return; }
-  if(!confirmRouteSave('nd-route','nd-km')) return;
-  docs.unshift({
-    no, type,
-    date: fmtDate(docDateISO),
-    dateISO: docDateISO,
-    provinceNo: isIn ? document.getElementById('nd-province-no').value.trim() : '',
-    provinceDate: provinceDateISO ? fmtDate(provinceDateISO) : '',
-    provinceDateISO,
-    sectionNo: isIn ? document.getElementById('nd-section-no').value.trim() : '',
-    sectionDate: sectionDateISO ? fmtDate(sectionDateISO) : '',
-    sectionDateISO,
-    party: document.getElementById('nd-party').value.trim() || '-',
-    subj,
-    route: routeSelectValue('nd-route'),
-    km: document.getElementById('nd-km').value.trim(),
-    note: document.getElementById('nd-note').value.trim(),
-    complaint: isComplaint ? {
-      remark: '', status: 'รอดำเนินการ'
-    } : null,
-    due: null,
-    order: hasOrder ? {
-      recordedDateISO: sectionDateISO || docDateISO,
-      recordedDate: fmtDate(sectionDateISO || docDateISO),
-      units: orderUnits, unitsOther: orderUnitsOther,
-      types: orderTypes, typesOther: orderTypesOther,
-      dueDate: document.getElementById('nd-order-due-date').value,
-      dueNote: document.getElementById('nd-order-due-note').value.trim(),
-      note: document.getElementById('nd-order-note').value.trim(),
-      dueDone: false
-    } : null,
-    process: {
-      status: 'in_progress',
-      statusDate: '',
-      needsReply: document.getElementById('nd-needs-reply').checked,
-      replied: false,
-      repliedDate: '',
-      repliedNote: ''
-    }
-  });
-  toggleDocForm();
-  renderAll();
-}
-document.querySelectorAll('[data-doctab]').forEach(t=>t.addEventListener('click',()=>{
-  document.querySelectorAll('[data-doctab]').forEach(x=>x.classList.remove('active')); t.classList.add('active'); renderDocs(t.dataset.doctab);
-}));
-document.getElementById('doc-search').addEventListener('input', ()=>renderDocs());
 
 /* ============================================================
    STAFF (editable)
@@ -2414,9 +1422,10 @@ function renderStaffDetailModal(){
       : `<button class="btn btn-ghost" onclick="closeStaffDetail()">ปิด</button>`;
   }
 }
-function saveStaffDetail(){
+async function saveStaffDetail(){
   if(!isAdmin() || staffDetailIndex===null) return;
   const s = staff[staffDetailIndex];
+  const before = Object.assign({}, s);
   const newName = document.getElementById('sd-name').value.trim();
   s.name = newName || s.name;
   s.nickname = document.getElementById('sd-nickname').value.trim() || null;
@@ -2430,6 +1439,15 @@ function saveStaffDetail(){
   s.rate = rateVal ? Number(rateVal) : null;
   s.shirt = document.getElementById('sd-shirt').value.trim() || null;
   s.med = document.getElementById('sd-med').value.trim() || null;
+  try{
+    const saved = await apiPost('update', 'staff', s);
+    Object.assign(s, saved);
+  }catch(err){
+    Object.assign(s, before);
+    alert('บันทึกข้อมูลพนักงานไปยังฐานข้อมูลกลางไม่สำเร็จ: ' + err.message);
+    renderStaffDetailModal();
+    return;
+  }
   staffDetailEditing = false;
   renderAll();
   renderStaffDetailModal();
@@ -2444,12 +1462,12 @@ function openAddStaff(){
   document.getElementById('add-staff-modal').classList.remove('hidden');
 }
 function closeAddStaff(){ document.getElementById('add-staff-modal').classList.add('hidden'); }
-function submitAddStaff(){
+async function submitAddStaff(){
   if(!isAdmin()) return;
   const name = document.getElementById('as-name').value.trim();
   if(!name){ alert('กรุณากรอกชื่อ-สกุล'); return; }
   const rateVal = document.getElementById('as-rate').value;
-  staff.push({
+  const newStaff = {
     name,
     nickname: document.getElementById('as-nickname').value.trim() || null,
     birth: document.getElementById('as-birth').value || null,
@@ -2461,7 +1479,14 @@ function submitAddStaff(){
     med: document.getElementById('as-med').value.trim() || null,
     status: document.getElementById('as-status').value,
     startDate: document.getElementById('as-startdate').value || null
-  });
+  };
+  try{
+    const saved = await apiPost('add', 'staff', newStaff);
+    staff.push(saved);
+  }catch(err){
+    alert('เพิ่มข้อมูลพนักงานไปยังฐานข้อมูลกลางไม่สำเร็จ: ' + err.message);
+    return;
+  }
   closeAddStaff();
   renderAll();
 }
@@ -2674,14 +1699,19 @@ function renderHolidayModalBody(){
       <tbody>${rows}</tbody>
     </table></div>`;
 }
-function addHoliday(){
+async function addHoliday(){
   if(!isAdmin()) return;
   const dateEl = document.getElementById('hd-date'), nameEl = document.getElementById('hd-name');
   const date = dateEl.value, name = nameEl.value.trim();
   if(!date){ alert('กรุณาระบุวันที่'); return; }
   if(publicHolidays.some(h=>h.date===date)){ alert('มีวันที่นี้ในรายการวันหยุดอยู่แล้ว'); return; }
-  publicHolidays.push({date, name});
-  __saveState();
+  try{
+    const saved = await apiPost('add', 'public_holidays', {date, name});
+    publicHolidays.push(saved);
+  }catch(err){
+    alert('บันทึกวันหยุดนักขัตฤกษ์ไปยังฐานข้อมูลกลางไม่สำเร็จ: ' + err.message);
+    return;
+  }
   renderHolidayModalBody();
   renderAll();
 }
@@ -2692,15 +1722,20 @@ function removeHoliday(idx){
   showConfirm({
     title:'ลบวันหยุดนักขัตฤกษ์',
     message:`ยืนยันลบ "${fmtDate(h.date)} ${h.name||''}" ออกจากรายการวันหยุด?`,
-    onConfirm:()=>{
+    onConfirm: async ()=>{
+      try{
+        await apiPost('delete', 'public_holidays', null, h.date);
+      }catch(err){
+        alert('ลบวันหยุดนักขัตฤกษ์ในฐานข้อมูลกลางไม่สำเร็จ: ' + err.message);
+        return;
+      }
       publicHolidays.splice(idx,1);
-      __saveState();
       renderHolidayModalBody();
       renderAll();
     }
   });
 }
-function submitLeaveRequest(){
+async function submitLeaveRequest(){
   const name = document.getElementById('lr-name').value;
   const type = document.getElementById('lr-type').value;
   const from = document.getElementById('lr-from').value, to = document.getElementById('lr-to').value;
@@ -2723,11 +1758,23 @@ function submitLeaveRequest(){
     }
   }
   const contact = document.getElementById('lr-contact').value;
-  const advance = Math.round((new Date(from+'T00:00:00')-TODAY)/86400000);
-  const ok = !(['พักผ่อน','กิจ','ไปราชการ'].includes(type) && advance<3);
-  leaveRequests.unshift({id:__genLeaveId(),createdAt:TODAY.toISOString().slice(0,10),name,type,from,to,cover:document.getElementById('lr-cover').value,contact,reason:document.getElementById('lr-reason').value,ok,status:'pending'});
-  if(REGISTRY_LEAVE_TYPES.includes(type)){
-    leaveHistory.unshift({fy:fiscalYearOf(from),name,type,from,to});
+  const advanceDays = Math.round((new Date(from+'T00:00:00')-TODAY)/86400000);
+  const newLeave = {
+    name, type, from, to,
+    days: daysBetween(from,to),
+    cover: document.getElementById('lr-cover').value,
+    contact,
+    reason: document.getElementById('lr-reason').value,
+    status: 'pending',
+    recordedDate: TODAY.toISOString().slice(0,10),
+    advanceDays
+  };
+  try{
+    const saved = await apiPost('add', 'leave_requests', newLeave);
+    leaveRequests.unshift(saved);
+  }catch(err){
+    alert('บันทึกคำขอลาไปยังฐานข้อมูลกลางไม่สำเร็จ: ' + err.message);
+    return;
   }
   __saveSharedLeaveRequests();
   renderAll();
@@ -2787,11 +1834,11 @@ function renderLeaveRequestList(){
     || `<tr><td colspan="5" style="text-align:center;color:var(--ink-400);padding:16px;">${q ? 'ไม่พบรายการที่ตรงกับคำค้นหา' : 'ยังไม่มีคำขอลาที่อนุมัติแล้ว'}</td></tr>`;
   __renderLrLastUpdated();
 }
-// แสดงสถานะว่ามีการบันทึก/อัปเดตข้อมูลการลาล่าสุดเมื่อวันที่เท่าไร (ดูจาก createdAt ของทุกคำขอลา)
+// แสดงสถานะว่ามีการบันทึก/อัปเดตข้อมูลการลาล่าสุดเมื่อวันที่เท่าไร (ดูจาก recordedDate ของทุกคำขอลา)
 function __renderLrLastUpdated(){
   const el = document.getElementById('lr-last-updated');
   if(!el) return;
-  const dates = leaveRequests.map(r=>r.createdAt).filter(Boolean);
+  const dates = leaveRequests.map(r=>r.recordedDate).filter(Boolean);
   if(!dates.length){
     el.textContent = 'ยังไม่มีการบันทึกข้อมูลการลา';
     return;
@@ -2802,10 +1849,12 @@ function __renderLrLastUpdated(){
 function deleteLeaveRequest(i){
   const r = leaveRequests[i];
   if(!r) return;
-  const doDelete = ()=>{
-    if(REGISTRY_LEAVE_TYPES.includes(r.type)){
-      const hIdx = leaveHistory.findIndex(h=>h.name===r.name && h.type===r.type && h.from===r.from && h.to===r.to);
-      if(hIdx>-1) leaveHistory.splice(hIdx,1);
+  const doDelete = async ()=>{
+    try{
+      await apiPost('delete', 'leave_requests', null, r.id);
+    }catch(err){
+      alert('ลบคำขอลาในฐานข้อมูลกลางไม่สำเร็จ: ' + err.message);
+      return;
     }
     leaveRequests.splice(i,1);
     __saveSharedLeaveRequests();
@@ -2830,7 +1879,22 @@ function deleteLeaveRequest(i){
     });
   }
 }
-function setReqStatus(i,st){ if(!isAdmin()) return; leaveRequests[i].status=st; __saveSharedLeaveRequests(); renderAll(); }
+async function setReqStatus(i,st){
+  if(!isAdmin()) return;
+  const r = leaveRequests[i];
+  if(!r) return;
+  const before = r.status;
+  r.status = st;
+  try{
+    await apiPost('update', 'leave_requests', r);
+  }catch(err){
+    r.status = before;
+    alert('บันทึกสถานะคำขอลาไปยังฐานข้อมูลกลางไม่สำเร็จ: ' + err.message);
+    return;
+  }
+  __saveSharedLeaveRequests();
+  renderAll();
+}
 
 let __editLeaveIndex = null;
 function openEditLeave(i){
@@ -2851,7 +1915,7 @@ function closeEditLeave(){
   document.getElementById('edit-leave-modal').classList.add('hidden');
   __editLeaveIndex = null;
 }
-function saveEditLeave(){
+async function saveEditLeave(){
   if(!isAdmin() || __editLeaveIndex===null) return;
   const r = leaveRequests[__editLeaveIndex];
   if(!r) return;
@@ -2869,7 +1933,7 @@ function saveEditLeave(){
   if((newType==='ป่วย'||newType==='พักผ่อน') && __isTempWorker(r.name)){
     const fy = fiscalYearOf(newFrom);
     // นับสิทธิที่ใช้ไปแล้วของคำขออื่น ๆ (ไม่รวมรายการที่กำลังแก้ไขนี้)
-    const usedElsewhere = leaveHistory.filter(h=>h.name===r.name && h.fy===fy && h.type===newType && !(h.name===r.name && h.type===r.type && h.from===r.from && h.to===r.to)).reduce((a,h)=>a+daysBetween(h.from,h.to),0);
+    const usedElsewhere = computeLeaveHistory().filter(h=>h.name===r.name && h.fy===fy && h.type===newType && !(h.name===r.name && h.type===r.type && h.from===r.from && h.to===r.to)).reduce((a,h)=>a+daysBetween(h.from,h.to),0);
     const requestedDays = Math.max(daysBetween(newFrom,newTo),0);
     const quota = LEAVE_QUOTA_WORKER[newType];
     if(usedElsewhere + requestedDays > quota){
@@ -2877,20 +1941,22 @@ function saveEditLeave(){
       return;
     }
   }
-  // อัปเดต leaveHistory ที่ผูกกับคำขอนี้ (ถ้ามี) ให้ตรงกับค่าที่แก้ไข
-  if(REGISTRY_LEAVE_TYPES.includes(r.type)){
-    const hIdx = leaveHistory.findIndex(h=>h.name===r.name && h.type===r.type && h.from===r.from && h.to===r.to);
-    if(hIdx>-1) leaveHistory.splice(hIdx,1);
-  }
-  if(REGISTRY_LEAVE_TYPES.includes(newType)){
-    leaveHistory.unshift({fy:fiscalYearOf(newFrom),name:r.name,type:newType,from:newFrom,to:newTo});
-  }
+  const before = Object.assign({}, r);
   r.type = newType;
   r.from = newFrom;
   r.to = newTo;
+  r.days = daysBetween(newFrom, newTo);
   r.reason = document.getElementById('el-reason').value;
   r.cover = document.getElementById('el-cover').value;
   r.contact = document.getElementById('el-contact').value;
+  try{
+    const saved = await apiPost('update', 'leave_requests', r);
+    Object.assign(r, saved);
+  }catch(err){
+    Object.assign(r, before);
+    alert('บันทึกคำขอลาไปยังฐานข้อมูลกลางไม่สำเร็จ: ' + err.message);
+    return;
+  }
   __saveSharedLeaveRequests();
   renderAll();
   closeEditLeave();
@@ -2904,7 +1970,7 @@ function printForm(id){
 window.addEventListener('afterprint', ()=>{ document.querySelectorAll('.print-only').forEach(el=>el.classList.remove('show-print')); });
 
 function leaveStatsRows(name, fy, uptoDate){
-  const recs = leaveHistory.filter(r=>r.name===name && r.fy===fy && r.from<uptoDate);
+  const recs = computeLeaveHistory().filter(r=>r.name===name && r.fy===fy && r.from<uptoDate);
   const sick = recs.filter(r=>r.type==='ป่วย').reduce((a,r)=>a+daysBetween(r.from,r.to),0);
   const vac = recs.filter(r=>r.type==='พักผ่อน').reduce((a,r)=>a+daysBetween(r.from,r.to),0);
   return {sick, vac};
@@ -3053,7 +2119,10 @@ function printCancelForm(i){
     <p>(ลงชื่อ)......................................................<br>(ตำแหน่ง)......................................................<br>วันที่.....................................</p>
   </div>`;
   printForm('print-cancel-form');
-  leaveRequests[i].status='cancelled';
+  r.status='cancelled';
+  apiPost('update', 'leave_requests', r).catch(err=>{
+    alert('บันทึกสถานะยกเลิกวันลาไปยังฐานข้อมูลกลางไม่สำเร็จ: ' + err.message);
+  });
   __saveSharedLeaveRequests();
   renderAll();
 }
@@ -3066,7 +2135,7 @@ function populateRegistryFy(){
   if(!nameInput.value || !staff.some(s=>s.name===nameInput.value)){
     nameInput.value = staff[0] ? staff[0].name : '';
   }
-  const fys = [...new Set(leaveHistory.map(r=>r.fy))].sort((a,b)=>b-a);
+  const fys = [...new Set(computeLeaveHistory().map(r=>r.fy))].sort((a,b)=>b-a);
   document.getElementById('reg-fy').innerHTML = fys.map(y=>`<option value="${y}">ปีงบประมาณ ${y}</option>`).join('');
 }
 function __filterRegNameSuggest(){
@@ -3141,7 +2210,7 @@ function searchLeaveRange(){
     results.innerHTML = `<div style="color:#c0392b;padding:8px 0;">"ตั้งแต่วันที่" ต้องไม่มากกว่า "ถึงวันที่"</div>`;
     return;
   }
-  let recs = leaveHistory.filter(r => r.from <= to && r.to >= from);
+  let recs = computeLeaveHistory().filter(r => r.from <= to && r.to >= from);
   if(name) recs = recs.filter(r => r.name.toLowerCase().includes(name.toLowerCase()));
   recs = recs.slice().sort((a,b)=> a.from===b.from ? a.name.localeCompare(b.name) : a.from.localeCompare(b.from));
   if(!recs.length){
@@ -3163,7 +2232,7 @@ function searchLeaveRange(){
     </table></div>`;
 }
 function registryRecords(name, fy){
-  return leaveHistory.filter(r=>r.name===name && r.fy===fy).slice().sort((a,b)=>a.from.localeCompare(b.from));
+  return computeLeaveHistory().filter(r=>r.name===name && r.fy===fy).slice().sort((a,b)=>a.from.localeCompare(b.from));
 }
 function registryOnscreenHTML(name, fy){
   const s = staff.find(x=>x.name===name) || {};
@@ -3282,42 +2351,12 @@ function printRegistry(){
 
 
 /* ============================================================
-   CONTRACTS
-   ============================================================ */
-function contractDaysLeft(end){ if(!end) return null; return Math.round((new Date(end+'T00:00:00')-TODAY)/86400000); }
-function renderContracts(){
-  const dis = isAdmin() ? '' : 'disabled';
-  document.getElementById('contract-body').innerHTML = tempActive().map((s,i)=>{
-    const cd = contractData[s.name] || {batch:'1', start:'', end:'', doc:false};
-    const left = contractDaysLeft(cd.end);
-    return `<tr>
-      <td>${i+1}</td>
-      <td><div class="person"><div class="p-avatar">${initials(s.name)}</div><div class="p-name">${s.name}</div></div></td>
-      <td><select class="edit-input" ${dis} onchange="updateContract('${s.name.replace(/'/g,"\\'")}','batch',this.value)">
-        <option value="1" ${cd.batch==='1'?'selected':''}>งวดที่ 1 (1 ต.ค.–31 มี.ค.)</option>
-        <option value="2" ${cd.batch==='2'?'selected':''}>งวดที่ 2 (1 เม.ย.–30 ก.ย.)</option>
-      </select></td>
-      <td><input type="date" class="edit-input" ${dis} value="${cd.start}" onchange="updateContract('${s.name.replace(/'/g,"\\'")}','start',this.value)"></td>
-      <td><input type="date" class="edit-input" ${dis} value="${cd.end}" onchange="updateContract('${s.name.replace(/'/g,"\\'")}','end',this.value)"></td>
-      <td>${left===null?'<span style="color:var(--ink-400);font-size:12.5px">ยังไม่ระบุ</span>':left<=15?`<span class="hazard">เหลือ ${left} วัน</span>`:`<span class="pill pill-neutral">เหลือ ${left} วัน</span>`}</td>
-      <td><label style="display:flex;align-items:center;gap:6px;font-size:12.5px;"><input type="checkbox" ${dis} ${cd.doc?'checked':''} onchange="updateContract('${s.name.replace(/'/g,"\\'")}','doc',this.checked)"> มีเอกสารแล้ว</label></td>
-    </tr>`;
-  }).join('');
-}
-function updateContract(name, field, val){
-  if(!isAdmin()) return;
-  if(!contractData[name]) contractData[name]={batch:'1',start:'',end:'',doc:false};
-  contractData[name][field]=val;
-  renderContracts(); renderOverview();
-}
-
-/* ============================================================
    INIT
    ============================================================ */
 function renderAll(){
   populateLogin();
-  renderOverview(); renderDocs(); renderComplaints(); renderDueTracking(); renderStaff();
-  renderLeaveRequestList(); populateRegistryFy(); renderRegistry(); renderContracts();
+  renderComplaints(); renderStaff();
+  renderLeaveRequestList(); populateRegistryFy(); renderRegistry();
 }
 populateLogin();
 populateRouteSelects();
@@ -3347,15 +2386,13 @@ function __saveSharedStaff(){
 }
 
 function __collectState(){
-  return { staff, leaveHistory, docs, leaveRequests, accessLog, contractData, publicHolidays };
+  return { staff, docs, leaveRequests, accessLog, publicHolidays };
 }
 function __applyState(saved){
   if(saved.staff){ staff.length=0; staff.push(...saved.staff); }
-  if(saved.leaveHistory){ leaveHistory.length=0; leaveHistory.push(...saved.leaveHistory); }
   if(saved.docs){ docs.length=0; docs.push(...saved.docs); }
   if(saved.leaveRequests){ leaveRequests.length=0; leaveRequests.push(...saved.leaveRequests); }
   if(saved.accessLog){ accessLog.length=0; accessLog.push(...saved.accessLog); }
-  if(saved.contractData){ Object.keys(contractData).forEach(k=>delete contractData[k]); Object.assign(contractData, saved.contractData); }
   if(saved.publicHolidays){ publicHolidays.length=0; publicHolidays.push(...saved.publicHolidays); }
 }
 function __loadPersistedState(){
@@ -3411,13 +2448,6 @@ __loadPersistedState();
    file:// แยกกัน เบราว์เซอร์จะแยก localStorage ของแต่ละไฟล์ จะไม่ซิงก์กันอัตโนมัติ
    ============================================================ */
 const __SHARED_LEAVE_KEY = 'saraban_shared_leave_requests_v1';
-let __leaveIdCounter = 0;
-function __genLeaveId(){ return 'lr_' + Date.now().toString(36) + '_' + (__leaveIdCounter++); }
-function __ensureLeaveIds(){
-  let changed = false;
-  leaveRequests.forEach(r=>{ if(!r.id){ r.id = __genLeaveId(); changed = true; } });
-  return changed;
-}
 function __loadSharedLeaveRequests(){
   try{ return JSON.parse(localStorage.getItem(__SHARED_LEAVE_KEY)||'[]'); }catch(e){ return []; }
 }
@@ -3425,6 +2455,9 @@ function __saveSharedLeaveRequests(){
   try{ localStorage.setItem(__SHARED_LEAVE_KEY, JSON.stringify(leaveRequests)); }catch(e){ console.error('ซิงก์ข้อมูลคำขอลาไปยังระบบหลักล้มเหลว', e); }
 }
 // ดึงสถานะล่าสุด (ที่อาจถูกอนุมัติ/ตีกลับจากระบบหลัก) กลับมาไว้ในชุดข้อมูลของหน้านี้
+// และสะท้อนสถานะนั้นกลับไปบันทึกที่ฐานข้อมูลกลางด้วย (เพราะระบบหลักยังไม่เชื่อม API โดยตรง)
+// หมายเหตุ: "rejectReason" เป็นฟิลด์ที่ใช้เฉพาะฝั่ง localStorage bridge นี้เท่านั้น — ตาราง
+// leave_requests ใน Google Sheets ยังไม่มีคอลัมน์นี้ จึงยังไม่ถูกบันทึกไปที่ฐานข้อมูลกลาง
 function __syncLeaveStatusFromShared(){
   const shared = __loadSharedLeaveRequests();
   if(!shared.length) return false;
@@ -3437,326 +2470,20 @@ function __syncLeaveStatusFromShared(){
       r.status = s.status;
       r.rejectReason = s.rejectReason;
       changed = true;
+      apiPost('update', 'leave_requests', r).catch(err=>{
+        console.error('ซิงก์สถานะคำขอลาไปยังฐานข้อมูลกลางล้มเหลว', err);
+      });
     }
   });
   return changed;
 }
-__ensureLeaveIds();
-/* ============================================================
-   นำเข้าประวัติการลาย้อนหลัง — ปีงบประมาณ 2569 (บันทึกเป็น "อนุมัติแล้ว")
-   ที่มา: ทะเบียนคุมการลา (ผู้ใช้ให้มาเป็นภาพหน้าจอ), นำเข้าครั้งเดียว
-   หมายเหตุ: ชุดนี้เป็นชุดแรก ผู้ใช้แจ้งว่าจะส่งข้อมูลเพิ่มอีกภายหลัง
-   ============================================================ */
-const __LEAVE_IMPORT_2569_KEY = 'saraban_subsystem1_leaveImport2569_batch1_done';
-const __LEAVE_IMPORT_2569 = [
-  {name:"นางธนัญกรณ์  ธูปขุนทด",type:"พักผ่อน",from:"2025-11-24",to:"2025-11-26"},
-  {name:"นางธนัญกรณ์  ธูปขุนทด",type:"ป่วย",from:"2025-12-23",to:"2025-12-23"},
-  {name:"นางธนัญกรณ์  ธูปขุนทด",type:"พักผ่อน",from:"2026-03-13",to:"2026-03-16"},
-  {name:"นางธนัญกรณ์  ธูปขุนทด",type:"ป่วย",from:"2026-05-08",to:"2026-05-08"},
-  {name:"นางธนัญกรณ์  ธูปขุนทด",type:"พักผ่อน",from:"2026-06-10",to:"2026-06-10"},
-  {name:"นางธนัญกรณ์  ธูปขุนทด",type:"พักผ่อน",from:"2026-06-12",to:"2026-06-12"},
-  {name:"นางธนิภา  พึ่งผล",type:"พักผ่อน",from:"2025-10-21",to:"2025-10-22"},
-  {name:"นางธนิภา  พึ่งผล",type:"พักผ่อน",from:"2026-01-15",to:"2026-01-16"},
-  {name:"นางธนิภา  พึ่งผล",type:"พักผ่อน",from:"2026-05-11",to:"2026-05-12"},
-  {name:"นางธนิภา  พึ่งผล",type:"ป่วย",from:"2026-05-22",to:"2026-05-22"},
-  {name:"นางธนิภา  พึ่งผล",type:"ป่วย",from:"2026-06-02",to:"2026-06-02"},
-  {name:"นางธนิภา  พึ่งผล",type:"ป่วย",from:"2026-06-09",to:"2026-06-09"},
-  {name:"นางธนิภา  พึ่งผล",type:"พักผ่อน",from:"2026-07-01",to:"2026-07-01"},
-  {name:"นางธนิภา  พึ่งผล",type:"พักผ่อน",from:"2026-07-06",to:"2026-07-08"},
-  {name:"นายอิศรินทร์  อรุณสวัสดิ์",type:"พักผ่อน",from:"2026-04-03",to:"2026-04-03"},
-  {name:"นายเอนก  แย้มสอิ๊ง",type:"ป่วย",from:"2025-10-24",to:"2025-10-24"},
-  {name:"นายเอนก  แย้มสอิ๊ง",type:"ป่วย",from:"2025-10-30",to:"2025-10-30"},
-  {name:"นายเอนก  แย้มสอิ๊ง",type:"ป่วย",from:"2025-12-11",to:"2025-12-12"},
-  {name:"นายเอนก  แย้มสอิ๊ง",type:"พักผ่อน",from:"2025-12-15",to:"2025-12-19"},
-  {name:"นายเอนก  แย้มสอิ๊ง",type:"ป่วย",from:"2026-01-09",to:"2026-01-09"},
-  {name:"นายเอนก  แย้มสอิ๊ง",type:"ป่วย",from:"2026-03-02",to:"2026-03-02"},
-  {name:"นายเอนก  แย้มสอิ๊ง",type:"ป่วย",from:"2026-04-16",to:"2026-04-17"},
-  {name:"นายเอนก  แย้มสอิ๊ง",type:"ป่วย",from:"2026-04-22",to:"2026-04-22"},
-  {name:"นายเอนก  แย้มสอิ๊ง",type:"ป่วย",from:"2026-06-02",to:"2026-06-02"},
-  {name:"นายอรัญ สุขคุ้ม",type:"ป่วย",from:"2025-10-20",to:"2025-10-20"},
-  {name:"นายอรัญ สุขคุ้ม",type:"ป่วย",from:"2025-11-06",to:"2025-11-06"},
-  {name:"นายอรัญ สุขคุ้ม",type:"ป่วย",from:"2026-01-05",to:"2026-01-05"},
-  {name:"นายอรัญ สุขคุ้ม",type:"ป่วย",from:"2026-01-26",to:"2026-01-26"},
-  {name:"นายอรัญ สุขคุ้ม",type:"ป่วย",from:"2026-02-06",to:"2026-02-06"},
-  {name:"นายอรัญ สุขคุ้ม",type:"ป่วย",from:"2026-03-02",to:"2026-03-02"},
-  {name:"นายอรัญ สุขคุ้ม",type:"ป่วย",from:"2026-04-16",to:"2026-04-16"},
-  {name:"นายอรัญ สุขคุ้ม",type:"พักผ่อน",from:"2026-04-20",to:"2026-04-24"},
-  {name:"นายอรัญ สุขคุ้ม",type:"ป่วย",from:"2026-05-14",to:"2026-05-14"},
-  {name:"นายอรัญ สุขคุ้ม",type:"ป่วย",from:"2026-06-04",to:"2026-06-04"},
-  {name:"นายเอกวิทย์  นุ่มดี",type:"ป่วย",from:"2025-10-10",to:"2025-10-10"},
-  {name:"นายเอกวิทย์  นุ่มดี",type:"ป่วย",from:"2025-10-22",to:"2025-10-22"},
-  {name:"นายเอกวิทย์  นุ่มดี",type:"ป่วย",from:"2025-11-06",to:"2025-11-06"},
-  {name:"นายเอกวิทย์  นุ่มดี",type:"ป่วย",from:"2025-11-12",to:"2025-11-12"},
-  {name:"นายเอกวิทย์  นุ่มดี",type:"ป่วย",from:"2025-11-21",to:"2025-11-21"},
-  {name:"นายเอกวิทย์  นุ่มดี",type:"ป่วย",from:"2025-11-25",to:"2025-11-25"},
-  {name:"นายเอกวิทย์  นุ่มดี",type:"ป่วย",from:"2025-12-09",to:"2025-12-09"},
-  {name:"นายเอกวิทย์  นุ่มดี",type:"ป่วย",from:"2025-12-18",to:"2025-12-19"},
-  {name:"นายเอกวิทย์  นุ่มดี",type:"ป่วย",from:"2025-12-24",to:"2025-12-25"},
-  {name:"นายเอกวิทย์  นุ่มดี",type:"ป่วย",from:"2025-12-29",to:"2025-12-30"},
-  {name:"นายเอกวิทย์  นุ่มดี",type:"ป่วย",from:"2026-01-07",to:"2026-01-08"},
-  {name:"นายเอกวิทย์  นุ่มดี",type:"ป่วย",from:"2026-01-12",to:"2026-01-14"},
-  {name:"นายเอกวิทย์  นุ่มดี",type:"ป่วย",from:"2026-01-23",to:"2026-01-23"},
-  {name:"นายเอกวิทย์  นุ่มดี",type:"ป่วย",from:"2026-02-04",to:"2026-02-04"},
-  {name:"นายเอกวิทย์  นุ่มดี",type:"ป่วย",from:"2026-02-11",to:"2026-02-13"},
-  {name:"นายเอกวิทย์  นุ่มดี",type:"ป่วย",from:"2026-02-17",to:"2026-02-18"},
-  {name:"นายเอกวิทย์  นุ่มดี",type:"ป่วย",from:"2026-02-27",to:"2026-02-27"},
-  {name:"นายเอกวิทย์  นุ่มดี",type:"ป่วย",from:"2026-03-04",to:"2026-03-04"},
-  {name:"นายเอกวิทย์  นุ่มดี",type:"ป่วย",from:"2026-03-06",to:"2026-03-06"},
-  {name:"นายทูล  กุยแก้วพะเนา",type:"ป่วย",from:"2025-10-06",to:"2025-10-06"},
-  {name:"นายทูล  กุยแก้วพะเนา",type:"ป่วย",from:"2025-11-06",to:"2025-11-06"},
-  {name:"นายทูล  กุยแก้วพะเนา",type:"ป่วย",from:"2025-11-10",to:"2025-11-10"},
-  {name:"นายทูล  กุยแก้วพะเนา",type:"ป่วย",from:"2025-12-02",to:"2025-12-02"},
-  {name:"นายทูล  กุยแก้วพะเนา",type:"ป่วย",from:"2026-01-09",to:"2026-01-09"},
-  {name:"นายทูล  กุยแก้วพะเนา",type:"ป่วย",from:"2026-01-23",to:"2026-01-26"},
-  {name:"นายทูล  กุยแก้วพะเนา",type:"ป่วย",from:"2026-01-29",to:"2026-01-29"},
-  {name:"นายทูล  กุยแก้วพะเนา",type:"ป่วย",from:"2026-02-02",to:"2026-02-02"},
-  {name:"นายทูล  กุยแก้วพะเนา",type:"ป่วย",from:"2026-02-23",to:"2026-02-23"},
-  {name:"นายทูล  กุยแก้วพะเนา",type:"ป่วย",from:"2026-02-27",to:"2026-02-27"},
-  {name:"นายทูล  กุยแก้วพะเนา",type:"ป่วย",from:"2026-03-24",to:"2026-03-24"},
-  {name:"นายทูล  กุยแก้วพะเนา",type:"ป่วย",from:"2026-03-30",to:"2026-03-30"},
-  {name:"นายทูล  กุยแก้วพะเนา",type:"ป่วย",from:"2026-04-24",to:"2026-04-24"},
-  {name:"นายทูล  กุยแก้วพะเนา",type:"ป่วย",from:"2026-06-22",to:"2026-06-22"},
-  {name:"นายวรพล  ยมจินดา",type:"ป่วย",from:"2025-10-01",to:"2025-10-01"},
-  {name:"นายวรพล  ยมจินดา",type:"ป่วย",from:"2025-11-07",to:"2025-11-07"},
-  {name:"นายวรพล  ยมจินดา",type:"ป่วย",from:"2025-11-28",to:"2025-11-28"},
-  {name:"นายวรพล  ยมจินดา",type:"ป่วย",from:"2025-12-09",to:"2025-12-09"},
-  {name:"นายวรพล  ยมจินดา",type:"ป่วย",from:"2025-12-18",to:"2025-12-18"},
-  {name:"นายวรพล  ยมจินดา",type:"ป่วย",from:"2025-12-26",to:"2025-12-26"},
-  {name:"นายวรพล  ยมจินดา",type:"ป่วย",from:"2026-01-15",to:"2026-01-15"},
-  {name:"นายวรพล  ยมจินดา",type:"ป่วย",from:"2026-01-30",to:"2026-01-30"},
-  {name:"นายวรพล  ยมจินดา",type:"ป่วย",from:"2026-02-06",to:"2026-02-06"},
-  {name:"นายวรพล  ยมจินดา",type:"ป่วย",from:"2026-02-11",to:"2026-02-11"},
-  {name:"นายสมเดช  ประสิทธิ์",type:"ป่วย",from:"2025-12-26",to:"2025-12-26"},
-  {name:"นายสมเดช  ประสิทธิ์",type:"ป่วย",from:"2026-01-08",to:"2026-01-08"},
-  {name:"นายสมเดช  ประสิทธิ์",type:"ป่วย",from:"2026-02-23",to:"2026-02-23"},
-  {name:"นายสมเดช  ประสิทธิ์",type:"พักผ่อน",from:"2026-03-09",to:"2026-03-10"},
-  {name:"นายสมเดช  ประสิทธิ์",type:"ป่วย",from:"2026-04-28",to:"2026-04-28"},
-  {name:"นายสมเดช  ประสิทธิ์",type:"ป่วย",from:"2026-05-08",to:"2026-05-08"},
-  {name:"นายสายยัน  วิเชียรรัตน์",type:"ป่วย",from:"2025-10-24",to:"2025-10-24"},
-  {name:"นายสายยัน  วิเชียรรัตน์",type:"ป่วย",from:"2026-01-07",to:"2026-01-07"},
-  {name:"นายสายยัน  วิเชียรรัตน์",type:"ป่วย",from:"2026-01-30",to:"2026-01-30"},
-  {name:"นายสายยัน  วิเชียรรัตน์",type:"ป่วย",from:"2026-02-04",to:"2026-02-04"},
-  {name:"นายสายยัน  วิเชียรรัตน์",type:"ป่วย",from:"2026-02-19",to:"2026-02-20"},
-  {name:"นายสายยัน  วิเชียรรัตน์",type:"ป่วย",from:"2026-03-04",to:"2026-03-04"},
-  {name:"นายสายยัน  วิเชียรรัตน์",type:"ป่วย",from:"2026-04-29",to:"2026-04-29"},
-  {name:"นางสำเนียง  นุ่มดี",type:"ป่วย",from:"2026-02-19",to:"2026-02-19"},
-  {name:"นางสำเนียง  นุ่มดี",type:"ป่วย",from:"2026-07-02",to:"2026-07-02"},
-  {name:"นางอุบลจันทน์  สุขคุ้ม",type:"ป่วย",from:"2025-12-12",to:"2025-12-12"},
-  {name:"นางอุบลจันทน์  สุขคุ้ม",type:"ป่วย",from:"2026-05-06",to:"2026-05-06"},
-  {name:"นางอุบลจันทน์  สุขคุ้ม",type:"พักผ่อน",from:"2026-06-10",to:"2026-06-10"},
-  {name:"นางอุบลจันทน์  สุขคุ้ม",type:"พักผ่อน",from:"2026-06-11",to:"2026-06-11"},
-  {name:"นางอุบลจันทน์  สุขคุ้ม",type:"พักผ่อน",from:"2026-06-12",to:"2026-06-12"},
-  {name:"นายณภัทร  ประสิทธิ์",type:"ป่วย",from:"2025-10-21",to:"2025-10-21"},
-  {name:"นายณภัทร  ประสิทธิ์",type:"ป่วย",from:"2025-11-06",to:"2025-11-06"},
-  {name:"นายณภัทร  ประสิทธิ์",type:"ป่วย",from:"2025-11-11",to:"2025-11-11"},
-  {name:"นายณภัทร  ประสิทธิ์",type:"ป่วย",from:"2025-11-21",to:"2025-11-21"},
-  {name:"นายณภัทร  ประสิทธิ์",type:"ป่วย",from:"2025-12-18",to:"2025-12-18"},
-  {name:"นายณภัทร  ประสิทธิ์",type:"ป่วย",from:"2025-12-22",to:"2025-12-22"},
-  {name:"นายณภัทร  ประสิทธิ์",type:"ป่วย",from:"2026-01-07",to:"2026-01-07"},
-  {name:"นายณภัทร  ประสิทธิ์",type:"ป่วย",from:"2026-01-09",to:"2026-01-09"},
-  {name:"นายณภัทร  ประสิทธิ์",type:"ป่วย",from:"2026-01-27",to:"2026-01-27"},
-  {name:"นายณภัทร  ประสิทธิ์",type:"ป่วย",from:"2026-02-06",to:"2026-02-06"},
-  {name:"นายณภัทร  ประสิทธิ์",type:"ป่วย",from:"2026-02-12",to:"2026-02-12"},
-  {name:"นายณภัทร  ประสิทธิ์",type:"ป่วย",from:"2026-02-26",to:"2026-02-26"},
-  {name:"นายณภัทร  ประสิทธิ์",type:"ป่วย",from:"2026-03-11",to:"2026-03-11"},
-  {name:"นายณภัทร  ประสิทธิ์",type:"ป่วย",from:"2026-03-25",to:"2026-03-25"},
-  {name:"นายณภัทร  ประสิทธิ์",type:"ป่วย",from:"2026-04-24",to:"2026-04-24"},
-  {name:"นายณภัทร  ประสิทธิ์",type:"ป่วย",from:"2026-06-05",to:"2026-06-05"},
-  {name:"นายณภัทร  ประสิทธิ์",type:"ป่วย",from:"2026-06-30",to:"2026-06-30"},
-  {name:"นายดำรัส ทิพนาค",type:"ป่วย",from:"2025-10-06",to:"2025-10-06"},
-  {name:"นายดำรัส ทิพนาค",type:"ป่วย",from:"2025-12-18",to:"2025-12-18"},
-  {name:"นายดำรัส ทิพนาค",type:"ป่วย",from:"2026-01-20",to:"2026-01-21"},
-  {name:"นายดำรัส ทิพนาค",type:"ป่วย",from:"2026-01-23",to:"2026-01-23"},
-  {name:"นายดำรัส ทิพนาค",type:"ป่วย",from:"2026-04-23",to:"2026-04-23"},
-  {name:"นายดำรัส ทิพนาค",type:"พักผ่อน",from:"2026-06-04",to:"2026-06-04"},
-  {name:"นายดำรัส ทิพนาค",type:"ป่วย",from:"2026-06-05",to:"2026-06-05"},
-  {name:"นายธานี  เนตรหลับ",type:"ป่วย",from:"2025-11-06",to:"2025-11-06"},
-  {name:"นายธานี  เนตรหลับ",type:"ป่วย",from:"2025-11-21",to:"2025-11-21"},
-  {name:"นายธานี  เนตรหลับ",type:"ป่วย",from:"2026-03-05",to:"2026-03-06"},
-  {name:"นายธานี  เนตรหลับ",type:"ป่วย",from:"2026-06-16",to:"2026-06-16"},
-  {name:"นายธานี  เนตรหลับ",type:"ป่วย",from:"2026-06-25",to:"2026-06-25"},
-  {name:"นายธานี  เนตรหลับ",type:"ป่วย",from:"2026-07-02",to:"2026-07-02"},
-  {name:"นายประเสริฐ  งามสุวรรณ์",type:"ป่วย",from:"2025-10-10",to:"2025-10-10"},
-  {name:"นายประเสริฐ  งามสุวรรณ์",type:"ป่วย",from:"2025-10-16",to:"2025-10-16"},
-  {name:"นายประเสริฐ  งามสุวรรณ์",type:"ป่วย",from:"2025-11-28",to:"2025-11-28"},
-  {name:"นายประเสริฐ  งามสุวรรณ์",type:"ป่วย",from:"2025-12-23",to:"2025-12-23"},
-  {name:"นายประเสริฐ  งามสุวรรณ์",type:"ป่วย",from:"2025-12-26",to:"2025-12-26"},
-  {name:"นายประเสริฐ  งามสุวรรณ์",type:"ป่วย",from:"2026-01-07",to:"2026-01-07"},
-  {name:"นายประเสริฐ  งามสุวรรณ์",type:"ป่วย",from:"2026-01-23",to:"2026-01-23"},
-  {name:"นายประเสริฐ  งามสุวรรณ์",type:"ป่วย",from:"2026-02-05",to:"2026-02-05"},
-  {name:"นายประเสริฐ  งามสุวรรณ์",type:"พักผ่อน",from:"2026-02-16",to:"2026-02-18"},
-  {name:"นายประเสริฐ  งามสุวรรณ์",type:"ป่วย",from:"2026-03-16",to:"2026-03-16"},
-  {name:"นายประเสริฐ  งามสุวรรณ์",type:"ป่วย",from:"2026-04-09",to:"2026-04-09"},
-  {name:"นายประเสริฐ  งามสุวรรณ์",type:"ป่วย",from:"2026-05-15",to:"2026-05-15"},
-  {name:"นายประเสริฐ  งามสุวรรณ์",type:"ป่วย",from:"2026-06-10",to:"2026-06-10"},
-  {name:"นายประเสริฐ  งามสุวรรณ์",type:"ป่วย",from:"2026-06-11",to:"2026-06-11"},
-  {name:"นายประเสริฐ  งามสุวรรณ์",type:"ป่วย",from:"2026-06-19",to:"2026-06-19"},
-  {name:"นางชุลีพร  เสียงประเสริฐ",type:"ป่วย",from:"2025-10-15",to:"2025-10-15"},
-  {name:"นางชุลีพร  เสียงประเสริฐ",type:"ป่วย",from:"2025-10-30",to:"2025-10-30"},
-  {name:"นางชุลีพร  เสียงประเสริฐ",type:"ป่วย",from:"2025-12-25",to:"2025-12-25"},
-  {name:"นางชุลีพร  เสียงประเสริฐ",type:"พักผ่อน",from:"2026-03-09",to:"2026-03-10"},
-  {name:"นางชุลีพร  เสียงประเสริฐ",type:"พักผ่อน",from:"2026-05-07",to:"2026-05-08"},
-  {name:"นางชุลีพร  เสียงประเสริฐ",type:"ป่วย",from:"2026-06-02",to:"2026-06-02"},
-  {name:"นางชุลีพร  เสียงประเสริฐ",type:"พักผ่อน",from:"2026-06-15",to:"2026-06-15"},
-  {name:"นางชุลีพร  เสียงประเสริฐ",type:"พักผ่อน",from:"2026-06-16",to:"2026-06-16"},
-  {name:"นางชุลีพร  เสียงประเสริฐ",type:"ป่วย",from:"2026-06-19",to:"2026-06-19"},
-  {name:"นางชุลีพร  เสียงประเสริฐ",type:"พักผ่อน",from:"2026-06-25",to:"2026-06-25"},
-  {name:"นางชุลีพร  เสียงประเสริฐ",type:"พักผ่อน",from:"2026-06-26",to:"2026-06-26"},
-  {name:"นางชุลีพร  เสียงประเสริฐ",type:"พักผ่อน",from:"2026-06-29",to:"2026-06-29"},
-  {name:"นางชุลีพร  เสียงประเสริฐ",type:"พักผ่อน",from:"2026-06-30",to:"2026-06-30"},
-  {name:"นางดวงใจ  ช่างไม้",type:"พักผ่อน",from:"2025-10-29",to:"2025-10-31"},
-  {name:"นางดวงใจ  ช่างไม้",type:"ป่วย",from:"2025-11-21",to:"2025-11-21"},
-  {name:"นางดวงใจ  ช่างไม้",type:"ป่วย",from:"2026-02-19",to:"2026-02-19"},
-  {name:"นางดวงใจ  ช่างไม้",type:"พักผ่อน",from:"2026-02-26",to:"2026-02-27"},
-  {name:"นางดวงใจ  ช่างไม้",type:"พักผ่อน",from:"2026-03-02",to:"2026-03-06"}
-];
-function __importLeave2569(){
-  let already = false;
-  try{ already = !!localStorage.getItem(__LEAVE_IMPORT_2569_KEY); }catch(e){}
-  if(already) return;
-  __LEAVE_IMPORT_2569.forEach(rec=>{
-    leaveRequests.push({id:__genLeaveId(),createdAt:rec.from,name:rec.name,type:rec.type,from:rec.from,to:rec.to,cover:'',contact:'',reason:'นำเข้าข้อมูลย้อนหลัง (ลาที่อนุมัติแล้ว)',ok:true,status:'approved'});
-    leaveHistory.push({fy:fiscalYearOf(rec.from),name:rec.name,type:rec.type,from:rec.from,to:rec.to});
-  });
-  try{ localStorage.setItem(__LEAVE_IMPORT_2569_KEY,'1'); }catch(e){}
-  __saveState();
-}
-__importLeave2569();
-/* ============================================================
-   นำเข้าประวัติการลาย้อนหลัง — ปีงบประมาณ 2569 (ชุดที่ 2, บันทึกเป็น "อนุมัติแล้ว")
-   ============================================================ */
-const __LEAVE_IMPORT_2569_B2_KEY = 'saraban_subsystem1_leaveImport2569_batch2_done';
-const __LEAVE_IMPORT_2569_B2 = [
-  {name:"นางสาวพรนพิน  คุชนาค",type:"ป่วย",from:"2025-11-11",to:"2025-11-11"},
-  {name:"นางสาวพรนพิน  คุชนาค",type:"ป่วย",from:"2025-12-22",to:"2025-12-22"},
-  {name:"นางสาวพรนพิน  คุชนาค",type:"ป่วย",from:"2025-12-26",to:"2025-12-26"},
-  {name:"นางสาวพรนพิน  คุชนาค",type:"ป่วย",from:"2026-01-09",to:"2026-01-09"},
-  {name:"นางสาวพรนพิน  คุชนาค",type:"ป่วย",from:"2026-02-02",to:"2026-02-02"},
-  {name:"นางสาวพรนพิน  คุชนาค",type:"ป่วย",from:"2026-03-23",to:"2026-03-23"},
-  {name:"นางสาวพรนพิน  คุชนาค",type:"ป่วย",from:"2026-04-07",to:"2026-04-07"},
-  {name:"นางสาวพรนพิน  คุชนาค",type:"พักผ่อน",from:"2026-05-21",to:"2026-05-21"},
-  {name:"นางสาวพรนพิน  คุชนาค",type:"พักผ่อน",from:"2026-05-22",to:"2026-05-22"},
-  {name:"นางสาวพรนพิน  คุชนาค",type:"ป่วย",from:"2026-06-10",to:"2026-06-10"},
-  {name:"นางสาวพรนพิน  คุชนาค",type:"ป่วย",from:"2026-06-10",to:"2026-06-10"},
-  {name:"นางสาวพรนพิน  คุชนาค",type:"ป่วย",from:"2026-06-11",to:"2026-06-11"},
-  {name:"นางพิศมัย  ประสิทธิ์",type:"ป่วย",from:"2025-10-24",to:"2025-10-24"},
-  {name:"นางพิศมัย  ประสิทธิ์",type:"ป่วย",from:"2025-12-22",to:"2025-12-22"},
-  {name:"นางพิศมัย  ประสิทธิ์",type:"ป่วย",from:"2025-12-26",to:"2025-12-26"},
-  {name:"นางพิศมัย  ประสิทธิ์",type:"ป่วย",from:"2026-02-02",to:"2026-02-02"},
-  {name:"นางพิศมัย  ประสิทธิ์",type:"ป่วย",from:"2026-02-23",to:"2026-02-23"},
-  {name:"นางพิศมัย  ประสิทธิ์",type:"พักผ่อน",from:"2026-03-09",to:"2026-03-10"},
-  {name:"นางพิศมัย  ประสิทธิ์",type:"ป่วย",from:"2026-04-28",to:"2026-04-28"},
-  {name:"นางพิศมัย  ประสิทธิ์",type:"ป่วย",from:"2026-06-12",to:"2026-06-12"},
-  {name:"นางเพียงใจ  เงินแท้",type:"ป่วย",from:"2025-11-03",to:"2025-11-03"},
-  {name:"นางเพียงใจ  เงินแท้",type:"พักผ่อน",from:"2025-11-10",to:"2025-11-10"},
-  {name:"นางเพียงใจ  เงินแท้",type:"ป่วย",from:"2025-12-11",to:"2025-12-11"},
-  {name:"นางเพียงใจ  เงินแท้",type:"ป่วย",from:"2026-01-05",to:"2026-01-06"},
-  {name:"นางเพียงใจ  เงินแท้",type:"ป่วย",from:"2026-01-08",to:"2026-01-13"},
-  {name:"นางเพียงใจ  เงินแท้",type:"พักผ่อน",from:"2026-01-23",to:"2026-01-23"},
-  {name:"นางเพียงใจ  เงินแท้",type:"ป่วย",from:"2026-02-09",to:"2026-02-09"},
-  {name:"นางเพียงใจ  เงินแท้",type:"พักผ่อน",from:"2026-03-04",to:"2026-03-10"},
-  {name:"นางเพียงใจ  เงินแท้",type:"ป่วย",from:"2026-04-27",to:"2026-04-28"},
-  {name:"นางเพียงใจ  เงินแท้",type:"พักผ่อน",from:"2026-05-11",to:"2026-05-11"},
-  {name:"นางเพียงใจ  เงินแท้",type:"ป่วย",from:"2026-06-30",to:"2026-06-30"},
-  {name:"นางมาลินี  ท้าวธรรมศรี",type:"ป่วย",from:"2025-10-02",to:"2025-10-02"},
-  {name:"นางมาลินี  ท้าวธรรมศรี",type:"ป่วย",from:"2025-11-06",to:"2025-11-06"},
-  {name:"นางมาลินี  ท้าวธรรมศรี",type:"ป่วย",from:"2025-11-17",to:"2025-11-17"},
-  {name:"นางมาลินี  ท้าวธรรมศรี",type:"ป่วย",from:"2025-12-02",to:"2025-12-03"},
-  {name:"นางมาลินี  ท้าวธรรมศรี",type:"พักผ่อน",from:"2025-12-17",to:"2025-12-18"},
-  {name:"นางมาลินี  ท้าวธรรมศรี",type:"ป่วย",from:"2026-01-27",to:"2026-01-27"},
-  {name:"นางมาลินี  ท้าวธรรมศรี",type:"ป่วย",from:"2026-02-09",to:"2026-02-09"},
-  {name:"นางมาลินี  ท้าวธรรมศรี",type:"ป่วย",from:"2026-03-04",to:"2026-03-05"},
-  {name:"นางมาลินี  ท้าวธรรมศรี",type:"ป่วย",from:"2026-04-07",to:"2026-04-07"},
-  {name:"นางมาลินี  ท้าวธรรมศรี",type:"ป่วย",from:"2026-04-09",to:"2026-04-09"},
-  {name:"นางมาลินี  ท้าวธรรมศรี",type:"ป่วย",from:"2026-04-23",to:"2026-04-23"},
-  {name:"นางมาลินี  ท้าวธรรมศรี",type:"ป่วย",from:"2026-05-08",to:"2026-05-08"},
-  {name:"นางมาลินี  ท้าวธรรมศรี",type:"ป่วย",from:"2026-06-04",to:"2026-06-04"},
-  {name:"นางมาลินี  ท้าวธรรมศรี",type:"พักผ่อน",from:"2026-06-12",to:"2026-06-12"},
-  {name:"นางมาลินี  ท้าวธรรมศรี",type:"พักผ่อน",from:"2026-06-17",to:"2026-06-17"},
-  {name:"นางสมเพชร  เนตรหลับ",type:"พักผ่อน",from:"2025-12-02",to:"2025-12-03"},
-  {name:"นางสมเพชร  เนตรหลับ",type:"ป่วย",from:"2025-12-04",to:"2025-12-04"},
-  {name:"นางสมเพชร  เนตรหลับ",type:"พักผ่อน",from:"2026-02-16",to:"2026-02-16"},
-  {name:"นางสมเพชร  เนตรหลับ",type:"ป่วย",from:"2026-03-20",to:"2026-03-20"},
-  {name:"นางสมเพชร  เนตรหลับ",type:"พักผ่อน",from:"2026-03-31",to:"2026-04-01"},
-  {name:"นางสมเพชร  เนตรหลับ",type:"ป่วย",from:"2026-04-28",to:"2026-04-28"},
-  {name:"นางสมเพชร  เนตรหลับ",type:"พักผ่อน",from:"2026-05-20",to:"2026-05-20"},
-  {name:"นางสมเพชร  เนตรหลับ",type:"ป่วย",from:"2026-06-15",to:"2026-06-15"},
-  {name:"นางสาวประภาพร  สุดแสง",type:"ป่วย",from:"2025-11-17",to:"2025-11-17"},
-  {name:"นางสาวประภาพร  สุดแสง",type:"ป่วย",from:"2026-03-11",to:"2026-03-11"},
-  {name:"นางสาวพนารี แวววงษ์",type:"ป่วย",from:"2026-05-20",to:"2026-05-20"},
-  {name:"นางสาวพนารี แวววงษ์",type:"ป่วย",from:"2026-05-21",to:"2026-05-21"},
-  {name:"นางสาวพนารี แวววงษ์",type:"ป่วย",from:"2026-06-10",to:"2026-06-10"},
-  {name:"นางสาวพนารี แวววงษ์",type:"ป่วย",from:"2026-06-11",to:"2026-06-11"},
-  {name:"นางสาวพนารี แวววงษ์",type:"ป่วย",from:"2026-07-01",to:"2026-07-01"},
-  {name:"นางสาวชุติกาญจน์  ชูชุ่ม",type:"ป่วย",from:"2025-11-04",to:"2025-11-04"},
-  {name:"นางสาวชุติกาญจน์  ชูชุ่ม",type:"ป่วย",from:"2025-11-11",to:"2025-11-11"},
-  {name:"นางสาวชุติกาญจน์  ชูชุ่ม",type:"ป่วย",from:"2025-11-19",to:"2025-11-19"},
-  {name:"นางสาวชุติกาญจน์  ชูชุ่ม",type:"ป่วย",from:"2025-11-26",to:"2025-11-26"},
-  {name:"นางสาวชุติกาญจน์  ชูชุ่ม",type:"ป่วย",from:"2025-12-08",to:"2025-12-08"},
-  {name:"นางสาวชุติกาญจน์  ชูชุ่ม",type:"ป่วย",from:"2025-12-18",to:"2025-12-18"},
-  {name:"นางสาวชุติกาญจน์  ชูชุ่ม",type:"ป่วย",from:"2025-12-22",to:"2025-12-22"},
-  {name:"นางสาวชุติกาญจน์  ชูชุ่ม",type:"ป่วย",from:"2026-01-15",to:"2026-01-16"},
-  {name:"นางสาวชุติกาญจน์  ชูชุ่ม",type:"ป่วย",from:"2026-01-27",to:"2026-01-27"},
-  {name:"นางสาวชุติกาญจน์  ชูชุ่ม",type:"ป่วย",from:"2026-01-29",to:"2026-01-30"},
-  {name:"นางสาวชุติกาญจน์  ชูชุ่ม",type:"ป่วย",from:"2026-02-05",to:"2026-02-05"},
-  {name:"นางสาวชุติกาญจน์  ชูชุ่ม",type:"ป่วย",from:"2026-02-09",to:"2026-02-09"},
-  {name:"นางสาวชุติกาญจน์  ชูชุ่ม",type:"ป่วย",from:"2026-02-12",to:"2026-02-12"},
-  {name:"นางสาวชุติกาญจน์  ชูชุ่ม",type:"ป่วย",from:"2026-02-18",to:"2026-02-18"},
-  {name:"นางสาวชุติกาญจน์  ชูชุ่ม",type:"ป่วย",from:"2026-02-20",to:"2026-02-20"},
-  {name:"นางสาวชุติกาญจน์  ชูชุ่ม",type:"ป่วย",from:"2026-02-27",to:"2026-02-27"},
-  {name:"นางสาวชุติกาญจน์  ชูชุ่ม",type:"ป่วย",from:"2026-03-02",to:"2026-03-02"},
-  {name:"นางสาวชุติกาญจน์  ชูชุ่ม",type:"ป่วย",from:"2026-03-05",to:"2026-03-05"},
-  {name:"นางสาวนันท์นภัสธ์  รัตนเสถียร",type:"ป่วย",from:"2026-05-18",to:"2026-05-18"},
-  {name:"นางสาวนันท์นภัสธ์  รัตนเสถียร",type:"พักผ่อน",from:"2026-07-01",to:"2026-07-01"}
-];
-function __importLeave2569Batch2(){
-  let already = false;
-  try{ already = !!localStorage.getItem(__LEAVE_IMPORT_2569_B2_KEY); }catch(e){}
-  if(already) return;
-  __LEAVE_IMPORT_2569_B2.forEach(rec=>{
-    leaveRequests.push({id:__genLeaveId(),createdAt:rec.from,name:rec.name,type:rec.type,from:rec.from,to:rec.to,cover:'',contact:'',reason:'นำเข้าข้อมูลย้อนหลัง (ลาที่อนุมัติแล้ว)',ok:true,status:'approved'});
-    leaveHistory.push({fy:fiscalYearOf(rec.from),name:rec.name,type:rec.type,from:rec.from,to:rec.to});
-  });
-  try{ localStorage.setItem(__LEAVE_IMPORT_2569_B2_KEY,'1'); }catch(e){}
-  __saveState();
-}
-__importLeave2569Batch2();
+/* ประวัติการลาย้อนหลัง ปีงบประมาณ 2569 (ชุดที่ 1+2 รวม 241 รายการ) ที่เคยฝังเป็นอาร์เรย์อยู่ตรงนี้
+   ย้ายไปนำเข้าที่ Google Sheets แท็บ "leave_requests" แล้วผ่าน seedLeaveRequestsOnce() ใน Code.gs
+   (ไฟล์ seedLeaveRequestsOnce.gs.txt ในโฟลเดอร์เดียวกัน) หน้านี้โหลดข้อมูลทั้งหมดจาก API แทน */
 
-/* ------------ ย้อนเติม leaveHistory ให้คำขอ "ขาดงาน" ที่อนุมัติแล้วก่อนหน้านี้ (ก่อนที่ REGISTRY_LEAVE_TYPES จะรวมขาดงาน) ------------ */
-function __backfillAbsenceLeaveHistory(){
-  let added = 0;
-  leaveRequests.forEach(r=>{
-    if(r.type!=='ขาดงาน' || r.status!=='approved') return;
-    const exists = leaveHistory.some(h=>h.name===r.name && h.type===r.type && h.from===r.from && h.to===r.to);
-    if(!exists){ leaveHistory.push({fy:fiscalYearOf(r.from),name:r.name,type:r.type,from:r.from,to:r.to}); added++; }
-  });
-  if(added > 0) __saveState();
-  return added;
-}
-__backfillAbsenceLeaveHistory();
-
-/* ------------ ล้างรายการลาที่ซ้ำกัน (คน+ประเภท+วันที่เดียวกันเป๊ะ) ------------ */
-function __dedupeLeaveArrayInPlace(arr){
-  const seen = new Set();
-  for(let i=0;i<arr.length;i++){
-    const r = arr[i];
-    const key = [r.name,r.type,r.from,r.to].join('||');
-    if(seen.has(key)){ arr.splice(i,1); i--; }
-    else seen.add(key);
-  }
-}
-function __dedupeLeaveRecords(){
-  const beforeH = leaveHistory.length, beforeR = leaveRequests.length;
-  __dedupeLeaveArrayInPlace(leaveHistory);
-  __dedupeLeaveArrayInPlace(leaveRequests);
-  const removed = (beforeH - leaveHistory.length) + (beforeR - leaveRequests.length);
-  if(removed > 0) __saveState();
-  return removed;
-}
-__dedupeLeaveRecords();
-
-__syncLeaveStatusFromShared();
-__saveSharedLeaveRequests();
+/* หมายเหตุ: __syncLeaveStatusFromShared() และ __saveSharedLeaveRequests() เรียกครั้งแรกหลัง
+   leaveRequests โหลดจาก API เสร็จแล้วเท่านั้น (ดูท้ายไฟล์) ไม่งั้นจะเขียนอาร์เรย์ว่างทับ
+   saraban_shared_leave_requests_v1 ที่ระบบหลักอาจกำลังใช้งานอยู่ */
 window.addEventListener('storage', function(e){
   if(e.key===__SHARED_LEAVE_KEY){
     if(__syncLeaveStatusFromShared()) renderAll();
@@ -3776,6 +2503,16 @@ function __toggleNote(id, btn){
 }
 
 renderAll();
+(async function __initApiData(){
+  await Promise.all([
+    loadStaffFromApi(),
+    loadLeaveRequestsFromApi(),
+    loadPublicHolidaysFromApi()
+  ]);
+  __syncLeaveStatusFromShared();
+  __saveSharedLeaveRequests();
+  renderAll();
+})();
 
 </script>
 </body>

@@ -326,31 +326,15 @@
       </div>
 
       <div class="sec-tabs no-print" id="sec-tabs">
-        <div class="sec-tab active" data-sec="overview">ภาพรวม</div>
-        <div class="sec-tab" data-sec="labor">บัญชีแรงงานรายวัน</div>
+        <div class="sec-tab active" data-sec="labor">บัญชีแรงงานรายวัน</div>
         <div class="sec-tab" data-sec="ot">งานนอกเวลาราชการ (OT)</div>
         <div class="sec-tab" data-sec="budget">งบประมาณและค่าใช้จ่าย</div>
         <div class="sec-tab" data-sec="utility">ทะเบียนคุมสาธารณูปโภค</div>
       </div>
 
-      <!-- ============ OVERVIEW ============ -->
-      <div class="panel active" id="panel-overview">
-        <div id="overview-banner"></div>
-        <div id="overview-stats"></div>
-        <div style="display:grid;grid-template-columns:1.3fr 1fr;gap:16px;">
-          <div class="section">
-            <div class="section-head"><h2>งบประมาณคงเหลือรายหมวดหมู่ — เดือนปัจจุบัน</h2></div>
-            <div id="budget-mini"></div>
-          </div>
-          <div class="section">
-            <div class="section-head"><h2>สัดส่วนยอดเบิกจ่ายสะสม เดือนนี้</h2></div>
-            <div id="chart-donut" style="padding:20px;display:flex;align-items:center;gap:20px;flex-wrap:wrap;justify-content:center;"></div>
-          </div>
-        </div>
-      </div>
 
       <!-- ============ LABOR WAGE (ง.3-12) ============ -->
-      <div class="panel" id="panel-labor">
+      <div class="panel active" id="panel-labor">
         <div class="section">
           <div class="section-head">
             <h2>สรุปยอดจ่ายค่าแรงรายเดือน</h2>
@@ -1002,95 +986,6 @@ function budgetSpentOf(cat, cycleKey){
   return 0;
 }
 
-/* ============================================================
-   OVERVIEW
-   ============================================================ */
-function renderOverview(){
-  const cyc = currentCycle();
-  const laborTotal = laborSpendOf(cyc);
-  const otPending = otRequests.filter(o=>o.status==='pending').length;
-  const otAwaitingReport = otRequests.filter(o=>o.status==='awaiting_report');
-  const billsDue = utilityBills.filter(b=>b.status==='รอเบิกจ่าย');
-
-  // งบรวมทุกหมวด
-  let totalAlloc=0, totalSpent=0, lowCats=[];
-  budgetCategories.forEach(cat=>{
-    const alloc = budgetAllocation[cat];
-    const spent = budgetSpentOf(cat, cyc);
-    totalAlloc += alloc; totalSpent += spent;
-    const remainPct = alloc>0 ? ((alloc-spent)/alloc)*100 : 100;
-    if(remainPct < 20) lowCats.push(cat);
-  });
-  const remainPctAll = totalAlloc>0 ? Math.max(0, Math.round(((totalAlloc-totalSpent)/totalAlloc)*100)) : 0;
-
-  let bannerHtml = '';
-  const overdue = billsDue.filter(b=>daysUntil(b.due) < 0);
-  const dueSoon = billsDue.filter(b=>daysUntil(b.due) >= 0 && daysUntil(b.due) <= 5);
-  if(overdue.length){
-    bannerHtml += `<div class="banner banner-danger">⚠️ <div><b>มีบิลค้างชำระเลยกำหนด ${overdue.length} รายการ</b> — กรุณาดำเนินการเบิกจ่ายโดยด่วนเพื่อป้องกันการโดนตัดไฟ/ตัดสัญญาณ</div></div>`;
-  } else if(dueSoon.length){
-    bannerHtml += `<div class="banner banner-warn">⏰ <div><b>มีบิลค่าสาธารณูปโภคใกล้ครบกำหนดชำระ ${dueSoon.length} รายการ</b> ภายใน 5 วันข้างหน้า</div></div>`;
-  }
-  if(lowCats.length){
-    bannerHtml += `<div class="banner banner-warn">🟡 <div><b>งบประมาณคงเหลือต่ำกว่า 20%</b> ในหมวด: ${lowCats.join(', ')} — โปรดวางแผนการใช้จ่ายอย่างระมัดระวัง</div></div>`;
-  }
-  document.getElementById('overview-banner').innerHTML = bannerHtml;
-
-  document.getElementById('overview-stats').innerHTML = `
-    <div class="ov-grid">
-      <div class="ov-card accent-navy">
-        <div class="ov-card-head">
-          <span class="ov-icon" style="background:var(--navy-900);"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/></svg></span>
-          <h3>การเงิน-งบประมาณ</h3>
-          <span class="ov-note">${cycleLabel(cyc)}</span>
-        </div>
-        <div class="ov-metrics">
-          <div class="ov-metric"><div class="ov-metric-val">${fmtMoney(laborTotal)}</div><div class="ov-metric-label">ยอดเบิกค่าจ้างรอบนี้ (บาท)</div></div>
-          <div class="ov-metric ${remainPctAll<20?'warn':''}"><div class="ov-metric-val">${remainPctAll}%</div><div class="ov-metric-label">งบคงเหลือ ${fmtMoney(totalAlloc-totalSpent)} จาก ${fmtMoney(totalAlloc)} บาท</div></div>
-        </div>
-      </div>
-      <div class="ov-card accent-orange">
-        <div class="ov-card-head">
-          <span class="ov-icon" style="background:var(--orange-600);"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span>
-          <h3>รายการที่ต้องติดตาม</h3>
-        </div>
-        <div class="ov-metrics">
-          <div class="ov-metric ${otPending?'warn':''}"><div class="ov-metric-val">${otPending}</div><div class="ov-metric-label">คำขอ OT รออนุมัติ · ${otAwaitingReport.length} รอรายงานผล</div></div>
-          <div class="ov-metric ${billsDue.length?'warn':''}"><div class="ov-metric-val">${billsDue.length}</div><div class="ov-metric-label">บิลค่าสาธารณูปโภครอเบิกจ่าย รวม ${fmtMoney(billsDue.reduce((s,b)=>s+b.amount,0))} บาท</div></div>
-        </div>
-      </div>
-    </div>
-  `;
-
-  document.getElementById('budget-mini').innerHTML = budgetCategories.map(cat=>{
-    const alloc=budgetAllocation[cat], spent=budgetSpentOf(cat,cyc);
-    const pct = alloc>0 ? Math.min(100, Math.round((spent/alloc)*100)) : 0;
-    const remainPct = 100-pct;
-    const cls = remainPct<10?'danger':remainPct<20?'warn':'';
-    return `<div class="budget-row">
-      <div class="budget-top"><span class="name">${cat}</span><span class="nums">${fmtMoney(spent)} / ${fmtMoney(alloc)} บาท (เหลือ ${remainPct}%)</span></div>
-      <div class="budget-track"><div class="budget-fill ${cls}" style="width:${pct}%;"></div></div>
-    </div>`;
-  }).join('');
-
-  const colors = ['#0a2540','#1c4b73','#f2a930','#e0620f'];
-  const data = budgetCategories.map(cat=>budgetSpentOf(cat,cyc));
-  const total = data.reduce((a,b)=>a+b,0) || 1;
-  const r=54, cx=64, cy=64, circ=2*Math.PI*r;
-  let offset=0, segs='';
-  data.forEach((v,i)=>{
-    const len = circ*(v/total);
-    segs += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${colors[i]}" stroke-width="20" stroke-dasharray="${len} ${circ-len}" stroke-dashoffset="${-offset}" transform="rotate(-90 ${cx} ${cy})"/>`;
-    offset += len;
-  });
-  const legend = budgetCategories.map((t,i)=>`<div style="display:flex;align-items:center;gap:7px;font-size:12.5px;margin-bottom:6px;"><span style="width:10px;height:10px;border-radius:3px;background:${colors[i]};display:inline-block;"></span>${t} — <b>${fmtMoney(data[i])}</b> บาท</div>`).join('');
-  document.getElementById('chart-donut').innerHTML = `
-    <svg width="128" height="128" viewBox="0 0 128 128">${segs}
-      <text x="64" y="60" text-anchor="middle" font-family="Kanit" font-size="15" font-weight="600" fill="var(--navy-900)">${fmtMoney(total)}</text>
-      <text x="64" y="76" text-anchor="middle" font-family="Sarabun" font-size="10" fill="var(--ink-400)">บาท</text>
-    </svg>
-    <div>${legend}</div>`;
-}
 
 /* ============================================================
    LABOR WAGE (ง.3-12)
@@ -1831,7 +1726,6 @@ function doPrint(html){
    RENDER ALL / INIT
    ============================================================ */
 function renderAll(){
-  renderOverview();
   renderLaborSummary();
   renderLabor();
   renderOT();

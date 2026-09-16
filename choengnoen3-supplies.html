@@ -501,30 +501,14 @@
       </div>
 
       <div class="sec-tabs no-print" id="sec-tabs">
-        <div class="sec-tab active" data-sec="overview">ภาพรวม</div>
-        <div class="sec-tab" data-sec="master">ทะเบียนพัสดุ / น้ำมันเชื้อเพลิง</div>
+        <div class="sec-tab active" data-sec="master">ทะเบียนพัสดุ / น้ำมันเชื้อเพลิง</div>
         <div class="sec-tab" data-sec="report">พ.1-02 / พ.1-03</div>
         <div class="sec-tab" data-sec="machinery">EC 1-W</div>
         <div class="sec-tab" data-sec="vehicles">ทะเบียนเครื่องจักร/ยานพาหนะ</div>
       </div>
 
-      <!-- ============ OVERVIEW ============ -->
-      <div class="panel active" id="panel-overview">
-        <div id="overview-stats"></div>
-        <div style="display:grid;grid-template-columns:1fr 1.3fr;gap:16px;">
-          <div class="section">
-            <div class="section-head"><h2>วัสดุใกล้ถึงจุดสั่งซื้อ</h2></div>
-            <div id="chart-donut" style="padding:20px;display:flex;align-items:center;gap:20px;flex-wrap:wrap;justify-content:center;"></div>
-          </div>
-          <div class="section">
-            <div class="section-head"><h2>ปริมาณน้ำมันเบิกจ่ายรายเดือน (ลิตร)</h2></div>
-            <div id="chart-bar" style="padding:20px;"></div>
-          </div>
-        </div>
-      </div>
-
       <!-- ============ MATERIAL MASTER ============ -->
-      <div class="panel" id="panel-master">
+      <div class="panel active" id="panel-master">
         <div class="section">
           <div class="section-head">
             <h2><span class="section-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#f2a930" stroke-width="2"><path d="M3 7l9-4 9 4-9 4-9-4Z"/><path d="M3 7v10l9 4 9-4V7"/><path d="M12 11v10"/></svg></span>
@@ -3702,91 +3686,12 @@ function printForm(id){
 }
 window.addEventListener('afterprint', ()=>{ document.querySelectorAll('.print-only').forEach(el=>el.classList.remove('show-print')); });
 
-/* ============================================================
-   OVERVIEW
-   ============================================================ */
-function renderOverview(){
-  const naiMaterials = materials.filter(m=>(m.accountType||'ในบัญชี')==='ในบัญชี');
-  const lowStock = naiMaterials.filter(m=>matStatus(m)==='low').length;
-  const curMk = toLocalISODate(TODAY).slice(0,7);
-  const issuedThisMonth = materialTransactions.filter(t=>t.kind==='issue' && monthKeyOf(t.date)===curMk).length;
-  const curWeekDates = ec1wWeekDatesFrom(ec1wMonday(toLocalISODate(TODAY)));
-  const vehiclesLogged = vehicles.filter(v=>curWeekDates.some(d=>ec1wFindLog(v.label,d))).length;
-  const ec1wPending = vehicles.length - vehiclesLogged;
-  document.getElementById('overview-stats').innerHTML = `
-    <div class="ov-grid">
-      <div class="ov-card accent-navy">
-        <div class="ov-card-head">
-          <span class="ov-icon" style="background:var(--navy-900);"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4a2 2 0 0 0 1-1.73Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg></span>
-          <h3>พัสดุคงคลัง</h3>
-        </div>
-        <div class="ov-metrics">
-          <div class="ov-metric ${lowStock?'warn':''}"><div class="ov-metric-val">${lowStock}</div><div class="ov-metric-label">ต่ำกว่าจุดจัดเบิก จาก ${naiMaterials.length} รายการ</div></div>
-          <div class="ov-metric"><div class="ov-metric-val">${issuedThisMonth}</div><div class="ov-metric-label">รายการเบิกเดือนนี้ (พ.1-02)</div></div>
-        </div>
-      </div>
-      <div class="ov-card accent-orange">
-        <div class="ov-card-head">
-          <span class="ov-icon" style="background:var(--orange-600);"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M12 2s6 7.2 6 11a6 6 0 0 1-12 0c0-3.8 6-11 6-11Z"/></svg></span>
-          <h3>น้ำมันเชื้อเพลิง</h3>
-        </div>
-        <div class="ov-metrics">
-          <div class="ov-metric ${ec1wPending?'warn':''}"><div class="ov-metric-val">${ec1wPending}</div><div class="ov-metric-label">คัน/เครื่องจักรยังไม่มีบันทึก EC1-W สัปดาห์นี้ จาก ${vehicles.length} คัน</div></div>
-        </div>
-      </div>
-    </div>
-  `;
-  renderDonutChart();
-  renderFuelBarChart();
-}
-function renderDonutChart(){
-  const low = materials.filter(m=>matStatus(m)==='low').length;
-  const watch = materials.filter(m=>matStatus(m)==='watch').length;
-  const ok = materials.length - low - watch;
-  const data = [ok, watch, low];
-  const labels = ['ปกติ','ใกล้ถึงจุดสั่งซื้อ','ต่ำกว่าจุดสั่งซื้อ'];
-  const colors = ['#1c8a53','#f2a930','#e0620f'];
-  const total = data.reduce((a,b)=>a+b,0) || 1;
-  const r=54, cx=64, cy=64, circ=2*Math.PI*r;
-  let offset=0, segs='';
-  data.forEach((v,i)=>{
-    const len = circ*(v/total);
-    segs += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${colors[i]}" stroke-width="20" stroke-dasharray="${len} ${circ-len}" stroke-dashoffset="${-offset}" transform="rotate(-90 ${cx} ${cy})"/>`;
-    offset += len;
-  });
-  const legend = labels.map((t,i)=>`<div style="display:flex;align-items:center;gap:7px;font-size:12.5px;margin-bottom:6px;"><span style="width:10px;height:10px;border-radius:3px;background:${colors[i]};display:inline-block;"></span>${t} — <b>${data[i]}</b> รายการ</div>`).join('');
-  document.getElementById('chart-donut').innerHTML = `
-    <svg width="128" height="128" viewBox="0 0 128 128">${segs}
-      <text x="64" y="60" text-anchor="middle" font-family="Kanit" font-size="22" font-weight="600" fill="var(--navy-900)">${materials.length}</text>
-      <text x="64" y="76" text-anchor="middle" font-family="Sarabun" font-size="11" fill="var(--ink-400)">รายการ</text>
-    </svg>
-    <div>${legend}</div>`;
-}
-function renderFuelBarChart(){
-  const byMonth = {};
-  fuelTransactions.filter(t=>t.kind==='issue').forEach(t=>{ const mk=monthKeyOf(t.date); byMonth[mk] = (byMonth[mk]||0) + (t.liters||0); });
-  const months = Object.keys(byMonth).sort();
-  const max = Math.max(...months.map(m=>byMonth[m]),1);
-  const bars = months.map(mk=>{
-    const [y,m] = mk.split('-').map(Number);
-    const v = byMonth[mk];
-    const h = Math.round((v/max)*90);
-    return `<div style="display:flex;flex-direction:column;align-items:center;gap:4px;flex:1;min-width:0;">
-      <div style="font-size:11px;color:var(--ink-600);">${fmtNum(v,0)}</div>
-      <div style="width:100%;max-width:36px;height:${Math.max(h,4)}px;background:var(--orange-600);border-radius:4px 4px 0 0;"></div>
-      <div style="font-size:10.5px;color:var(--ink-400);">${monthNamesTh[m-1]} ${(y+543).toString().slice(-2)}</div>
-    </div>`;
-  }).join('');
-  document.getElementById('chart-bar').innerHTML = `<div style="display:flex;align-items:flex-end;gap:10px;height:150px;">${bars}</div>
-    <div class="foot-note" style="border-top:none;padding:10px 0 0;">รวมลิตรน้ำมันที่เบิกตามบันทึกในตารางบริหารจัดการน้ำมันเชื้อเพลิง</div>`;
-}
 
 /* ============================================================
    INIT
    ============================================================ */
 function renderAll(){
   populateLogin();
-  renderOverview();
   renderMaterials();
   renderVehicles();
   populateLedgerFySelects();
