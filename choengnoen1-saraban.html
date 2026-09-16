@@ -754,17 +754,29 @@ async function apiPost(action, table, data, id){
 
 /* ============================================================
    ตรวจสอบสายทาง/กม. กับฐานข้อมูล "ทางหลวงควบคุม" ของระบบรองที่ 2 (งานสถิติและบริการประชาชน)
-   อ่านข้อมูลข้ามระบบผ่าน localStorage (รูปแบบเดียวกับที่ระบบรองที่ 3 ใช้อ่านฐานข้อมูลนี้)
    ฐานข้อมูลสายทางมีจุดแก้ไขเดียวที่ระบบรองที่ 2 — ระบบนี้เป็นเพียงผู้อ่าน/ใช้ตรวจสอบเท่านั้น
+   เดิมอ่านผ่าน localStorage คีย์ของระบบรองที่ 2 แต่ตั้งแต่ระบบรองที่ 2 ย้ายตาราง
+   controlled_routes ไปอยู่บนฐานข้อมูลกลางแล้ว (ไม่เขียน localStorage อีกต่อไป) จึงต้องโหลด
+   จาก apiGet('controlled_routes') ครั้งเดียวตอนเปิดหน้าแทน (ดู loadControlledRoutesCacheFromApi
+   ท้ายไฟล์) เก็บ cache ไว้ใช้แบบ synchronous เหมือนเดิมเพื่อไม่ต้องแก้ทุกจุดที่เรียกใช้
    ============================================================ */
-const __ROUTES_SOURCE_KEY = 'saraban_subsystem2_v2';
-function getControlledRoutes(){
+let __controlledRoutesCache = [];
+function subsys2RouteFromApi(row){
+  return { id:row.id, routeNo:row.highway, controlNo:row.controlNo||'', section:row.sectionName,
+    ranges: Array.isArray(row.rangesJson) && row.rangesJson.length ? row.rangesJson : [[Number(row.kmStart)||0, Number(row.kmEnd)||0]],
+    distActual:Number(row.distActual)||0, dist2Lane:Number(row.dist2Lane)||0,
+    asphalt:Number(row.asphalt)||0, concrete:Number(row.concrete)||0, workQty:Number(row.workQty)||0 };
+}
+async function loadControlledRoutesCacheFromApi(){
   try{
-    const raw = localStorage.getItem(__ROUTES_SOURCE_KEY);
-    if(!raw) return [];
-    const s = JSON.parse(raw);
-    return Array.isArray(s.controlledRoutes) ? s.controlledRoutes : [];
-  }catch(e){ return []; }
+    __controlledRoutesCache = (await apiGet('controlled_routes')).map(subsys2RouteFromApi);
+    populateRouteSelects();
+  }catch(err){
+    console.error('โหลดข้อมูลสายทางควบคุมจากฐานข้อมูลกลางล้มเหลว', err);
+  }
+}
+function getControlledRoutes(){
+  return __controlledRoutesCache;
 }
 function kmFmt(v){
   v = Math.round(v*1000)/1000;
@@ -903,9 +915,6 @@ function routeSelectValue(routeSelId){
   }
   return sel.value ? 'ทล.'+sel.value : '';
 }
-window.addEventListener('storage', function(e){
-  if(e.key === __ROUTES_SOURCE_KEY){ populateRouteSelects(); }
-});
 /* ตั้งค่า select+other ให้ตรงกับข้อความสายทางที่เคยบันทึกไว้ (รองรับข้อมูลเก่าที่เป็นข้อความอิสระด้วย) */
 function setRouteSelectFromStored(routeSelId, storedText){
   populateRouteSelects();
@@ -2507,7 +2516,8 @@ renderAll();
   await Promise.all([
     loadStaffFromApi(),
     loadLeaveRequestsFromApi(),
-    loadPublicHolidaysFromApi()
+    loadPublicHolidaysFromApi(),
+    loadControlledRoutesCacheFromApi()
   ]);
   __syncLeaveStatusFromShared();
   __saveSharedLeaveRequests();

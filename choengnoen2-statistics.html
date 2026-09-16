@@ -539,6 +539,7 @@
               <span class="head-desc" id="routes-asof"></span>
             </h2>
             <div class="toolbar">
+              <button class="btn btn-danger hidden no-print" id="migrate-legacy-btn" onclick="migrateLegacyDataToServer()" title="นำเข้าข้อมูลสายทางควบคุม/ชุดปฏิบัติงาน/รหัสงาน/แผนงานบำรุงปกติที่เคยกรอกไว้ก่อนหน้านี้ขึ้นฐานข้อมูลกลาง — กดครั้งเดียวเท่านั้น">⬆ ซิงก์ข้อมูลเดิมขึ้นฐานข้อมูลกลาง</button>
               <button class="btn btn-primary no-print" id="routes-add-btn" onclick="openRouteForm()">+ เพิ่ม/แก้ไขสายทางควบคุม</button>
             </div>
           </div>
@@ -1349,6 +1350,41 @@
 const TODAY = new Date();
 const MSDAY = 86400000;
 
+/* ============================================================
+   เชื่อมต่อฐานข้อมูลกลาง (Google Sheets ผ่าน Google Apps Script Web App)
+   คัดลอกมาจาก choengnoen1-saraban.html แบบเดียวกันทุกจุด — ใช้แทน
+   localStorage สำหรับ controlled_routes, field_crews, job_code_reference,
+   daily_work_orders, bmm_plan_actual, unit_cost_records, permits,
+   encroachments, emergencies
+   หมายเหตุ: ต้องส่ง Content-Type เป็น text/plain;charset=utf-8 ตอน POST
+   (ไม่ใช่ application/json) ไม่งั้น Apps Script จะโดน CORS preflight บล็อก
+   ============================================================ */
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbwFxTEynojnNy4bHIS5ZQ9N7aBrsAFDT7a3Vcxugy7KGodhLZ18DNdj-v4MYPOGtBtL/exec';
+const APP_TOKEN = '5UWqjtNRWO59wZlnoN1Ysn0FxdTOGm';
+function apiCurrentUsername(){
+  const s = __getSharedSession();
+  return (s && s.name) || 'ไม่ระบุผู้ใช้';
+}
+async function apiGet(table){
+  const res = await fetch(GAS_URL + '?token=' + encodeURIComponent(APP_TOKEN) + '&table=' + encodeURIComponent(table));
+  const json = await res.json();
+  if(!json.ok) throw new Error(json.error || 'โหลดข้อมูลจากฐานข้อมูลกลางไม่สำเร็จ');
+  return json.data;
+}
+async function apiPost(action, table, data, id){
+  const body = { token: APP_TOKEN, username: apiCurrentUsername(), table, action, data };
+  if(id!==undefined) body.id = id;
+  const res = await fetch(GAS_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify(body)
+  });
+  const json = await res.json();
+  if(!json.ok) throw new Error(json.error || 'บันทึกข้อมูลไปยังฐานข้อมูลกลางไม่สำเร็จ');
+  return json.result;
+}
+/* ============ จบส่วนเชื่อมต่อฐานข้อมูลกลาง ============ */
+
 /* ---- Thai-format custom date inputs (native <input type=date> stays the source of truth; a styled overlay box shows "9 ก.ค. 2569") ---- */
 const THDATE_MONTHS = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
 function thdateFormat(iso){
@@ -1415,7 +1451,24 @@ function slaBadge(daysLeft){
 }
 
 /* ---- คำขออนุญาตในเขตทางหลวง ---- */
+function permitFromApi(row){
+  return { no:Number(row.no), type:row.type, name:row.name, phone:row.phone||'', km:row.km||'', doc:row.doc, status:row.status||'pending' };
+}
+function permitToApi(p){
+  return { no:p.no, type:p.type, name:p.name, phone:p.phone||'', km:p.km||'', doc:p.doc, status:p.status||'pending' };
+}
+/* ข้อมูลคำขออนุญาตในเขตทางจริงย้ายไปอยู่ที่ Google Sheets แท็บ "permits" แล้ว (ตารางใหม่
+   ที่ไม่เคยมีใน backend มาก่อน) หน้านี้โหลดจาก API ตอนเปิดหน้าเสมอ ดูฟังก์ชัน
+   loadPermitsFromApi() ด้านล่าง */
 let permits = [];
+async function loadPermitsFromApi(){
+  try{
+    permits = (await apiGet('permits')).map(permitFromApi);
+  }catch(err){
+    console.error('โหลดข้อมูลคำขออนุญาตในเขตทางจากฐานข้อมูลกลางล้มเหลว', err);
+    alert('โหลดข้อมูลคำขออนุญาตในเขตทางจากฐานข้อมูลกลางไม่สำเร็จ: ' + err.message + '\nกรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ตแล้วรีเฟรชหน้าใหม่');
+  }
+}
 function permitDue(p){ return daysLeftFrom(p.doc, 3); }
 function permitStatusPill(st){
   return {pending:'<span class="pill pill-warn">รอนำส่งเรื่อง</span>',sent:'<span class="pill pill-in">นำส่งแล้ว</span>',
@@ -1423,7 +1476,26 @@ function permitStatusPill(st){
 }
 
 /* ---- การรุกล้ำเขตทาง ---- */
+function encFromApi(row){
+  return { code:row.code, name:row.name, km:row.km||'', dist:Number(row.dist)||0, structure:row.structure||'',
+    stage:Number(row.stage)||1, stageDate:row.stageDate, cleared:!!row.cleared, clearedDate:row.clearedDate||null };
+}
+function encToApi(e){
+  return { code:e.code, name:e.name, km:e.km||'', dist:e.dist||0, structure:e.structure||'',
+    stage:e.stage, stageDate:e.stageDate, cleared:!!e.cleared, clearedDate:e.clearedDate||null };
+}
+/* ข้อมูลงานรุกล้ำเขตทางจริงย้ายไปอยู่ที่ Google Sheets แท็บ "encroachments" แล้ว (ตารางใหม่
+   ที่ไม่เคยมีใน backend มาก่อน) หน้านี้โหลดจาก API ตอนเปิดหน้าเสมอ ดูฟังก์ชัน
+   loadEncroachmentsFromApi() ด้านล่าง */
 let encroachments = [];
+async function loadEncroachmentsFromApi(){
+  try{
+    encroachments = (await apiGet('encroachments')).map(encFromApi);
+  }catch(err){
+    console.error('โหลดข้อมูลงานรุกล้ำเขตทางจากฐานข้อมูลกลางล้มเหลว', err);
+    alert('โหลดข้อมูลงานรุกล้ำเขตทางจากฐานข้อมูลกลางไม่สำเร็จ: ' + err.message + '\nกรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ตแล้วรีเฟรชหน้าใหม่');
+  }
+}
 const encStageLabel = {1:'แจ้งเตือนครั้งที่ 1 (30 วัน)',2:'แจ้งเตือนครั้งที่ 2 (15 วัน)',3:'แจ้งเตือนครั้งที่ 3 (7 วัน)',4:'แจ้งความร้องทุกข์แล้ว'};
 const encStageDays = {1:30,2:15,3:7};
 function encDue(e){ if(e.stage===4) return null; return daysLeftFrom(e.stageDate, encStageDays[e.stage]); }
@@ -1445,9 +1517,108 @@ const THAI_MONTHS_FULL = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ
 function fmtNum(n,dec){ dec = dec===undefined?2:dec; return (n||0).toLocaleString('en-US',{minimumFractionDigits:dec,maximumFractionDigits:dec}); }
 function monthLabel(m){ return m ? THAI_MONTHS_FULL[m-1] : '—'; }
 let bmmJobs = [{"code": "21112", "unit": "ตร.ม.", "name": "งานฉาบ"}, {"code": "21113", "unit": "ตร.ม.", "name": "งานปรับระดับ"}, {"code": "21114", "unit": "ตร.ม.", "name": "งานปะซ่อม"}, {"code": "21132", "unit": "ตร.ม.", "name": "งานกวาดเกลี่ย"}, {"code": "21201", "unit": "ตร.ม.", "name": "งานซ่อมทางเท้า ทางเชื่อม เกาะแบ่งถนน และทางจักรยาน"}, {"code": "21311", "unit": "ตร.ม.", "name": "งานทางระบายน้ำ"}, {"code": "21311", "unit": "ม.", "name": "งานทางระบายน้ำ"}, {"code": "21312", "unit": "แห่ง", "name": "งานท่อระบายน้ำ"}, {"code": "21321", "unit": "ตร.ม.", "name": "งานสะพาน"}, {"code": "21321", "unit": "แห่ง", "name": "งานสะพาน"}, {"code": "21411", "unit": "แห่ง", "name": "งานป้ายจราจร"}, {"code": "21412", "unit": "ตร.ม.", "name": "งานตีเส้นและทำเครื่องหมายจราจร"}, {"code": "21421", "unit": "ต้น", "name": "งานบำรุงรักษา หลักนำทาง หลักกิโลเมตร หลักเขตทาง และหมุดหลักฐานอื่นๆ"}, {"code": "21422", "unit": "ม.", "name": "งานบำรุงรักษา ราวกันอันตราย กำแพงกันอันตราย รั้วเขตทาง แผงกั้น อุปกรณ์ดูดซับแรงกระแทก และราวกันอันตรายประเภทอื่นๆ"}, {"code": "21423", "unit": "อัน", "name": "งานบำรุงรักษาสิ่งอำนวยความปลอดภัยอื่น ๆ"}, {"code": "21432", "unit": "แห่ง", "name": "งานไฟสัญญาณจราจร"}, {"code": "21521", "unit": "ตร.ม.", "name": "งานตัดหญ้า"}, {"code": "21522", "unit": "ตร.ม.", "name": "ถางป่า"}, {"code": "21530", "unit": "ต้น", "name": "งานบำรุงรักษาต้นไม้"}, {"code": "21550", "unit": "แห่ง", "name": "งานที่พักผู้โดยสารและผู้เดินทาง"}, {"code": "21570", "unit": "ตร.ม.", "name": "งานทำความสะอาด"}, {"code": "21650", "unit": "กิจกรรม", "name": "งานอำนวยความสะดวกและปลอดภัย"}, {"code": "21660", "unit": "กิจกรรม", "name": "งานบริหารอำนวยการเพื่อสนับสนุนการปฏิบัติกิจกรรมงานบำรุงปกติ"}];
-let bmmEntries = [{"no": 1, "code": "21112", "unit": "ตร.ม.", "name": "งานฉาบ", "level": "sub", "kind": "plan", "fy": 2569, "month": null, "baseline": true, "asOfMonth": 7, "qty": 12000, "material": 444000, "labor": 181368, "rent": 120000, "fuel": 54000, "service": 0, "contract": 0}, {"no": 2, "code": "21112", "unit": "ตร.ม.", "name": "งานฉาบ", "level": "sub", "kind": "actual", "fy": 2569, "month": null, "baseline": true, "asOfMonth": 7, "qty": 0, "material": 0, "labor": 0, "rent": 0, "fuel": 0, "service": 0, "contract": 0}, {"no": 3, "code": "21113", "unit": "ตร.ม.", "name": "งานปรับระดับ", "level": "sub", "kind": "plan", "fy": 2569, "month": null, "baseline": true, "asOfMonth": 7, "qty": 0, "material": 0, "labor": 0, "rent": 0, "fuel": 0, "service": 0, "contract": 0}, {"no": 4, "code": "21113", "unit": "ตร.ม.", "name": "งานปรับระดับ", "level": "sub", "kind": "actual", "fy": 2569, "month": null, "baseline": true, "asOfMonth": 7, "qty": 180, "material": 80180, "labor": 12469.38, "rent": 10178.75, "fuel": 3873.75, "service": 0, "contract": 0}, {"no": 5, "code": "21114", "unit": "ตร.ม.", "name": "งานปะซ่อม", "level": "sub", "kind": "plan", "fy": 2569, "month": null, "baseline": true, "asOfMonth": 7, "qty": 600, "material": 144600, "labor": 12091, "rent": 24000, "fuel": 10800, "service": 0, "contract": 0}, {"no": 6, "code": "21114", "unit": "ตร.ม.", "name": "งานปะซ่อม", "level": "sub", "kind": "actual", "fy": 2569, "month": null, "baseline": true, "asOfMonth": 7, "qty": 940, "material": 67580, "labor": 24938.76, "rent": 9399.3, "fuel": 2569.2, "service": 0, "contract": 0}, {"no": 7, "code": "21132", "unit": "ตร.ม.", "name": "งานกวาดเกลี่ย", "level": "sub", "kind": "plan", "fy": 2569, "month": null, "baseline": true, "asOfMonth": 7, "qty": 0, "material": 0, "labor": 0, "rent": 0, "fuel": 0, "service": 0, "contract": 0}, {"no": 8, "code": "21132", "unit": "ตร.ม.", "name": "งานกวาดเกลี่ย", "level": "sub", "kind": "actual", "fy": 2569, "month": null, "baseline": true, "asOfMonth": 7, "qty": 4550, "material": 0, "labor": 3400.74, "rent": 15563.5, "fuel": 5263.35, "service": 0, "contract": 0}, {"no": 9, "code": "21201", "unit": "ตร.ม.", "name": "งานซ่อมทางเท้า ทางเชื่อม เกาะแบ่งถนน และทางจักรยาน", "level": "sub", "kind": "plan", "fy": 2569, "month": null, "baseline": true, "asOfMonth": 7, "qty": 0, "material": 0, "labor": 0, "rent": 0, "fuel": 0, "service": 0, "contract": 0}, {"no": 10, "code": "21201", "unit": "ตร.ม.", "name": "งานซ่อมทางเท้า ทางเชื่อม เกาะแบ่งถนน และทางจักรยาน", "level": "sub", "kind": "actual", "fy": 2569, "month": null, "baseline": true, "asOfMonth": 7, "qty": 212, "material": 1661, "labor": 6423.62, "rent": 2307.6, "fuel": 806.75, "service": 0, "contract": 0}, {"no": 11, "code": "21311", "unit": "ตร.ม.", "name": "งานทางระบายน้ำ", "level": "sub", "kind": "plan", "fy": 2569, "month": null, "baseline": true, "asOfMonth": 7, "qty": 0, "material": 0, "labor": 0, "rent": 0, "fuel": 0, "service": 0, "contract": 0}, {"no": 12, "code": "21311", "unit": "ตร.ม.", "name": "งานทางระบายน้ำ", "level": "sub", "kind": "actual", "fy": 2569, "month": null, "baseline": true, "asOfMonth": 7, "qty": 2500, "material": 0, "labor": 4156.46, "rent": 330305.45, "fuel": 27945.94, "service": 0, "contract": 0}, {"no": 13, "code": "21311", "unit": "ม.", "name": "งานทางระบายน้ำ", "level": "sub", "kind": "plan", "fy": 2569, "month": null, "baseline": true, "asOfMonth": 7, "qty": 11000, "material": 158050, "labor": 137910, "rent": 410000, "fuel": 72000, "service": 0, "contract": 0}, {"no": 14, "code": "21311", "unit": "ม.", "name": "งานทางระบายน้ำ", "level": "sub", "kind": "actual", "fy": 2569, "month": null, "baseline": true, "asOfMonth": 7, "qty": 4270, "material": 0, "labor": 8690.78, "rent": 395144.42, "fuel": 62089.46, "service": 0, "contract": 0}, {"no": 15, "code": "21312", "unit": "แห่ง", "name": "งานท่อระบายน้ำ", "level": "sub", "kind": "plan", "fy": 2569, "month": null, "baseline": true, "asOfMonth": 7, "qty": 105, "material": 4823, "labor": 105798, "rent": 52500, "fuel": 21000, "service": 0, "contract": 0}, {"no": 16, "code": "21312", "unit": "แห่ง", "name": "งานท่อระบายน้ำ", "level": "sub", "kind": "actual", "fy": 2569, "month": null, "baseline": true, "asOfMonth": 7, "qty": 0, "material": 0, "labor": 0, "rent": 0, "fuel": 0, "service": 0, "contract": 0}, {"no": 17, "code": "21321", "unit": "ตร.ม.", "name": "งานสะพาน", "level": "sub", "kind": "plan", "fy": 2569, "month": null, "baseline": true, "asOfMonth": 7, "qty": 800, "material": 60400, "labor": 60456, "rent": 30000, "fuel": 12000, "service": 0, "contract": 0}, {"no": 18, "code": "21321", "unit": "ตร.ม.", "name": "งานสะพาน", "level": "sub", "kind": "actual", "fy": 2569, "month": null, "baseline": true, "asOfMonth": 7, "qty": 0, "material": 0, "labor": 0, "rent": 0, "fuel": 0, "service": 0, "contract": 0}, {"no": 19, "code": "21321", "unit": "แห่ง", "name": "งานสะพาน", "level": "sub", "kind": "plan", "fy": 2569, "month": null, "baseline": true, "asOfMonth": 7, "qty": 80, "material": 1876, "labor": 60456, "rent": 30000, "fuel": 12000, "service": 0, "contract": 0}, {"no": 20, "code": "21321", "unit": "แห่ง", "name": "งานสะพาน", "level": "sub", "kind": "actual", "fy": 2569, "month": null, "baseline": true, "asOfMonth": 7, "qty": 0, "material": 0, "labor": 0, "rent": 0, "fuel": 0, "service": 0, "contract": 0}, {"no": 21, "code": "21411", "unit": "แห่ง", "name": "งานป้ายจราจร", "level": "sub", "kind": "plan", "fy": 2569, "month": null, "baseline": true, "asOfMonth": 7, "qty": 800, "material": 48000, "labor": 24184, "rent": 24000, "fuel": 9600, "service": 0, "contract": 0}, {"no": 22, "code": "21411", "unit": "แห่ง", "name": "งานป้ายจราจร", "level": "sub", "kind": "actual", "fy": 2569, "month": null, "baseline": true, "asOfMonth": 7, "qty": 66, "material": 0, "labor": 5667.9, "rent": 2307.6, "fuel": 779.75, "service": 0, "contract": 0}, {"no": 23, "code": "21412", "unit": "ตร.ม.", "name": "งานตีเส้นและทำเครื่องหมายจราจร", "level": "sub", "kind": "plan", "fy": 2569, "month": null, "baseline": true, "asOfMonth": 7, "qty": 720, "material": 66024, "labor": 72547, "rent": 36000, "fuel": 14400, "service": 0, "contract": 0}, {"no": 24, "code": "21412", "unit": "ตร.ม.", "name": "งานตีเส้นและทำเครื่องหมายจราจร", "level": "sub", "kind": "actual", "fy": 2569, "month": null, "baseline": true, "asOfMonth": 7, "qty": 2160, "material": 57380, "labor": 25316.62, "rent": 9061.5, "fuel": 3039.05, "service": 0, "contract": 0}, {"no": 25, "code": "21421", "unit": "ต้น", "name": "งานบำรุงรักษา หลักนำทาง หลักกิโลเมตร หลักเขตทาง และหมุดหลักฐานอื่นๆ", "level": "sub", "kind": "plan", "fy": 2569, "month": null, "baseline": true, "asOfMonth": 7, "qty": 360, "material": 18000, "labor": 54410, "rent": 27000, "fuel": 10800, "service": 0, "contract": 0}, {"no": 26, "code": "21421", "unit": "ต้น", "name": "งานบำรุงรักษา หลักนำทาง หลักกิโลเมตร หลักเขตทาง และหมุดหลักฐานอื่นๆ", "level": "sub", "kind": "actual", "fy": 2569, "month": null, "baseline": true, "asOfMonth": 7, "qty": 60, "material": 3445, "labor": 6423.62, "rent": 4414.9, "fuel": 1439.55, "service": 0, "contract": 0}, {"no": 27, "code": "21422", "unit": "ม.", "name": "งานบำรุงรักษา ราวกันอันตราย กำแพงกันอันตราย รั้วเขตทาง แผงกั้น อุปกรณ์ดูดซับแรงกระแทก และราวกันอันตรายประเภทอื่นๆ", "level": "sub", "kind": "plan", "fy": 2569, "month": null, "baseline": true, "asOfMonth": 7, "qty": 1240, "material": 0, "labor": 37482, "rent": 18600, "fuel": 7440, "service": 0, "contract": 0}, {"no": 28, "code": "21422", "unit": "ม.", "name": "งานบำรุงรักษา ราวกันอันตราย กำแพงกันอันตราย รั้วเขตทาง แผงกั้น อุปกรณ์ดูดซับแรงกระแทก และราวกันอันตรายประเภทอื่นๆ", "level": "sub", "kind": "actual", "fy": 2569, "month": null, "baseline": true, "asOfMonth": 7, "qty": 0, "material": 0, "labor": 0, "rent": 0, "fuel": 0, "service": 0, "contract": 0}, {"no": 29, "code": "21423", "unit": "อัน", "name": "งานบำรุงรักษาสิ่งอำนวยความปลอดภัยอื่น ๆ", "level": "sub", "kind": "plan", "fy": 2569, "month": null, "baseline": true, "asOfMonth": 7, "qty": 0, "material": 0, "labor": 0, "rent": 0, "fuel": 0, "service": 0, "contract": 0}, {"no": 30, "code": "21423", "unit": "อัน", "name": "งานบำรุงรักษาสิ่งอำนวยความปลอดภัยอื่น ๆ", "level": "sub", "kind": "actual", "fy": 2569, "month": null, "baseline": true, "asOfMonth": 7, "qty": 410, "material": 492000, "labor": 2645.02, "rent": 1181.95, "fuel": 299.9, "service": 0, "contract": 0}, {"no": 31, "code": "21432", "unit": "แห่ง", "name": "งานไฟสัญญาณจราจร", "level": "sub", "kind": "plan", "fy": 2569, "month": null, "baseline": true, "asOfMonth": 7, "qty": 0, "material": 0, "labor": 0, "rent": 0, "fuel": 0, "service": 0, "contract": 0}, {"no": 32, "code": "21432", "unit": "แห่ง", "name": "งานไฟสัญญาณจราจร", "level": "sub", "kind": "actual", "fy": 2569, "month": null, "baseline": true, "asOfMonth": 7, "qty": 4, "material": 370184, "labor": 8690.78, "rent": 3376.95, "fuel": 1148.65, "service": 0, "contract": 0}, {"no": 33, "code": "21521", "unit": "ตร.ม.", "name": "งานตัดหญ้า", "level": "sub", "kind": "plan", "fy": 2569, "month": null, "baseline": true, "asOfMonth": 7, "qty": 2870000, "material": 38267, "labor": 722953, "rent": 717500, "fuel": 287000, "service": 0, "contract": 0}, {"no": 34, "code": "21521", "unit": "ตร.ม.", "name": "งานตัดหญ้า", "level": "sub", "kind": "actual", "fy": 2569, "month": null, "baseline": true, "asOfMonth": 7, "qty": 2102000, "material": 131545, "labor": 406955.22, "rent": 52045.36, "fuel": 68014.2, "service": 0, "contract": 0}, {"no": 35, "code": "21522", "unit": "ตร.ม.", "name": "ถางป่า", "level": "sub", "kind": "plan", "fy": 2569, "month": null, "baseline": true, "asOfMonth": 7, "qty": 0, "material": 0, "labor": 0, "rent": 0, "fuel": 0, "service": 0, "contract": 0}, {"no": 36, "code": "21522", "unit": "ตร.ม.", "name": "ถางป่า", "level": "sub", "kind": "actual", "fy": 2569, "month": null, "baseline": true, "asOfMonth": 7, "qty": 14850, "material": 2800, "labor": 8312.92, "rent": 157442.6, "fuel": 19427.84, "service": 0, "contract": 0}, {"no": 37, "code": "21530", "unit": "ต้น", "name": "งานบำรุงรักษาต้นไม้", "level": "sub", "kind": "plan", "fy": 2569, "month": null, "baseline": true, "asOfMonth": 7, "qty": 0, "material": 0, "labor": 0, "rent": 0, "fuel": 0, "service": 0, "contract": 0}, {"no": 38, "code": "21530", "unit": "ต้น", "name": "งานบำรุงรักษาต้นไม้", "level": "sub", "kind": "actual", "fy": 2569, "month": null, "baseline": true, "asOfMonth": 7, "qty": 133, "material": 6085, "labor": 81239.9, "rent": 33995.05, "fuel": 15028.94, "service": 0, "contract": 0}, {"no": 39, "code": "21550", "unit": "แห่ง", "name": "งานที่พักผู้โดยสารและผู้เดินทาง", "level": "sub", "kind": "plan", "fy": 2569, "month": null, "baseline": true, "asOfMonth": 7, "qty": 40, "material": 62800, "labor": 60456, "rent": 30000, "fuel": 12000, "service": 0, "contract": 0}, {"no": 40, "code": "21550", "unit": "แห่ง", "name": "งานที่พักผู้โดยสารและผู้เดินทาง", "level": "sub", "kind": "actual", "fy": 2569, "month": null, "baseline": true, "asOfMonth": 7, "qty": 1, "material": 4610, "labor": 3022.88, "rent": 3232.95, "fuel": 959.7, "service": 0, "contract": 0}, {"no": 41, "code": "21570", "unit": "ตร.ม.", "name": "งานทำความสะอาด", "level": "sub", "kind": "plan", "fy": 2569, "month": null, "baseline": true, "asOfMonth": 7, "qty": 2043200, "material": 0, "labor": 514685.79, "rent": 0, "fuel": 0, "service": 0, "contract": 0}, {"no": 42, "code": "21570", "unit": "ตร.ม.", "name": "งานทำความสะอาด", "level": "sub", "kind": "actual", "fy": 2569, "month": null, "baseline": true, "asOfMonth": 7, "qty": 68234, "material": 7560, "labor": 178441.27, "rent": 84814.75, "fuel": 30378.94, "service": 0, "contract": 0}, {"no": 43, "code": "21650", "unit": "กิจกรรม", "name": "งานอำนวยความสะดวกและปลอดภัย", "level": "sub", "kind": "plan", "fy": 2569, "month": null, "baseline": true, "asOfMonth": 7, "qty": 12, "material": 12593.91, "labor": 41718.71, "rent": 21093.71, "fuel": 12093.71, "service": 0, "contract": 0}, {"no": 44, "code": "21650", "unit": "กิจกรรม", "name": "งานอำนวยความสะดวกและปลอดภัย", "level": "sub", "kind": "actual", "fy": 2569, "month": null, "baseline": true, "asOfMonth": 7, "qty": 0, "material": 0, "labor": 0, "rent": 0, "fuel": 0, "service": 0, "contract": 0}, {"no": 45, "code": "21660", "unit": "กิจกรรม", "name": "งานบริหารอำนวยการเพื่อสนับสนุนการปฏิบัติกิจกรรมงานบำรุงปกติ", "level": "sub", "kind": "plan", "fy": 2569, "month": null, "baseline": true, "asOfMonth": 7, "qty": 12, "material": 0, "labor": 781723.17, "rent": 130500, "fuel": 78300, "service": 0, "contract": 0}, {"no": 46, "code": "21660", "unit": "กิจกรรม", "name": "งานบริหารอำนวยการเพื่อสนับสนุนการปฏิบัติกิจกรรมงานบำรุงปกติ", "level": "sub", "kind": "actual", "fy": 2569, "month": null, "baseline": true, "asOfMonth": 7, "qty": 7, "material": 46632, "labor": 389280.83, "rent": 171744.6, "fuel": 65431.35, "service": 0, "contract": 0}];
+/* ชุดข้อมูลตั้งต้น (แผน/ผลงานบำรุงปกติ) — ใช้เป็นแหล่งข้อมูลสำหรับปุ่ม "ซิงก์ข้อมูลเดิมขึ้น
+   ฐานข้อมูลกลาง" ครั้งเดียวเท่านั้น ตัวแปร bmmEntries ที่ใช้งานจริงโหลดจาก
+   apiGet('bmm_plan_actual') แทน (ดู loadBmmEntriesFromApi() ท้ายบรรทัดนี้) */
+const BMM_ENTRIES_SEED_FOR_MIGRATION = [{"no": 1, "code": "21112", "unit": "ตร.ม.", "name": "งานฉาบ", "level": "sub", "kind": "plan", "fy": 2569, "month": null, "baseline": true, "asOfMonth": 7, "qty": 12000, "material": 444000, "labor": 181368, "rent": 120000, "fuel": 54000, "service": 0, "contract": 0}, {"no": 2, "code": "21112", "unit": "ตร.ม.", "name": "งานฉาบ", "level": "sub", "kind": "actual", "fy": 2569, "month": null, "baseline": true, "asOfMonth": 7, "qty": 0, "material": 0, "labor": 0, "rent": 0, "fuel": 0, "service": 0, "contract": 0}, {"no": 3, "code": "21113", "unit": "ตร.ม.", "name": "งานปรับระดับ", "level": "sub", "kind": "plan", "fy": 2569, "month": null, "baseline": true, "asOfMonth": 7, "qty": 0, "material": 0, "labor": 0, "rent": 0, "fuel": 0, "service": 0, "contract": 0}, {"no": 4, "code": "21113", "unit": "ตร.ม.", "name": "งานปรับระดับ", "level": "sub", "kind": "actual", "fy": 2569, "month": null, "baseline": true, "asOfMonth": 7, "qty": 180, "material": 80180, "labor": 12469.38, "rent": 10178.75, "fuel": 3873.75, "service": 0, "contract": 0}, {"no": 5, "code": "21114", "unit": "ตร.ม.", "name": "งานปะซ่อม", "level": "sub", "kind": "plan", "fy": 2569, "month": null, "baseline": true, "asOfMonth": 7, "qty": 600, "material": 144600, "labor": 12091, "rent": 24000, "fuel": 10800, "service": 0, "contract": 0}, {"no": 6, "code": "21114", "unit": "ตร.ม.", "name": "งานปะซ่อม", "level": "sub", "kind": "actual", "fy": 2569, "month": null, "baseline": true, "asOfMonth": 7, "qty": 940, "material": 67580, "labor": 24938.76, "rent": 9399.3, "fuel": 2569.2, "service": 0, "contract": 0}, {"no": 7, "code": "21132", "unit": "ตร.ม.", "name": "งานกวาดเกลี่ย", "level": "sub", "kind": "plan", "fy": 2569, "month": null, "baseline": true, "asOfMonth": 7, "qty": 0, "material": 0, "labor": 0, "rent": 0, "fuel": 0, "service": 0, "contract": 0}, {"no": 8, "code": "21132", "unit": "ตร.ม.", "name": "งานกวาดเกลี่ย", "level": "sub", "kind": "actual", "fy": 2569, "month": null, "baseline": true, "asOfMonth": 7, "qty": 4550, "material": 0, "labor": 3400.74, "rent": 15563.5, "fuel": 5263.35, "service": 0, "contract": 0}, {"no": 9, "code": "21201", "unit": "ตร.ม.", "name": "งานซ่อมทางเท้า ทางเชื่อม เกาะแบ่งถนน และทางจักรยาน", "level": "sub", "kind": "plan", "fy": 2569, "month": null, "baseline": true, "asOfMonth": 7, "qty": 0, "material": 0, "labor": 0, "rent": 0, "fuel": 0, "service": 0, "contract": 0}, {"no": 10, "code": "21201", "unit": "ตร.ม.", "name": "งานซ่อมทางเท้า ทางเชื่อม เกาะแบ่งถนน และทางจักรยาน", "level": "sub", "kind": "actual", "fy": 2569, "month": null, "baseline": true, "asOfMonth": 7, "qty": 212, "material": 1661, "labor": 6423.62, "rent": 2307.6, "fuel": 806.75, "service": 0, "contract": 0}, {"no": 11, "code": "21311", "unit": "ตร.ม.", "name": "งานทางระบายน้ำ", "level": "sub", "kind": "plan", "fy": 2569, "month": null, "baseline": true, "asOfMonth": 7, "qty": 0, "material": 0, "labor": 0, "rent": 0, "fuel": 0, "service": 0, "contract": 0}, {"no": 12, "code": "21311", "unit": "ตร.ม.", "name": "งานทางระบายน้ำ", "level": "sub", "kind": "actual", "fy": 2569, "month": null, "baseline": true, "asOfMonth": 7, "qty": 2500, "material": 0, "labor": 4156.46, "rent": 330305.45, "fuel": 27945.94, "service": 0, "contract": 0}, {"no": 13, "code": "21311", "unit": "ม.", "name": "งานทางระบายน้ำ", "level": "sub", "kind": "plan", "fy": 2569, "month": null, "baseline": true, "asOfMonth": 7, "qty": 11000, "material": 158050, "labor": 137910, "rent": 410000, "fuel": 72000, "service": 0, "contract": 0}, {"no": 14, "code": "21311", "unit": "ม.", "name": "งานทางระบายน้ำ", "level": "sub", "kind": "actual", "fy": 2569, "month": null, "baseline": true, "asOfMonth": 7, "qty": 4270, "material": 0, "labor": 8690.78, "rent": 395144.42, "fuel": 62089.46, "service": 0, "contract": 0}, {"no": 15, "code": "21312", "unit": "แห่ง", "name": "งานท่อระบายน้ำ", "level": "sub", "kind": "plan", "fy": 2569, "month": null, "baseline": true, "asOfMonth": 7, "qty": 105, "material": 4823, "labor": 105798, "rent": 52500, "fuel": 21000, "service": 0, "contract": 0}, {"no": 16, "code": "21312", "unit": "แห่ง", "name": "งานท่อระบายน้ำ", "level": "sub", "kind": "actual", "fy": 2569, "month": null, "baseline": true, "asOfMonth": 7, "qty": 0, "material": 0, "labor": 0, "rent": 0, "fuel": 0, "service": 0, "contract": 0}, {"no": 17, "code": "21321", "unit": "ตร.ม.", "name": "งานสะพาน", "level": "sub", "kind": "plan", "fy": 2569, "month": null, "baseline": true, "asOfMonth": 7, "qty": 800, "material": 60400, "labor": 60456, "rent": 30000, "fuel": 12000, "service": 0, "contract": 0}, {"no": 18, "code": "21321", "unit": "ตร.ม.", "name": "งานสะพาน", "level": "sub", "kind": "actual", "fy": 2569, "month": null, "baseline": true, "asOfMonth": 7, "qty": 0, "material": 0, "labor": 0, "rent": 0, "fuel": 0, "service": 0, "contract": 0}, {"no": 19, "code": "21321", "unit": "แห่ง", "name": "งานสะพาน", "level": "sub", "kind": "plan", "fy": 2569, "month": null, "baseline": true, "asOfMonth": 7, "qty": 80, "material": 1876, "labor": 60456, "rent": 30000, "fuel": 12000, "service": 0, "contract": 0}, {"no": 20, "code": "21321", "unit": "แห่ง", "name": "งานสะพาน", "level": "sub", "kind": "actual", "fy": 2569, "month": null, "baseline": true, "asOfMonth": 7, "qty": 0, "material": 0, "labor": 0, "rent": 0, "fuel": 0, "service": 0, "contract": 0}, {"no": 21, "code": "21411", "unit": "แห่ง", "name": "งานป้ายจราจร", "level": "sub", "kind": "plan", "fy": 2569, "month": null, "baseline": true, "asOfMonth": 7, "qty": 800, "material": 48000, "labor": 24184, "rent": 24000, "fuel": 9600, "service": 0, "contract": 0}, {"no": 22, "code": "21411", "unit": "แห่ง", "name": "งานป้ายจราจร", "level": "sub", "kind": "actual", "fy": 2569, "month": null, "baseline": true, "asOfMonth": 7, "qty": 66, "material": 0, "labor": 5667.9, "rent": 2307.6, "fuel": 779.75, "service": 0, "contract": 0}, {"no": 23, "code": "21412", "unit": "ตร.ม.", "name": "งานตีเส้นและทำเครื่องหมายจราจร", "level": "sub", "kind": "plan", "fy": 2569, "month": null, "baseline": true, "asOfMonth": 7, "qty": 720, "material": 66024, "labor": 72547, "rent": 36000, "fuel": 14400, "service": 0, "contract": 0}, {"no": 24, "code": "21412", "unit": "ตร.ม.", "name": "งานตีเส้นและทำเครื่องหมายจราจร", "level": "sub", "kind": "actual", "fy": 2569, "month": null, "baseline": true, "asOfMonth": 7, "qty": 2160, "material": 57380, "labor": 25316.62, "rent": 9061.5, "fuel": 3039.05, "service": 0, "contract": 0}, {"no": 25, "code": "21421", "unit": "ต้น", "name": "งานบำรุงรักษา หลักนำทาง หลักกิโลเมตร หลักเขตทาง และหมุดหลักฐานอื่นๆ", "level": "sub", "kind": "plan", "fy": 2569, "month": null, "baseline": true, "asOfMonth": 7, "qty": 360, "material": 18000, "labor": 54410, "rent": 27000, "fuel": 10800, "service": 0, "contract": 0}, {"no": 26, "code": "21421", "unit": "ต้น", "name": "งานบำรุงรักษา หลักนำทาง หลักกิโลเมตร หลักเขตทาง และหมุดหลักฐานอื่นๆ", "level": "sub", "kind": "actual", "fy": 2569, "month": null, "baseline": true, "asOfMonth": 7, "qty": 60, "material": 3445, "labor": 6423.62, "rent": 4414.9, "fuel": 1439.55, "service": 0, "contract": 0}, {"no": 27, "code": "21422", "unit": "ม.", "name": "งานบำรุงรักษา ราวกันอันตราย กำแพงกันอันตราย รั้วเขตทาง แผงกั้น อุปกรณ์ดูดซับแรงกระแทก และราวกันอันตรายประเภทอื่นๆ", "level": "sub", "kind": "plan", "fy": 2569, "month": null, "baseline": true, "asOfMonth": 7, "qty": 1240, "material": 0, "labor": 37482, "rent": 18600, "fuel": 7440, "service": 0, "contract": 0}, {"no": 28, "code": "21422", "unit": "ม.", "name": "งานบำรุงรักษา ราวกันอันตราย กำแพงกันอันตราย รั้วเขตทาง แผงกั้น อุปกรณ์ดูดซับแรงกระแทก และราวกันอันตรายประเภทอื่นๆ", "level": "sub", "kind": "actual", "fy": 2569, "month": null, "baseline": true, "asOfMonth": 7, "qty": 0, "material": 0, "labor": 0, "rent": 0, "fuel": 0, "service": 0, "contract": 0}, {"no": 29, "code": "21423", "unit": "อัน", "name": "งานบำรุงรักษาสิ่งอำนวยความปลอดภัยอื่น ๆ", "level": "sub", "kind": "plan", "fy": 2569, "month": null, "baseline": true, "asOfMonth": 7, "qty": 0, "material": 0, "labor": 0, "rent": 0, "fuel": 0, "service": 0, "contract": 0}, {"no": 30, "code": "21423", "unit": "อัน", "name": "งานบำรุงรักษาสิ่งอำนวยความปลอดภัยอื่น ๆ", "level": "sub", "kind": "actual", "fy": 2569, "month": null, "baseline": true, "asOfMonth": 7, "qty": 410, "material": 492000, "labor": 2645.02, "rent": 1181.95, "fuel": 299.9, "service": 0, "contract": 0}, {"no": 31, "code": "21432", "unit": "แห่ง", "name": "งานไฟสัญญาณจราจร", "level": "sub", "kind": "plan", "fy": 2569, "month": null, "baseline": true, "asOfMonth": 7, "qty": 0, "material": 0, "labor": 0, "rent": 0, "fuel": 0, "service": 0, "contract": 0}, {"no": 32, "code": "21432", "unit": "แห่ง", "name": "งานไฟสัญญาณจราจร", "level": "sub", "kind": "actual", "fy": 2569, "month": null, "baseline": true, "asOfMonth": 7, "qty": 4, "material": 370184, "labor": 8690.78, "rent": 3376.95, "fuel": 1148.65, "service": 0, "contract": 0}, {"no": 33, "code": "21521", "unit": "ตร.ม.", "name": "งานตัดหญ้า", "level": "sub", "kind": "plan", "fy": 2569, "month": null, "baseline": true, "asOfMonth": 7, "qty": 2870000, "material": 38267, "labor": 722953, "rent": 717500, "fuel": 287000, "service": 0, "contract": 0}, {"no": 34, "code": "21521", "unit": "ตร.ม.", "name": "งานตัดหญ้า", "level": "sub", "kind": "actual", "fy": 2569, "month": null, "baseline": true, "asOfMonth": 7, "qty": 2102000, "material": 131545, "labor": 406955.22, "rent": 52045.36, "fuel": 68014.2, "service": 0, "contract": 0}, {"no": 35, "code": "21522", "unit": "ตร.ม.", "name": "ถางป่า", "level": "sub", "kind": "plan", "fy": 2569, "month": null, "baseline": true, "asOfMonth": 7, "qty": 0, "material": 0, "labor": 0, "rent": 0, "fuel": 0, "service": 0, "contract": 0}, {"no": 36, "code": "21522", "unit": "ตร.ม.", "name": "ถางป่า", "level": "sub", "kind": "actual", "fy": 2569, "month": null, "baseline": true, "asOfMonth": 7, "qty": 14850, "material": 2800, "labor": 8312.92, "rent": 157442.6, "fuel": 19427.84, "service": 0, "contract": 0}, {"no": 37, "code": "21530", "unit": "ต้น", "name": "งานบำรุงรักษาต้นไม้", "level": "sub", "kind": "plan", "fy": 2569, "month": null, "baseline": true, "asOfMonth": 7, "qty": 0, "material": 0, "labor": 0, "rent": 0, "fuel": 0, "service": 0, "contract": 0}, {"no": 38, "code": "21530", "unit": "ต้น", "name": "งานบำรุงรักษาต้นไม้", "level": "sub", "kind": "actual", "fy": 2569, "month": null, "baseline": true, "asOfMonth": 7, "qty": 133, "material": 6085, "labor": 81239.9, "rent": 33995.05, "fuel": 15028.94, "service": 0, "contract": 0}, {"no": 39, "code": "21550", "unit": "แห่ง", "name": "งานที่พักผู้โดยสารและผู้เดินทาง", "level": "sub", "kind": "plan", "fy": 2569, "month": null, "baseline": true, "asOfMonth": 7, "qty": 40, "material": 62800, "labor": 60456, "rent": 30000, "fuel": 12000, "service": 0, "contract": 0}, {"no": 40, "code": "21550", "unit": "แห่ง", "name": "งานที่พักผู้โดยสารและผู้เดินทาง", "level": "sub", "kind": "actual", "fy": 2569, "month": null, "baseline": true, "asOfMonth": 7, "qty": 1, "material": 4610, "labor": 3022.88, "rent": 3232.95, "fuel": 959.7, "service": 0, "contract": 0}, {"no": 41, "code": "21570", "unit": "ตร.ม.", "name": "งานทำความสะอาด", "level": "sub", "kind": "plan", "fy": 2569, "month": null, "baseline": true, "asOfMonth": 7, "qty": 2043200, "material": 0, "labor": 514685.79, "rent": 0, "fuel": 0, "service": 0, "contract": 0}, {"no": 42, "code": "21570", "unit": "ตร.ม.", "name": "งานทำความสะอาด", "level": "sub", "kind": "actual", "fy": 2569, "month": null, "baseline": true, "asOfMonth": 7, "qty": 68234, "material": 7560, "labor": 178441.27, "rent": 84814.75, "fuel": 30378.94, "service": 0, "contract": 0}, {"no": 43, "code": "21650", "unit": "กิจกรรม", "name": "งานอำนวยความสะดวกและปลอดภัย", "level": "sub", "kind": "plan", "fy": 2569, "month": null, "baseline": true, "asOfMonth": 7, "qty": 12, "material": 12593.91, "labor": 41718.71, "rent": 21093.71, "fuel": 12093.71, "service": 0, "contract": 0}, {"no": 44, "code": "21650", "unit": "กิจกรรม", "name": "งานอำนวยความสะดวกและปลอดภัย", "level": "sub", "kind": "actual", "fy": 2569, "month": null, "baseline": true, "asOfMonth": 7, "qty": 0, "material": 0, "labor": 0, "rent": 0, "fuel": 0, "service": 0, "contract": 0}, {"no": 45, "code": "21660", "unit": "กิจกรรม", "name": "งานบริหารอำนวยการเพื่อสนับสนุนการปฏิบัติกิจกรรมงานบำรุงปกติ", "level": "sub", "kind": "plan", "fy": 2569, "month": null, "baseline": true, "asOfMonth": 7, "qty": 12, "material": 0, "labor": 781723.17, "rent": 130500, "fuel": 78300, "service": 0, "contract": 0}, {"no": 46, "code": "21660", "unit": "กิจกรรม", "name": "งานบริหารอำนวยการเพื่อสนับสนุนการปฏิบัติกิจกรรมงานบำรุงปกติ", "level": "sub", "kind": "actual", "fy": 2569, "month": null, "baseline": true, "asOfMonth": 7, "qty": 7, "material": 46632, "labor": 389280.83, "rent": 171744.6, "fuel": 65431.35, "service": 0, "contract": 0}];
+/* แปลง bmm_plan_actual ระหว่างรูปแบบภายใน (fy/qty รวมเป็นค่าเดียว) กับคอลัมน์ Sheet
+   (fiscalYear/planQty+actualQty แยกคอลัมน์) — no เป็นเลขลำดับ local เท่านั้น (ไม่ได้ส่งขึ้น
+   backend) เก็บ __backendId ไว้คู่กันสำหรับ update/delete แทน เพราะ no ถูกใช้อ้างอิงเป็น
+   key ภายในโค้ดหน้านี้อยู่แล้วหลายจุด เปลี่ยนเป็น id ของจริงจะกระทบวงกว้างเกินจำเป็น */
+function bmmFromApi(row){
+  return { no:0, __backendId:row.id, code:row.jobCode, unit:row.unit, name:row.name, level:row.level||'sub',
+    kind:row.kind, fy:Number(row.fiscalYear)||0, month: row.month!=null && row.month!=='' ? Number(row.month) : null,
+    qty: row.kind==='plan' ? (Number(row.planQty)||0) : (Number(row.actualQty)||0),
+    material:Number(row.material)||0, labor:Number(row.labor)||0, rent:Number(row.rent)||0, fuel:Number(row.fuel)||0,
+    service:Number(row.service)||0, contract:Number(row.contract)||0,
+    supplementLog: Array.isArray(row.supplementLogJson) ? row.supplementLogJson : [],
+    baseline:!!row.baseline, asOfMonth: row.asOfMonth!=null && row.asOfMonth!=='' ? Number(row.asOfMonth) : null };
+}
+function bmmToApi(e){
+  return { id:e.__backendId, fiscalYear:e.fy, month:e.month, jobCode:e.code, unit:e.unit, name:e.name,
+    level:e.level, kind:e.kind, planQty: e.kind==='plan'?(e.qty||0):0, actualQty: e.kind==='actual'?(e.qty||0):0,
+    material:e.material||0, labor:e.labor||0, rent:e.rent||0, fuel:e.fuel||0, service:e.service||0, contract:e.contract||0,
+    supplementLogJson:e.supplementLog||[], baseline:!!e.baseline, asOfMonth:e.asOfMonth };
+}
+/* ข้อมูลแผน/ผลงานบำรุงปกติจริงย้ายไปอยู่ที่ Google Sheets แท็บ "bmm_plan_actual" แล้ว
+   หน้านี้โหลดจาก API ตอนเปิดหน้าเสมอ ดูฟังก์ชัน loadBmmEntriesFromApi() ด้านล่าง */
+let bmmEntries = [];
+async function loadBmmEntriesFromApi(){
+  try{
+    const rows = (await apiGet('bmm_plan_actual')).map(bmmFromApi);
+    rows.forEach((r,i)=>{ r.no = i+1; });
+    bmmEntries = rows;
+  }catch(err){
+    console.error('โหลดข้อมูลแผน/ผลงานบำรุงปกติจากฐานข้อมูลกลางล้มเหลว', err);
+    alert('โหลดข้อมูลแผน/ผลงานบำรุงปกติจากฐานข้อมูลกลางไม่สำเร็จ: ' + err.message + '\nกรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ตแล้วรีเฟรชหน้าใหม่');
+  }
+}
+/* แปลง daily_work_orders ระหว่างรูปแบบภายใน (code/route/loc/staff/vehicles/parts/qty/
+   material/labor/rent/fuel) กับคอลัมน์ Sheet (jobCode/routeValue/routeLabel/staffJson/
+   machineryJson/materialsJson/workQuantity/materialCost/laborCost/rentCost/fuelCost) —
+   no เป็นเลขลำดับ local เท่านั้น เก็บ __backendId ไว้คู่กัน (เหตุผลเดียวกับ bmmEntries/
+   unitCostRecords) fiscalYear/totalCost คำนวณจาก date และผลรวม 4 ต้นทุนตอนบันทึกเสมอ */
+function dwoFromApi(row){
+  return { no:0, __backendId:row.id, date:row.date, code:row.jobCode,
+    kmStart:row.kmStart||'', kmEnd:row.kmEnd||'', route:row.routeValue||'', loc:row.routeLabel||'',
+    staff: Array.isArray(row.staffJson) ? row.staffJson : [], staffLabel:row.staffLabel||'',
+    vehicles: Array.isArray(row.machineryJson) ? row.machineryJson : [], vehicle:row.vehicleLabelsText||'',
+    parts: Array.isArray(row.materialsJson) ? row.materialsJson : [],
+    qty:Number(row.workQuantity)||0, qtyPending:!!row.qtyPending, unit:row.unit||'',
+    material:Number(row.materialCost)||0, labor:Number(row.laborCost)||0,
+    rent:Number(row.rentCost)||0, fuel:Number(row.fuelCost)||0 };
+}
+function dwoToApi(d){
+  return { id:d.__backendId, fiscalYear:fyOfDate(d.date), date:d.date, jobCode:d.code,
+    routeValue:d.route||'', routeLabel:d.loc||'', kmStart:d.kmStart||'', kmEnd:d.kmEnd||'', side:'',
+    workQuantity:d.qty||0, qtyPending:!!d.qtyPending, unit:d.unit||'',
+    staffJson:d.staff||[], staffLabel:d.staffLabel||'', materialsJson:d.parts||[],
+    machineryJson:d.vehicles||[], vehicleLabelsText:d.vehicle||'',
+    laborCost:d.labor||0, materialCost:d.material||0, rentCost:d.rent||0, fuelCost:d.fuel||0,
+    totalCost:(d.material||0)+(d.labor||0)+(d.rent||0)+(d.fuel||0), note:'' };
+}
+/* ข้อมูลใบสั่งการรายวันจริงย้ายไปอยู่ที่ Google Sheets แท็บ "daily_work_orders" แล้ว
+   หน้านี้โหลดจาก API ตอนเปิดหน้าเสมอ ดูฟังก์ชัน loadDailyWorkOrdersFromApi() ด้านล่าง */
 let dailyWorkOrders = [];
+async function loadDailyWorkOrdersFromApi(){
+  try{
+    const rows = (await apiGet('daily_work_orders')).map(dwoFromApi);
+    rows.forEach((r,i)=>{ r.no = i+1; });
+    dailyWorkOrders = rows;
+  }catch(err){
+    console.error('โหลดข้อมูลใบสั่งการรายวันจากฐานข้อมูลกลางล้มเหลว', err);
+    alert('โหลดข้อมูลใบสั่งการรายวันจากฐานข้อมูลกลางไม่สำเร็จ: ' + err.message + '\nกรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ตแล้วรีเฟรชหน้าใหม่');
+  }
+}
+/* แปลง unit_cost_records ระหว่างรูปแบบภายใน (fy/laborRows/materialRows/vehicleRows) กับ
+   คอลัมน์ Sheet (fiscalYear + ผลรวมต้นทุน/หน่วย + json รายการย่อย) — no เป็นเลขลำดับ local
+   เท่านั้น เก็บ __backendId ไว้คู่กันสำหรับ update/delete (เหตุผลเดียวกับ bmmEntries) */
+function ucFromApi(row){
+  return { no:0, __backendId:row.id, code:row.jobCode, jobName:row.jobName, unit:row.unit,
+    fy:Number(row.fiscalYear)||0, qtyPerDay:Number(row.qtyPerDay)||0,
+    laborRows: Array.isArray(row.laborRowsJson) ? row.laborRowsJson : [],
+    materialRows: Array.isArray(row.materialRowsJson) ? row.materialRowsJson : [],
+    vehicleRows: Array.isArray(row.vehicleRowsJson) ? row.vehicleRowsJson : [] };
+}
+function ucToApi(r){
+  const t = ucRecordTotals(r);
+  return { id:r.__backendId, jobCode:r.code, jobName:r.jobName, unit:r.unit, fiscalYear:r.fy, qtyPerDay:r.qtyPerDay,
+    materialCostPerDay:t.material, laborCostPerDay:t.labor, fuelCostPerDay:t.fuel, rentCostPerDay:t.rent, unitCost:t.unitCost,
+    laborRowsJson:r.laborRows||[], materialRowsJson:r.materialRows||[], vehicleRowsJson:r.vehicleRows||[] };
+}
+/* ข้อมูลค่างานต่อหน่วยจริงย้ายไปอยู่ที่ Google Sheets แท็บ "unit_cost_records" แล้ว
+   หน้านี้โหลดจาก API ตอนเปิดหน้าเสมอ ดูฟังก์ชัน loadUnitCostRecordsFromApi() ด้านล่าง */
 let unitCostRecords = [];
+async function loadUnitCostRecordsFromApi(){
+  try{
+    const rows = (await apiGet('unit_cost_records')).map(ucFromApi);
+    rows.forEach((r,i)=>{ r.no = i+1; });
+    unitCostRecords = rows;
+  }catch(err){
+    console.error('โหลดข้อมูลค่างานต่อหน่วยจากฐานข้อมูลกลางล้มเหลว', err);
+    alert('โหลดข้อมูลค่างานต่อหน่วยจากฐานข้อมูลกลางไม่สำเร็จ: ' + err.message + '\nกรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ตแล้วรีเฟรชหน้าใหม่');
+  }
+}
 function findJob(code){ return bmmJobs.find(j=>j.code===code); }
 function bmmBudget(e){ return (e.material||0)+(e.labor||0)+(e.rent||0)+(e.fuel||0)+(e.service||0)+(e.contract||0); }
 function bmmUnitCost(e){ const q=e.qty||0; return q ? (bmmBudget(e)/q) : 0; }
@@ -1458,7 +1629,32 @@ function bmmPeriodLabel(e){
 }
 
 /* ---- รายละเอียดรหัสงาน (อ้างอิงคู่มือกรมทางหลวง) ---- */
-let jobCodeReference = [{"code": "21000", "name": "งานบำรุงปกติ", "unit": null, "level": "main", "parent": null, "parentName": null, "desc": "", "output": "-"}, {"code": "21100", "name": "งานบำรุงรักษาผิวทางหรือไหล่ทาง", "unit": null, "level": "main", "parent": "21000", "parentName": "งานบำรุงปกติ", "desc": "", "output": "-"}, {"code": "21110", "name": "งานบำรุงรักษาผิวทางหรือไหล่ทางแอสฟัลต์", "unit": null, "level": "sub", "parent": "21100", "parentName": "งานบำรุงรักษาผิวทางหรือไหล่ทาง", "desc": "", "output": "-"}, {"code": "21111", "name": "งานอุดรอยแตก", "unit": "ม.", "level": "sub", "parent": "21110", "parentName": "งานบำรุงรักษาผิวทางหรือไหล่ทางแอสฟัลต์", "desc": "หมายถึงงานอุดหรือปิดรอยแตกบนผิวทางหรือไหล่ทางแอสฟัลต์ที่มีลักษณะไม่ต่อเนื่องกัน\n- กรณีที่รอยแตกกว้างน้อยกว่า 3 มม. ให้ใช้แอสฟัลต์เหลวอุดหรือปิดรอยแตกนั้น\n- กรณีรอยแตกกว้างมากกว่า 3 มม. ถ้ารอยแตกลึกไม่มาก ให้ใช้แอสฟัลต์เหลวผสมทรายอุดจนเต็มรอยแตกนั้น ถ้ารอยแตกลึกมาก ให้ใช้ทรายหรือทรายผสมปูนซีเมนต์หรือปูนขาวกรอกจนเกือบเต็มรอยแตก แล้วใช้แอสฟัลต์เหลวผสมทรายอุดจนเต็มรอยแตกนั้น หรือจะดำเนินการซ่อมตามกระบวนการหรือวิธีการที่เหมาะสม", "output": "แห่ง"}, {"code": "21112", "name": "งานฉาบ", "unit": "ตร.ม.", "level": "sub", "parent": "21110", "parentName": "งานบำรุงรักษาผิวทางหรือไหล่ทางแอสฟัลต์", "desc": "หมายถึงงานซ่อมผิวทางหรือไหล่ทางเดิมที่มีรอยแตกแบบต่อเนื่องกัน ผิวลื่น ผิวหลุดร่อน หรือเสื่อมสภาพ โดยที่ระดับผิวทางหรือไหล่ทางเดิมไม่ทรุดตัวเป็นแอ่งหรือร่องล้อ ด้วยวิธี Fog Seal, Sand Seal, Slurry Seal, Chip Seal ฯลฯ ในกรณีผิวทางหรือไหล่ทางมียางเยิ้ม (Bleeding) ให้แก้ไขโดยวิธีสาดทรายหรือหินขณะร้อน หรือเผายางที่เยิ้มหรือขูดออก", "output": "แห่ง"}, {"code": "21113", "name": "งานปรับระดับ", "unit": "ตร.ม., ตัน", "level": "sub", "parent": "21110", "parentName": "งานบำรุงรักษาผิวทางหรือไหล่ทางแอสฟัลต์", "desc": "หมายถึงงานปรับแต่งผิวทางหรือไหล่ทางเดิมที่ขรุขระ ทรุด (Corrugation) หรือยุบตัวเป็นแอ่ง (Grade Depression) หรือเป็นร่องล้อ (Rutting) โดยที่พื้นทางหรือโครงสร้างทางยังคงแข็งแรงอยู่ ให้ได้ระดับเรียบและกลมกลืนกับผิวทางหรือไหล่ทางเดิม โดยทำการทายาง (Tack Coat) แล้วปูทับด้วยวัสดุผสมแอสฟัลต์ (Cold Mix หรือ Hot Mix) ทั้งนี้อาจฉาบผิวเพื่อป้องกันน้ำซึมลงไปด้วยถ้าเห็นสมควร หรือจะดำเนินการซ่อมตามกระบวนการหรือวิธีการที่เหมาะสม", "output": "แห่ง"}, {"code": "21114", "name": "งานปะซ่อม", "unit": "ตร.ม.", "level": "sub", "parent": "21110", "parentName": "งานบำรุงรักษาผิวทางหรือไหล่ทางแอสฟัลต์", "desc": "หมายถึงงานซ่อมผิวทางหรือไหล่ทางที่แตกต่อเนื่องกันแบบหนังจระเข้ ผิวหลุดร่อน ผิวชำรุดเป็นหลุมบ่อ ผิวที่ชำรุดเนื่องจากการเลื่อนตัว และผิวที่เสียหายเนื่องจากอุบัติเหตุ ซึ่งความเสียหายเกิดเฉพาะผิวทางหรือไหล่ทาง โดยขุดรื้อผิวที่เสียหายออกเป็นรูปสี่เหลี่ยม ทำความสะอาดแล้วทายาง (Prime Coat หรือ Tack Coat) ให้ทั่ว ใช้วัสดุผสมแอสฟัลต์ (Cold Mix หรือ Hot Mix) ปะซ่อมทำผิวทางหรือไหล่ทางใหม่ ให้ได้ระดับเรียบและกลมกลืนกับผิวทางหรือไหล่ทางเดิม ทั้งนี้อาจฉาบผิวเพื่อป้องกันน้ำซึมลงไปด้วยถ้าเห็นสมควร หรือจะดำเนินการซ่อมตามกระบวนการหรือวิธีการที่เหมาะสม", "output": "แห่ง"}, {"code": "21115", "name": "งานขุดซ่อม", "unit": "ตร.ม.", "level": "sub", "parent": "21110", "parentName": "งานบำรุงรักษาผิวทางหรือไหล่ทางแอสฟัลต์", "desc": "หมายถึงงานซ่อมชั้นโครงสร้างทางที่มีลักษณะความเสียหายปรากฏบนผิวทางหรือไหล่ทาง และความเสียหายนั้นเกิดถึงระดับชั้นพื้นทาง ชั้นรองพื้นทาง หรือชั้นคันทาง ให้ทำการซ่อมโดยขุดรื้อเอาวัสดุที่ร่อนหรือเสียหายออกจนถึงระดับชั้นที่เห็นว่าจำเป็น บดอัดก้นหลุมให้แน่นและเรียบเสมอกัน นำวัสดุที่ได้มาตรฐานลงแทนแล้วบดอัดแน่น แล้วทำการทายาง (Prime Coat หรือ Tack Coat) ให้ทั่วแล้วแต่กรณี ทำผิวทางหรือไหล่ทางใหม่ตามสภาพเดิมหรือดีกว่า โดยรักษาระดับรอยต่อให้เรียบและกลมกลืนกับผิวทางหรือไหล่ทางเดิม ทั้งนี้อาจฉาบผิวเพื่อป้องกันน้ำซึมลงไปด้วยถ้าเห็นสมควร หรือจะดำเนินการซ่อมตามกระบวนการหรือวิธีการที่เหมาะสม", "output": "แห่ง"}, {"code": "21116", "name": "งานปาดแต่ง", "unit": "ตร.ม.", "level": "sub", "parent": "21110", "parentName": "งานบำรุงรักษาผิวทางหรือไหล่ทางแอสฟัลต์", "desc": "หมายถึงงานปาดตัดแต่งผิวทางหรือไหล่ทางชนิดแอสฟัลต์คอนกรีตที่เป็นสันหรือเป็นคลื่นเนื่องจากการเคลื่อนตัวเฉพาะชั้นผิวทาง อาจรวมถึงการปรับแต่งให้ได้ระดับและกลมกลืนกับผิวทางหรือไหล่ทางเดิม โดยทำความสะอาดแล้วทำการทายาง (Tack Coat) ให้ทั่ว ใช้วัสดุผสมแอสฟัลต์ (Cold Mix หรือ Hot Mix) ปูให้ได้ระดับเรียบกลมกลืนกับผิวทางหรือไหล่ทางเดิม", "output": "แห่ง"}, {"code": "21120", "name": "งานบำรุงรักษาผิวทางหรือไหล่ทางคอนกรีต", "unit": null, "level": "sub", "parent": "21100", "parentName": "งานบำรุงรักษาผิวทางหรือไหล่ทาง", "desc": "", "output": "-"}, {"code": "21121", "name": "งานซ่อมวัสดุรอยต่อ", "unit": "ม.", "level": "sub", "parent": "21120", "parentName": "งานบำรุงรักษาผิวทางหรือไหล่ทางคอนกรีต", "desc": "หมายถึงงานซ่อมเปลี่ยนวัสดุรอยต่อเดิมระหว่างแผ่นพื้นคอนกรีตที่ชำรุดหรือเสื่อมสภาพ โดยการเซาะเอาวัสดุเดิมออกจนหมด ทำความสะอาดแล้วหยอดหรือทารอยต่อด้วย Primer ก่อนทำการอุดด้วยวัสดุยาแนวใหม่แทน จนมีสภาพรอยต่อดีดังเดิม", "output": "แห่ง"}, {"code": "21122", "name": "งานอุดเชื่อมรอยแตก", "unit": "ม.", "level": "sub", "parent": "21120", "parentName": "งานบำรุงรักษาผิวทางหรือไหล่ทางคอนกรีต", "desc": "หมายถึงงานอุดรอยแตก (Cracks) ที่เกิดขึ้นในแผ่นพื้นคอนกรีต โดยทำความสะอาดรอยแตกด้วยเครื่องอัดลม แล้วใช้แอสฟัลต์เหลวหรือ Epoxy Resin อุดตามรอยแตกนั้น หรือจะดำเนินการซ่อมตามกระบวนการหรือวิธีการที่เหมาะสม", "output": "แห่ง"}, {"code": "21123", "name": "งานปรับระดับคอนกรีต", "unit": "ตร.ม.", "level": "sub", "parent": "21120", "parentName": "งานบำรุงรักษาผิวทางหรือไหล่ทางคอนกรีต", "desc": "หมายถึงงานปรับระดับผิวหรือไหล่คอนกรีตเดิมที่ชำรุด โดยใช้วัสดุผสมแอสฟัลต์ (Cold Mix หรือ Hot Mix) ปูทับลงบนผิวคอนกรีตหลังจากทายาง (Tack Coat) หรือฉาบวัสดุคั่นกลาง (Interlayer) แล้ว หรือจะดำเนินการตามกระบวนการหรือวิธีการที่เหมาะสม เช่น การทำ Mud Jacking เป็นต้น", "output": "แห่ง"}, {"code": "21124", "name": "งานซ่อมคอนกรีต", "unit": "ตร.ม.", "level": "sub", "parent": "21120", "parentName": "งานบำรุงรักษาผิวทางหรือไหล่ทางคอนกรีต", "desc": "หมายถึงงานเจาะสกัดหรือลอกผิวหรือไหล่คอนกรีตส่วนที่ชำรุดเสียหายออกบางส่วนหรือทั้งแผ่น รวมถึงการขุดรื้อวัสดุรองพื้นส่วนที่เสียหายออกจนถึงระดับชั้นที่เห็นว่าจำเป็น บดอัดแน่น แล้วใช้วัสดุที่ได้มาตรฐานลงแทนบดอัดแน่นก่อนเสริมหรือทำผิวคอนกรีตใหม่ หรือจะดำเนินการซ่อมตามกระบวนการหรือวิธีการที่เหมาะสม", "output": "แห่ง"}, {"code": "21130", "name": "งานบำรุงรักษาผิวทางหรือไหล่ทางลูกรัง", "unit": null, "level": "sub", "parent": "21100", "parentName": "งานบำรุงรักษาผิวทางหรือไหล่ทาง", "desc": "", "output": "-"}, {"code": "21131", "name": "งานซ่อมหลุมบ่อ", "unit": "ตร.ม.", "level": "sub", "parent": "21130", "parentName": "งานบำรุงรักษาผิวทางหรือไหล่ทางลูกรัง", "desc": "หมายถึงงานขุดเอาวัสดุส่วนที่เสียหายออก ตกแต่งก้นหลุม แล้วเติมวัสดุใหม่ที่ได้มาตรฐาน บดอัดแน่นจนเสมอผิวเดิมโดยรอบ", "output": "แห่ง"}, {"code": "21132", "name": "งานกวาดเกลี่ย", "unit": "ตร.ม.", "level": "sub", "parent": "21130", "parentName": "งานบำรุงรักษาผิวทางหรือไหล่ทางลูกรัง", "desc": "หมายถึงงานกวาดเกลี่ยผิวทางหรือไหล่ทางลูกรังเดิมที่เป็นคลื่นลอน ลูกระนาด ร่องล้อ ตลอดจนรอยกัดเซาะของน้ำให้เรียบ โดยใช้รถเกลี่ยหรือชุดกวาดเกลี่ย และอาจเติมวัสดุใหม่ได้ตามความจำเป็น", "output": "แห่ง"}, {"code": "21133", "name": "งานขึ้นรูปบดทับใหม่", "unit": "ตร.ม.", "level": "sub", "parent": "21130", "parentName": "งานบำรุงรักษาผิวทางหรือไหล่ทางลูกรัง", "desc": "หมายถึงงานไถคราด (Scarifying) ผิวทางหรือไหล่ทางลูกรังเดิมที่ชำรุดเสียหายมากจนเปลี่ยนไปจากรูปทรงเดิม เติมวัสดุใหม่ที่ได้มาตรฐานลงผสมเกลี่ยแต่งและบดอัดแน่นให้ได้รูปทรงตามควร ถ้าวัสดุเดิมเพียงพออาจไม่ต้องเติมวัสดุใหม่ก็ได้", "output": "แห่ง"}, {"code": "21200", "name": "งานบำรุงรักษาทางเท้า ทางเชื่อม เกาะแบ่งถนน และทางจักรยาน", "unit": null, "level": "main", "parent": "21000", "parentName": "งานบำรุงปกติ", "desc": "", "output": "-"}, {"code": "21201", "name": "งานซ่อมทางเท้า ทางเชื่อม เกาะแบ่งถนน และทางจักรยาน", "unit": "ตร.ม.", "level": "sub", "parent": "21200", "parentName": "งานบำรุงรักษาทางเท้า ทางเชื่อม เกาะแบ่งถนน และทางจักรยาน", "desc": "หมายถึงงานซ่อมทางเท้า ทางเชื่อม เกาะแบ่งถนน และทางจักรยานที่ชำรุดเสียหายให้คืนสู่สภาพ ทั้งนี้อาจรวมถึงงานเสริมหรือขยายพื้นที่ได้ตามความจำเป็น", "output": "แห่ง"}, {"code": "21300", "name": "งานระบบระบายน้ำ สะพานและโครงสร้าง", "unit": null, "level": "main", "parent": "21000", "parentName": "งานบำรุงปกติ", "desc": "", "output": "-"}, {"code": "21310", "name": "งานบำรุงรักษาระบบระบายน้ำ", "unit": null, "level": "sub", "parent": "21300", "parentName": "งานระบบระบายน้ำ สะพานและโครงสร้าง", "desc": "", "output": "-"}, {"code": "21311", "name": "งานทางระบายน้ำ", "unit": "ม., ตร.ม., ลบ.ม.", "level": "sub", "parent": "21310", "parentName": "งานบำรุงรักษาระบบระบายน้ำ", "desc": "หมายถึงงานทำความสะอาด ขุดลอก ตกแต่ง ต่อเติม ซ่อมแซม หรือรื้อย้ายท่อระบายน้ำและส่วนประกอบ ได้แก่ คันหินรางตื้น (Curb & Gutter), รางระบายน้ำบริเวณลาดข้างทาง (Chute), รางดักน้ำ (Intercepting Ditch), คันกั้นน้ำ (Dike), ช่องน้ำธรรมชาติและช่องน้ำซึ่งได้ทำขึ้นใหม่", "output": "แห่ง"}, {"code": "21312", "name": "งานท่อระบายน้ำ", "unit": "แห่ง, ม.", "level": "sub", "parent": "21310", "parentName": "งานบำรุงรักษาระบบระบายน้ำ", "desc": "หมายถึงงานทำความสะอาด ขุดลอก ตกแต่ง ต่อเติม ซ่อมแซม หรือรื้อย้ายท่อระบายน้ำและส่วนประกอบ ได้แก่ กำแพงหน้าท่อ (Headwall), ปากท่อ (Inlet & Outlet), บ่อพัก (Manhole), บ่อดักน้ำ (Drop Inlet & Catch Basin), ท่อระบายน้ำใต้ดิน (Subdrain) ฯลฯ", "output": "แห่ง"}, {"code": "21320", "name": "งานบำรุงรักษาสะพานและโครงสร้าง", "unit": null, "level": "sub", "parent": "21300", "parentName": "งานระบบระบายน้ำ สะพานและโครงสร้าง", "desc": "", "output": "-"}, {"code": "21321", "name": "งานสะพาน", "unit": "แห่ง, ม., ตร.ม.", "level": "sub", "parent": "21320", "parentName": "งานบำรุงรักษาสะพานและโครงสร้าง", "desc": "หมายถึงงานซ่อมแซมส่วนที่ชำรุดเสียหายของสะพาน เช่น งานอุดรอยแตกพื้นสะพานคอนกรีตด้วย Epoxy Resin งานซ่อมราวสะพาน งานซ่อมเปลี่ยนพื้นสะพานไม้ งานซ่อมพื้นสะพานที่เป็น Grid Floor รวมทั้งงานทาสีสะพานทุกชนิด หรืองานทาสะพานคอนกรีตด้วยน้ำปูน", "output": "แห่ง"}, {"code": "21322", "name": "งานลาดคอสะพาน", "unit": "ตร.ม.", "level": "sub", "parent": "21320", "parentName": "งานบำรุงรักษาสะพานและโครงสร้าง", "desc": "หมายถึงงานซ่อมลาดคอสะพานที่ชำรุดเสียหาย เช่น งานปรับแต่งเรียงหินยาแนว (Mortar) ส่วนที่หลุดออก หรือลงวัสดุใหม่แล้วบดอัดให้ได้รูปร่างและเชิงลาดตามความเหมาะสม (Rip-Rap)", "output": "แห่ง"}, {"code": "21323", "name": "งานกำแพงกันดิน", "unit": "ตร.ม.", "level": "sub", "parent": "21320", "parentName": "งานบำรุงรักษาสะพานและโครงสร้าง", "desc": "หมายถึงงานซ่อมแซมความเสียหายของกำแพงกันดินที่โครงสร้างยังแข็งแรงสามารถรับน้ำหนักได้ เช่น งานอัด (Grouting) ด้วยวัสดุผสม Epoxy Resin หรืองานสกัดบริเวณรอยแตกร้าวแล้วฉาบทับผิวใหม่ด้วย Cement Mortar", "output": "แห่ง"}, {"code": "21324", "name": "งานสะพานคนเดินข้ามหรือทางลอด", "unit": "แห่ง", "level": "sub", "parent": "21320", "parentName": "งานบำรุงรักษาสะพานและโครงสร้าง", "desc": "หมายถึงงานซ่อมแซมส่วนที่เสียหายของสะพานคนเดินข้าม ทางลอด และส่วนประกอบอื่นๆ", "output": "แห่ง"}, {"code": "21325", "name": "งานอุโมงค์ทางรถยนต์", "unit": "แห่ง", "level": "sub", "parent": "21320", "parentName": "งานบำรุงรักษาสะพานและโครงสร้าง", "desc": "หมายถึงงานซ่อมแซมส่วนที่ชำรุดเสียหายของอุโมงค์ทางรถยนต์และส่วนประกอบต่างๆ", "output": "แห่ง"}, {"code": "21400", "name": "งานจราจรสงเคราะห์และสิ่งอำนวยความปลอดภัย", "unit": null, "level": "main", "parent": "21000", "parentName": "งานบำรุงปกติ", "desc": "", "output": "-"}, {"code": "21410", "name": "งานป้ายและเครื่องหมายจราจร", "unit": null, "level": "sub", "parent": "21400", "parentName": "งานจราจรสงเคราะห์และสิ่งอำนวยความปลอดภัย", "desc": "", "output": "-"}, {"code": "21411", "name": "งานป้ายจราจร", "unit": "แห่ง, ตร.ม.", "level": "sub", "parent": "21410", "parentName": "งานป้ายและเครื่องหมายจราจร", "desc": "หมายถึงงานทำความสะอาด ปรับแต่ง ซ่อมแซม ทาสี รื้อย้ายป้ายจราจรและส่วนประกอบ รวมทั้งการติดตั้งเพิ่มเติมเป็นบางส่วน", "output": "แห่ง"}, {"code": "21412", "name": "งานตีเส้นและทำเครื่องหมายจราจร", "unit": "ตร.ม.", "level": "sub", "parent": "21410", "parentName": "งานป้ายและเครื่องหมายจราจร", "desc": "หมายถึง งานตีเส้นแบ่งทิศทางจราจร ช่องจราจร ขอบผิวทาง และทำเกาะแบ่งถนน (Raised Island); งานทำเครื่องหมายจราจร ตัวอักษร ลูกศร ทางคนเดินข้าม เส้นหยุดก่อนถึงทางแยกหรือทางรถไฟ; งานทาสีขอบทางเท้า ขอบเกาะแบ่งถนน ขอบคอสะพาน เสาไฟฟ้า ต้นไม้ ฯลฯ", "output": "แห่ง"}, {"code": "21420", "name": "งานสิ่งอำนวยความปลอดภัย", "unit": null, "level": "sub", "parent": "21400", "parentName": "งานจราจรสงเคราะห์และสิ่งอำนวยความปลอดภัย", "desc": "", "output": "-"}, {"code": "21421", "name": "งานบำรุงรักษาหลักนำทาง หลักกิโลเมตร หลักเขตทาง และหมุดหลักฐานอื่นๆ", "unit": "ต้น", "level": "sub", "parent": "21420", "parentName": "งานสิ่งอำนวยความปลอดภัย", "desc": "หมายถึงงานทาสี ทำความสะอาด ปรับแต่ง ซ่อมแซม รื้อย้าย หรือติดตั้งเพิ่มเติมบางส่วนของหลักนำทาง หลักกิโลเมตร หลักเขตทาง และหมุดหลักฐานอื่นๆ", "output": "แห่ง"}, {"code": "21422", "name": "งานบำรุงรักษาราวกันอันตราย กำแพงกันอันตราย รั้วเขตทาง แผงกั้น อุปกรณ์ดูดซับแรงกระแทก และราวกันอันตรายประเภทอื่นๆ", "unit": "ม.", "level": "sub", "parent": "21420", "parentName": "งานสิ่งอำนวยความปลอดภัย", "desc": "หมายถึงงานทาสี ทำความสะอาด ปรับแต่ง ซ่อมแซม รื้อย้าย หรือติดตั้งเพิ่มเติมบางส่วนของราวกันอันตราย กำแพงกันอันตราย รั้วเขตทาง แผงกั้น อุปกรณ์ดูดซับแรงกระแทก และราวกันอันตรายประเภทอื่นๆ", "output": "แห่ง"}, {"code": "21423", "name": "งานบำรุงรักษาสิ่งอำนวยความปลอดภัยอื่นๆ", "unit": "แห่ง", "level": "sub", "parent": "21420", "parentName": "งานสิ่งอำนวยความปลอดภัย", "desc": "หมายถึงงานทาสี ทำความสะอาด ปรับแต่ง ซ่อมแซม รื้อย้าย หรือติดตั้งเพิ่มเติมบางส่วนของสิ่งอำนวยความปลอดภัยอื่นๆ เช่น หมุดสะท้อนแสง เป้าสะท้อนแสง เป็นต้น", "output": "แห่ง"}, {"code": "21430", "name": "งานไฟฟ้าแสงสว่างและไฟสัญญาณจราจร", "unit": null, "level": "sub", "parent": "21400", "parentName": "งานจราจรสงเคราะห์และสิ่งอำนวยความปลอดภัย", "desc": "", "output": "-"}, {"code": "21431", "name": "งานไฟฟ้าแสงสว่าง", "unit": "ต้น, ดวง, อัน, แห่ง", "level": "sub", "parent": "21430", "parentName": "งานไฟฟ้าแสงสว่างและไฟสัญญาณจราจร", "desc": "หมายถึงงานทำความสะอาด ซ่อม ทาสี หรือเปลี่ยนอุปกรณ์ที่ชำรุดเสียหาย ได้แก่ หลอดไฟ ฟิวส์ บัลลาสต์ โฟโต้เซลล์ เซฟตี้สวิทช์ เสา หม้อแปลงไฟฟ้า และอื่นๆ ที่เกี่ยวข้อง รวมทั้งงานรื้อย้ายหรือติดตั้งใหม่ได้บ้างตามความเหมาะสม", "output": "แห่ง"}, {"code": "21432", "name": "งานไฟสัญญาณจราจร", "unit": "ต้น, ดวง, อัน, แห่ง", "level": "sub", "parent": "21430", "parentName": "งานไฟฟ้าแสงสว่างและไฟสัญญาณจราจร", "desc": "หมายถึงงานทำความสะอาด ซ่อม ทาสี หรือเปลี่ยนอุปกรณ์ที่ชำรุดเสียหาย ได้แก่ หลอดไฟ ฟิวส์ ออโตเมติกสวิทช์ ตู้ควบคุม และอื่นๆ ที่เกี่ยวข้อง รวมทั้งงานรื้อย้ายหรือติดตั้งใหม่ได้บ้างตามความเหมาะสม", "output": "แห่ง"}, {"code": "21500", "name": "งานภูมิทัศน์ทางหลวง", "unit": null, "level": "main", "parent": "21000", "parentName": "งานบำรุงปกติ", "desc": "", "output": "-"}, {"code": "21510", "name": "งานบำรุงรักษาลาดข้างทาง", "unit": "ตร.ม., ลบ.ม.", "level": "sub", "parent": "21500", "parentName": "งานภูมิทัศน์ทางหลวง", "desc": "หมายถึงงานซ่อมลาดข้างทางที่เสียหายให้คงสภาพเดิมหรือดีขึ้น เช่น งานปรับแต่ง ปลูกหญ้า เรียงหินยาแนว ลาดคอนกรีต เป็นต้น และให้รวมถึงงานป้องกันหินร่วงโดยใช้ตาข่าย หรืองานฝังยึดระหว่างหินด้วยกันหรือวิธีอื่นใดที่เห็นว่าเหมาะสม", "output": "แห่ง"}, {"code": "21520", "name": "งานตัดหญ้าและถางป่า", "unit": null, "level": "sub", "parent": "21500", "parentName": "งานภูมิทัศน์ทางหลวง", "desc": "", "output": "-"}, {"code": "21521", "name": "งานตัดหญ้า", "unit": "ตร.ม.", "level": "sub", "parent": "21520", "parentName": "งานตัดหญ้าและถางป่า", "desc": "หมายถึงงานตัดหญ้าบริเวณเกาะแบ่งถนน ซึ่งหมายถึงพื้นที่แบ่งช่องหรือทิศทางการจราจรทั้งใน Main Road และทางคู่ขนาน ชนิดยกเป็นแท่น (Raised Median) หรือชนิดเว้นเป็นร่อง (Depressed Median) ขอบไหล่ทาง ลาดคันทาง จนสุดเขตทางหลวง รวมถึงที่ดินนอกเขตทางของกรมทางหลวงด้วย", "output": "แห่ง"}, {"code": "21522", "name": "ถางป่า", "unit": "ตร.ม.", "level": "sub", "parent": "21520", "parentName": "งานตัดหญ้าและถางป่า", "desc": "หมายถึงงานถางป่าบริเวณตั้งแต่ขอบไหล่ทาง ลาดคันทาง จนสุดเขตทางหลวง รวมถึงที่ดินนอกเขตทางของกรมทางหลวงด้วย", "output": "แห่ง"}, {"code": "21530", "name": "งานบำรุงรักษาต้นไม้", "unit": "ต้น, ตร.ม.", "level": "sub", "parent": "21500", "parentName": "งานภูมิทัศน์ทางหลวง", "desc": "หมายถึงงานบำรุงรักษา รดน้ำ ใส่ปุ๋ย ตัดแต่งต้นไม้ ไม้พุ่ม ไม้ดอก ไม้ประดับ ตลอดจนหญ้าและพืชคลุมดิน รวมทั้งต้นไม้ที่ขึ้นเองตามธรรมชาติบริเวณเขตทางหลวง สวนริมทาง และที่ดินนอกเขตทางของกรมทางหลวง และให้รวมถึงงานกำจัดแมลงและวัชพืช ปรับปรุงปรับแต่งหรือเปลี่ยนดินที่ใช้ในการปลูก", "output": "แห่ง"}, {"code": "21540", "name": "งานปลูกต้นไม้", "unit": "ต้น, ตร.ม.", "level": "sub", "parent": "21500", "parentName": "งานภูมิทัศน์ทางหลวง", "desc": "หมายถึงงานปลูก ปลูกซ่อม หรือย้ายต้นไม้ ไม้พุ่ม ไม้ดอก ไม้ประดับ หญ้า และพืชคลุมดินในบริเวณเขตทางหลวง สวนริมทาง และที่ดินนอกเขตทางของกรมทางหลวง", "output": "แห่ง"}, {"code": "21550", "name": "งานที่พักผู้โดยสารและผู้เดินทาง", "unit": "แห่ง", "level": "sub", "parent": "21500", "parentName": "งานภูมิทัศน์ทางหลวง", "desc": "หมายถึงงานซ่อมแซม ทาสีอาคารที่พักผู้โดยสาร ศาลาทางหลวง และอาคารอื่นๆ ที่ได้จัดทำขึ้นไว้ในเขตทางหลวง ที่พักริมทาง หรือที่ดินนอกเขตทางของกรมทางหลวง ทั้งนี้ให้รวมถึงงานซ่อมหรือปรับปรุงที่จอดรถประจำทางได้ตามความจำเป็น", "output": "แห่ง"}, {"code": "21560", "name": "งานปรับแต่งพื้นที่", "unit": "แห่ง, ตร.ม.", "level": "sub", "parent": "21500", "parentName": "งานภูมิทัศน์ทางหลวง", "desc": "หมายถึงงานซ่อมแซม เกลี่ยแต่ง ปรับพื้นที่ภายในเขตทางหลวง สวนริมทาง ที่ดินสงวนนอกเขตทางหลวง บริเวณที่ถูกน้ำกัดเซาะ หรือบริเวณที่ต้องการปรับปรุงตกแต่งเพื่อความสวยงามและรักษาสภาพสิ่งแวดล้อม", "output": "แห่ง"}, {"code": "21570", "name": "งานทำความสะอาด", "unit": "ตร.ม.", "level": "sub", "parent": "21500", "parentName": "งานภูมิทัศน์ทางหลวง", "desc": "หมายถึงงานเก็บกวาดวัสดุ สิ่งปฏิกูล กิ่งไม้ บนผิวทาง ไหล่ทาง ทางเท้า ทางเชื่อม เกาะแบ่งถนน ทางจักรยาน สะพาน สะพานคนเดินข้าม และทางลอด ภายในบริเวณเขตทางหลวง สวนริมทาง และที่ดินนอกเขตทางของกรมทางหลวง ทั้งนี้อาจรวมถึงการจัดหาถังขยะ การล้างทำความสะอาด ฯลฯ", "output": "แห่ง"}, {"code": "21600", "name": "งานสนับสนุนเพื่อเพิ่มประสิทธิภาพงานบำรุงรักษาทางหลวง", "unit": null, "level": "main", "parent": "21000", "parentName": "งานบำรุงปกติ", "desc": "", "output": "-"}, {"code": "21610", "name": "งานศึกษาและพัฒนาระบบงานบำรุงรักษาทางหลวง", "unit": "กิจกรรม, โครงการ", "level": "sub", "parent": "21600", "parentName": "งานสนับสนุนเพื่อเพิ่มประสิทธิภาพงานบำรุงรักษาทางหลวง", "desc": "หมายถึงการดำเนินกิจกรรมหรือโครงการศึกษาเพื่อพัฒนาการวางแผน การบริหารงาน การประเมินและติดตามผล เพื่อเพิ่มประสิทธิภาพงานบำรุงรักษาทางหลวง", "output": "แห่ง"}, {"code": "21620", "name": "งานตรวจสอบและประเมินสภาพทรัพย์สินทางหลวง", "unit": "กิจกรรม, โครงการ", "level": "sub", "parent": "21600", "parentName": "งานสนับสนุนเพื่อเพิ่มประสิทธิภาพงานบำรุงรักษาทางหลวง", "desc": "หมายถึงการตรวจสอบและประเมินสภาพทรัพย์สินของกรมทางหลวง และ/หรือการติดตามและประเมินผลการดำเนินกิจกรรมงานบำรุงรักษาทางหลวง", "output": "แห่ง"}, {"code": "21630", "name": "งานประชาสัมพันธ์และส่งเสริมการมีส่วนร่วมของประชาชน", "unit": "กิจกรรม, โครงการ", "level": "sub", "parent": "21600", "parentName": "งานสนับสนุนเพื่อเพิ่มประสิทธิภาพงานบำรุงรักษาทางหลวง", "desc": "หมายถึงการจัดกิจกรรมหรือโครงการต่างๆ เพื่อเผยแพร่ข้อมูลของกรมทางหลวงในรูปแบบต่างๆ เพื่อให้ประชาชนได้รับทราบข่าวสารเกี่ยวกับกิจกรรมงานบำรุงรักษาทางหลวง และ/หรือส่งเสริมประชาชนได้มีส่วนร่วมแลกเปลี่ยนความคิดเห็นในกิจกรรมงานบำรุงรักษาทางหลวง เพื่อให้การดำเนินการสอดคล้องรองรับความต้องการของประชาชนและมีความเหมาะสมกับสภาพพื้นที่และชุมชน", "output": "แห่ง"}, {"code": "21640", "name": "งานอบรมสัมมนา", "unit": "กิจกรรม, โครงการ", "level": "sub", "parent": "21600", "parentName": "งานสนับสนุนเพื่อเพิ่มประสิทธิภาพงานบำรุงรักษาทางหลวง", "desc": "หมายถึงการจัดอบรมสัมมนาเพิ่มเติม เสริมสร้างความรู้ความเข้าใจแก่บุคลากรงานทางต่อระบบงานบำรุงปกติ หรือพัฒนาให้เกิดการเรียนรู้กระบวนงานหรือนวัตกรรมใหม่ๆ เพิ่มประสิทธิภาพในการบริหารงานบำรุงปกติ", "output": "แห่ง"}, {"code": "21650", "name": "งานอำนวยความสะดวกและปลอดภัย", "unit": "กิจกรรม, โครงการ", "level": "sub", "parent": "21600", "parentName": "งานสนับสนุนเพื่อเพิ่มประสิทธิภาพงานบำรุงรักษาทางหลวง", "desc": "หมายถึงกิจกรรมอำนวยความสะดวกและปลอดภัยแก่ประชาชน ตลอดจนการจัดการในสถานการณ์ต่างๆ เช่น การจัดเส้นทางเบี่ยงกรณีมีการปิดกั้นการจราจร การจัดการจราจรในช่วงเทศกาลต่างๆ รวมถึงเมื่อเกิดภัยพิบัติต่างๆ เช่น อุทกภัย วาตภัย ภัยแล้ง ภัยสึนามิ หรือการจัดการจราจรกรณีเกิดอุบัติเหตุต่างๆ ในทางหลวง เพื่อให้เกิดความปลอดภัยและอำนวยความสะดวกแก่ผู้ใช้ทาง", "output": "แห่ง"}, {"code": "21660", "name": "งานบริหารอำนวยการเพื่อสนับสนุนการปฏิบัติกิจกรรมงานบำรุงปกติ", "unit": "กิจกรรม, โครงการ", "level": "sub", "parent": "21600", "parentName": "งานสนับสนุนเพื่อเพิ่มประสิทธิภาพงานบำรุงรักษาทางหลวง", "desc": "หมายถึงงานบริหารอำนวยการใดๆ ที่ดำเนินการเพิ่มเติมเพื่อสนับสนุนให้การปฏิบัติงานบำรุงปกติเป็นไปอย่างมีประสิทธิภาพเพิ่มมากขึ้น เช่น งานจัดจ้างแรงงานในตำแหน่งพนักงานธุรการหมวดการทาง ซึ่งทำหน้าที่ด้านการรายงานหรือจัดทำฐานข้อมูลต่างๆ ยามรักษาการณ์ที่ทำหน้าที่ดูแลวัสดุอุปกรณ์เครื่องมือที่ใช้ในงานบำรุงปกติ พนักงานขับรถยนต์หรือเครื่องจักรยานพาหนะที่ใช้ในกิจกรรมงานบำรุงปกติ งานจัดซื้อจัดจ้างเพื่อซ่อมแซมปรับปรุงวัสดุครุภัณฑ์อุปกรณ์เครื่องมือ หรือกิจกรรมอื่นๆ ที่มีส่วนสนับสนุนในการเพิ่มประสิทธิภาพการปฏิบัติกิจกรรมงานบำรุงปกติ เป็นต้น", "output": "แห่ง"}];
+/* ชุดข้อมูลตั้งต้น (รหัสงานบำรุงปกติ) — ใช้เป็นแหล่งข้อมูลสำหรับปุ่ม "ซิงก์ข้อมูลเดิมขึ้น
+   ฐานข้อมูลกลาง" ครั้งเดียวเท่านั้น ตัวแปร jobCodeReference ที่ใช้งานจริงโหลดจาก
+   apiGet('job_code_reference') แทน (ดู loadJobCodeReferenceFromApi() ท้ายบรรทัดนี้) */
+const JOB_CODE_REFERENCE_SEED_FOR_MIGRATION = [{"code": "21000", "name": "งานบำรุงปกติ", "unit": null, "level": "main", "parent": null, "parentName": null, "desc": "", "output": "-"}, {"code": "21100", "name": "งานบำรุงรักษาผิวทางหรือไหล่ทาง", "unit": null, "level": "main", "parent": "21000", "parentName": "งานบำรุงปกติ", "desc": "", "output": "-"}, {"code": "21110", "name": "งานบำรุงรักษาผิวทางหรือไหล่ทางแอสฟัลต์", "unit": null, "level": "sub", "parent": "21100", "parentName": "งานบำรุงรักษาผิวทางหรือไหล่ทาง", "desc": "", "output": "-"}, {"code": "21111", "name": "งานอุดรอยแตก", "unit": "ม.", "level": "sub", "parent": "21110", "parentName": "งานบำรุงรักษาผิวทางหรือไหล่ทางแอสฟัลต์", "desc": "หมายถึงงานอุดหรือปิดรอยแตกบนผิวทางหรือไหล่ทางแอสฟัลต์ที่มีลักษณะไม่ต่อเนื่องกัน\n- กรณีที่รอยแตกกว้างน้อยกว่า 3 มม. ให้ใช้แอสฟัลต์เหลวอุดหรือปิดรอยแตกนั้น\n- กรณีรอยแตกกว้างมากกว่า 3 มม. ถ้ารอยแตกลึกไม่มาก ให้ใช้แอสฟัลต์เหลวผสมทรายอุดจนเต็มรอยแตกนั้น ถ้ารอยแตกลึกมาก ให้ใช้ทรายหรือทรายผสมปูนซีเมนต์หรือปูนขาวกรอกจนเกือบเต็มรอยแตก แล้วใช้แอสฟัลต์เหลวผสมทรายอุดจนเต็มรอยแตกนั้น หรือจะดำเนินการซ่อมตามกระบวนการหรือวิธีการที่เหมาะสม", "output": "แห่ง"}, {"code": "21112", "name": "งานฉาบ", "unit": "ตร.ม.", "level": "sub", "parent": "21110", "parentName": "งานบำรุงรักษาผิวทางหรือไหล่ทางแอสฟัลต์", "desc": "หมายถึงงานซ่อมผิวทางหรือไหล่ทางเดิมที่มีรอยแตกแบบต่อเนื่องกัน ผิวลื่น ผิวหลุดร่อน หรือเสื่อมสภาพ โดยที่ระดับผิวทางหรือไหล่ทางเดิมไม่ทรุดตัวเป็นแอ่งหรือร่องล้อ ด้วยวิธี Fog Seal, Sand Seal, Slurry Seal, Chip Seal ฯลฯ ในกรณีผิวทางหรือไหล่ทางมียางเยิ้ม (Bleeding) ให้แก้ไขโดยวิธีสาดทรายหรือหินขณะร้อน หรือเผายางที่เยิ้มหรือขูดออก", "output": "แห่ง"}, {"code": "21113", "name": "งานปรับระดับ", "unit": "ตร.ม., ตัน", "level": "sub", "parent": "21110", "parentName": "งานบำรุงรักษาผิวทางหรือไหล่ทางแอสฟัลต์", "desc": "หมายถึงงานปรับแต่งผิวทางหรือไหล่ทางเดิมที่ขรุขระ ทรุด (Corrugation) หรือยุบตัวเป็นแอ่ง (Grade Depression) หรือเป็นร่องล้อ (Rutting) โดยที่พื้นทางหรือโครงสร้างทางยังคงแข็งแรงอยู่ ให้ได้ระดับเรียบและกลมกลืนกับผิวทางหรือไหล่ทางเดิม โดยทำการทายาง (Tack Coat) แล้วปูทับด้วยวัสดุผสมแอสฟัลต์ (Cold Mix หรือ Hot Mix) ทั้งนี้อาจฉาบผิวเพื่อป้องกันน้ำซึมลงไปด้วยถ้าเห็นสมควร หรือจะดำเนินการซ่อมตามกระบวนการหรือวิธีการที่เหมาะสม", "output": "แห่ง"}, {"code": "21114", "name": "งานปะซ่อม", "unit": "ตร.ม.", "level": "sub", "parent": "21110", "parentName": "งานบำรุงรักษาผิวทางหรือไหล่ทางแอสฟัลต์", "desc": "หมายถึงงานซ่อมผิวทางหรือไหล่ทางที่แตกต่อเนื่องกันแบบหนังจระเข้ ผิวหลุดร่อน ผิวชำรุดเป็นหลุมบ่อ ผิวที่ชำรุดเนื่องจากการเลื่อนตัว และผิวที่เสียหายเนื่องจากอุบัติเหตุ ซึ่งความเสียหายเกิดเฉพาะผิวทางหรือไหล่ทาง โดยขุดรื้อผิวที่เสียหายออกเป็นรูปสี่เหลี่ยม ทำความสะอาดแล้วทายาง (Prime Coat หรือ Tack Coat) ให้ทั่ว ใช้วัสดุผสมแอสฟัลต์ (Cold Mix หรือ Hot Mix) ปะซ่อมทำผิวทางหรือไหล่ทางใหม่ ให้ได้ระดับเรียบและกลมกลืนกับผิวทางหรือไหล่ทางเดิม ทั้งนี้อาจฉาบผิวเพื่อป้องกันน้ำซึมลงไปด้วยถ้าเห็นสมควร หรือจะดำเนินการซ่อมตามกระบวนการหรือวิธีการที่เหมาะสม", "output": "แห่ง"}, {"code": "21115", "name": "งานขุดซ่อม", "unit": "ตร.ม.", "level": "sub", "parent": "21110", "parentName": "งานบำรุงรักษาผิวทางหรือไหล่ทางแอสฟัลต์", "desc": "หมายถึงงานซ่อมชั้นโครงสร้างทางที่มีลักษณะความเสียหายปรากฏบนผิวทางหรือไหล่ทาง และความเสียหายนั้นเกิดถึงระดับชั้นพื้นทาง ชั้นรองพื้นทาง หรือชั้นคันทาง ให้ทำการซ่อมโดยขุดรื้อเอาวัสดุที่ร่อนหรือเสียหายออกจนถึงระดับชั้นที่เห็นว่าจำเป็น บดอัดก้นหลุมให้แน่นและเรียบเสมอกัน นำวัสดุที่ได้มาตรฐานลงแทนแล้วบดอัดแน่น แล้วทำการทายาง (Prime Coat หรือ Tack Coat) ให้ทั่วแล้วแต่กรณี ทำผิวทางหรือไหล่ทางใหม่ตามสภาพเดิมหรือดีกว่า โดยรักษาระดับรอยต่อให้เรียบและกลมกลืนกับผิวทางหรือไหล่ทางเดิม ทั้งนี้อาจฉาบผิวเพื่อป้องกันน้ำซึมลงไปด้วยถ้าเห็นสมควร หรือจะดำเนินการซ่อมตามกระบวนการหรือวิธีการที่เหมาะสม", "output": "แห่ง"}, {"code": "21116", "name": "งานปาดแต่ง", "unit": "ตร.ม.", "level": "sub", "parent": "21110", "parentName": "งานบำรุงรักษาผิวทางหรือไหล่ทางแอสฟัลต์", "desc": "หมายถึงงานปาดตัดแต่งผิวทางหรือไหล่ทางชนิดแอสฟัลต์คอนกรีตที่เป็นสันหรือเป็นคลื่นเนื่องจากการเคลื่อนตัวเฉพาะชั้นผิวทาง อาจรวมถึงการปรับแต่งให้ได้ระดับและกลมกลืนกับผิวทางหรือไหล่ทางเดิม โดยทำความสะอาดแล้วทำการทายาง (Tack Coat) ให้ทั่ว ใช้วัสดุผสมแอสฟัลต์ (Cold Mix หรือ Hot Mix) ปูให้ได้ระดับเรียบกลมกลืนกับผิวทางหรือไหล่ทางเดิม", "output": "แห่ง"}, {"code": "21120", "name": "งานบำรุงรักษาผิวทางหรือไหล่ทางคอนกรีต", "unit": null, "level": "sub", "parent": "21100", "parentName": "งานบำรุงรักษาผิวทางหรือไหล่ทาง", "desc": "", "output": "-"}, {"code": "21121", "name": "งานซ่อมวัสดุรอยต่อ", "unit": "ม.", "level": "sub", "parent": "21120", "parentName": "งานบำรุงรักษาผิวทางหรือไหล่ทางคอนกรีต", "desc": "หมายถึงงานซ่อมเปลี่ยนวัสดุรอยต่อเดิมระหว่างแผ่นพื้นคอนกรีตที่ชำรุดหรือเสื่อมสภาพ โดยการเซาะเอาวัสดุเดิมออกจนหมด ทำความสะอาดแล้วหยอดหรือทารอยต่อด้วย Primer ก่อนทำการอุดด้วยวัสดุยาแนวใหม่แทน จนมีสภาพรอยต่อดีดังเดิม", "output": "แห่ง"}, {"code": "21122", "name": "งานอุดเชื่อมรอยแตก", "unit": "ม.", "level": "sub", "parent": "21120", "parentName": "งานบำรุงรักษาผิวทางหรือไหล่ทางคอนกรีต", "desc": "หมายถึงงานอุดรอยแตก (Cracks) ที่เกิดขึ้นในแผ่นพื้นคอนกรีต โดยทำความสะอาดรอยแตกด้วยเครื่องอัดลม แล้วใช้แอสฟัลต์เหลวหรือ Epoxy Resin อุดตามรอยแตกนั้น หรือจะดำเนินการซ่อมตามกระบวนการหรือวิธีการที่เหมาะสม", "output": "แห่ง"}, {"code": "21123", "name": "งานปรับระดับคอนกรีต", "unit": "ตร.ม.", "level": "sub", "parent": "21120", "parentName": "งานบำรุงรักษาผิวทางหรือไหล่ทางคอนกรีต", "desc": "หมายถึงงานปรับระดับผิวหรือไหล่คอนกรีตเดิมที่ชำรุด โดยใช้วัสดุผสมแอสฟัลต์ (Cold Mix หรือ Hot Mix) ปูทับลงบนผิวคอนกรีตหลังจากทายาง (Tack Coat) หรือฉาบวัสดุคั่นกลาง (Interlayer) แล้ว หรือจะดำเนินการตามกระบวนการหรือวิธีการที่เหมาะสม เช่น การทำ Mud Jacking เป็นต้น", "output": "แห่ง"}, {"code": "21124", "name": "งานซ่อมคอนกรีต", "unit": "ตร.ม.", "level": "sub", "parent": "21120", "parentName": "งานบำรุงรักษาผิวทางหรือไหล่ทางคอนกรีต", "desc": "หมายถึงงานเจาะสกัดหรือลอกผิวหรือไหล่คอนกรีตส่วนที่ชำรุดเสียหายออกบางส่วนหรือทั้งแผ่น รวมถึงการขุดรื้อวัสดุรองพื้นส่วนที่เสียหายออกจนถึงระดับชั้นที่เห็นว่าจำเป็น บดอัดแน่น แล้วใช้วัสดุที่ได้มาตรฐานลงแทนบดอัดแน่นก่อนเสริมหรือทำผิวคอนกรีตใหม่ หรือจะดำเนินการซ่อมตามกระบวนการหรือวิธีการที่เหมาะสม", "output": "แห่ง"}, {"code": "21130", "name": "งานบำรุงรักษาผิวทางหรือไหล่ทางลูกรัง", "unit": null, "level": "sub", "parent": "21100", "parentName": "งานบำรุงรักษาผิวทางหรือไหล่ทาง", "desc": "", "output": "-"}, {"code": "21131", "name": "งานซ่อมหลุมบ่อ", "unit": "ตร.ม.", "level": "sub", "parent": "21130", "parentName": "งานบำรุงรักษาผิวทางหรือไหล่ทางลูกรัง", "desc": "หมายถึงงานขุดเอาวัสดุส่วนที่เสียหายออก ตกแต่งก้นหลุม แล้วเติมวัสดุใหม่ที่ได้มาตรฐาน บดอัดแน่นจนเสมอผิวเดิมโดยรอบ", "output": "แห่ง"}, {"code": "21132", "name": "งานกวาดเกลี่ย", "unit": "ตร.ม.", "level": "sub", "parent": "21130", "parentName": "งานบำรุงรักษาผิวทางหรือไหล่ทางลูกรัง", "desc": "หมายถึงงานกวาดเกลี่ยผิวทางหรือไหล่ทางลูกรังเดิมที่เป็นคลื่นลอน ลูกระนาด ร่องล้อ ตลอดจนรอยกัดเซาะของน้ำให้เรียบ โดยใช้รถเกลี่ยหรือชุดกวาดเกลี่ย และอาจเติมวัสดุใหม่ได้ตามความจำเป็น", "output": "แห่ง"}, {"code": "21133", "name": "งานขึ้นรูปบดทับใหม่", "unit": "ตร.ม.", "level": "sub", "parent": "21130", "parentName": "งานบำรุงรักษาผิวทางหรือไหล่ทางลูกรัง", "desc": "หมายถึงงานไถคราด (Scarifying) ผิวทางหรือไหล่ทางลูกรังเดิมที่ชำรุดเสียหายมากจนเปลี่ยนไปจากรูปทรงเดิม เติมวัสดุใหม่ที่ได้มาตรฐานลงผสมเกลี่ยแต่งและบดอัดแน่นให้ได้รูปทรงตามควร ถ้าวัสดุเดิมเพียงพออาจไม่ต้องเติมวัสดุใหม่ก็ได้", "output": "แห่ง"}, {"code": "21200", "name": "งานบำรุงรักษาทางเท้า ทางเชื่อม เกาะแบ่งถนน และทางจักรยาน", "unit": null, "level": "main", "parent": "21000", "parentName": "งานบำรุงปกติ", "desc": "", "output": "-"}, {"code": "21201", "name": "งานซ่อมทางเท้า ทางเชื่อม เกาะแบ่งถนน และทางจักรยาน", "unit": "ตร.ม.", "level": "sub", "parent": "21200", "parentName": "งานบำรุงรักษาทางเท้า ทางเชื่อม เกาะแบ่งถนน และทางจักรยาน", "desc": "หมายถึงงานซ่อมทางเท้า ทางเชื่อม เกาะแบ่งถนน และทางจักรยานที่ชำรุดเสียหายให้คืนสู่สภาพ ทั้งนี้อาจรวมถึงงานเสริมหรือขยายพื้นที่ได้ตามความจำเป็น", "output": "แห่ง"}, {"code": "21300", "name": "งานระบบระบายน้ำ สะพานและโครงสร้าง", "unit": null, "level": "main", "parent": "21000", "parentName": "งานบำรุงปกติ", "desc": "", "output": "-"}, {"code": "21310", "name": "งานบำรุงรักษาระบบระบายน้ำ", "unit": null, "level": "sub", "parent": "21300", "parentName": "งานระบบระบายน้ำ สะพานและโครงสร้าง", "desc": "", "output": "-"}, {"code": "21311", "name": "งานทางระบายน้ำ", "unit": "ม., ตร.ม., ลบ.ม.", "level": "sub", "parent": "21310", "parentName": "งานบำรุงรักษาระบบระบายน้ำ", "desc": "หมายถึงงานทำความสะอาด ขุดลอก ตกแต่ง ต่อเติม ซ่อมแซม หรือรื้อย้ายท่อระบายน้ำและส่วนประกอบ ได้แก่ คันหินรางตื้น (Curb & Gutter), รางระบายน้ำบริเวณลาดข้างทาง (Chute), รางดักน้ำ (Intercepting Ditch), คันกั้นน้ำ (Dike), ช่องน้ำธรรมชาติและช่องน้ำซึ่งได้ทำขึ้นใหม่", "output": "แห่ง"}, {"code": "21312", "name": "งานท่อระบายน้ำ", "unit": "แห่ง, ม.", "level": "sub", "parent": "21310", "parentName": "งานบำรุงรักษาระบบระบายน้ำ", "desc": "หมายถึงงานทำความสะอาด ขุดลอก ตกแต่ง ต่อเติม ซ่อมแซม หรือรื้อย้ายท่อระบายน้ำและส่วนประกอบ ได้แก่ กำแพงหน้าท่อ (Headwall), ปากท่อ (Inlet & Outlet), บ่อพัก (Manhole), บ่อดักน้ำ (Drop Inlet & Catch Basin), ท่อระบายน้ำใต้ดิน (Subdrain) ฯลฯ", "output": "แห่ง"}, {"code": "21320", "name": "งานบำรุงรักษาสะพานและโครงสร้าง", "unit": null, "level": "sub", "parent": "21300", "parentName": "งานระบบระบายน้ำ สะพานและโครงสร้าง", "desc": "", "output": "-"}, {"code": "21321", "name": "งานสะพาน", "unit": "แห่ง, ม., ตร.ม.", "level": "sub", "parent": "21320", "parentName": "งานบำรุงรักษาสะพานและโครงสร้าง", "desc": "หมายถึงงานซ่อมแซมส่วนที่ชำรุดเสียหายของสะพาน เช่น งานอุดรอยแตกพื้นสะพานคอนกรีตด้วย Epoxy Resin งานซ่อมราวสะพาน งานซ่อมเปลี่ยนพื้นสะพานไม้ งานซ่อมพื้นสะพานที่เป็น Grid Floor รวมทั้งงานทาสีสะพานทุกชนิด หรืองานทาสะพานคอนกรีตด้วยน้ำปูน", "output": "แห่ง"}, {"code": "21322", "name": "งานลาดคอสะพาน", "unit": "ตร.ม.", "level": "sub", "parent": "21320", "parentName": "งานบำรุงรักษาสะพานและโครงสร้าง", "desc": "หมายถึงงานซ่อมลาดคอสะพานที่ชำรุดเสียหาย เช่น งานปรับแต่งเรียงหินยาแนว (Mortar) ส่วนที่หลุดออก หรือลงวัสดุใหม่แล้วบดอัดให้ได้รูปร่างและเชิงลาดตามความเหมาะสม (Rip-Rap)", "output": "แห่ง"}, {"code": "21323", "name": "งานกำแพงกันดิน", "unit": "ตร.ม.", "level": "sub", "parent": "21320", "parentName": "งานบำรุงรักษาสะพานและโครงสร้าง", "desc": "หมายถึงงานซ่อมแซมความเสียหายของกำแพงกันดินที่โครงสร้างยังแข็งแรงสามารถรับน้ำหนักได้ เช่น งานอัด (Grouting) ด้วยวัสดุผสม Epoxy Resin หรืองานสกัดบริเวณรอยแตกร้าวแล้วฉาบทับผิวใหม่ด้วย Cement Mortar", "output": "แห่ง"}, {"code": "21324", "name": "งานสะพานคนเดินข้ามหรือทางลอด", "unit": "แห่ง", "level": "sub", "parent": "21320", "parentName": "งานบำรุงรักษาสะพานและโครงสร้าง", "desc": "หมายถึงงานซ่อมแซมส่วนที่เสียหายของสะพานคนเดินข้าม ทางลอด และส่วนประกอบอื่นๆ", "output": "แห่ง"}, {"code": "21325", "name": "งานอุโมงค์ทางรถยนต์", "unit": "แห่ง", "level": "sub", "parent": "21320", "parentName": "งานบำรุงรักษาสะพานและโครงสร้าง", "desc": "หมายถึงงานซ่อมแซมส่วนที่ชำรุดเสียหายของอุโมงค์ทางรถยนต์และส่วนประกอบต่างๆ", "output": "แห่ง"}, {"code": "21400", "name": "งานจราจรสงเคราะห์และสิ่งอำนวยความปลอดภัย", "unit": null, "level": "main", "parent": "21000", "parentName": "งานบำรุงปกติ", "desc": "", "output": "-"}, {"code": "21410", "name": "งานป้ายและเครื่องหมายจราจร", "unit": null, "level": "sub", "parent": "21400", "parentName": "งานจราจรสงเคราะห์และสิ่งอำนวยความปลอดภัย", "desc": "", "output": "-"}, {"code": "21411", "name": "งานป้ายจราจร", "unit": "แห่ง, ตร.ม.", "level": "sub", "parent": "21410", "parentName": "งานป้ายและเครื่องหมายจราจร", "desc": "หมายถึงงานทำความสะอาด ปรับแต่ง ซ่อมแซม ทาสี รื้อย้ายป้ายจราจรและส่วนประกอบ รวมทั้งการติดตั้งเพิ่มเติมเป็นบางส่วน", "output": "แห่ง"}, {"code": "21412", "name": "งานตีเส้นและทำเครื่องหมายจราจร", "unit": "ตร.ม.", "level": "sub", "parent": "21410", "parentName": "งานป้ายและเครื่องหมายจราจร", "desc": "หมายถึง งานตีเส้นแบ่งทิศทางจราจร ช่องจราจร ขอบผิวทาง และทำเกาะแบ่งถนน (Raised Island); งานทำเครื่องหมายจราจร ตัวอักษร ลูกศร ทางคนเดินข้าม เส้นหยุดก่อนถึงทางแยกหรือทางรถไฟ; งานทาสีขอบทางเท้า ขอบเกาะแบ่งถนน ขอบคอสะพาน เสาไฟฟ้า ต้นไม้ ฯลฯ", "output": "แห่ง"}, {"code": "21420", "name": "งานสิ่งอำนวยความปลอดภัย", "unit": null, "level": "sub", "parent": "21400", "parentName": "งานจราจรสงเคราะห์และสิ่งอำนวยความปลอดภัย", "desc": "", "output": "-"}, {"code": "21421", "name": "งานบำรุงรักษาหลักนำทาง หลักกิโลเมตร หลักเขตทาง และหมุดหลักฐานอื่นๆ", "unit": "ต้น", "level": "sub", "parent": "21420", "parentName": "งานสิ่งอำนวยความปลอดภัย", "desc": "หมายถึงงานทาสี ทำความสะอาด ปรับแต่ง ซ่อมแซม รื้อย้าย หรือติดตั้งเพิ่มเติมบางส่วนของหลักนำทาง หลักกิโลเมตร หลักเขตทาง และหมุดหลักฐานอื่นๆ", "output": "แห่ง"}, {"code": "21422", "name": "งานบำรุงรักษาราวกันอันตราย กำแพงกันอันตราย รั้วเขตทาง แผงกั้น อุปกรณ์ดูดซับแรงกระแทก และราวกันอันตรายประเภทอื่นๆ", "unit": "ม.", "level": "sub", "parent": "21420", "parentName": "งานสิ่งอำนวยความปลอดภัย", "desc": "หมายถึงงานทาสี ทำความสะอาด ปรับแต่ง ซ่อมแซม รื้อย้าย หรือติดตั้งเพิ่มเติมบางส่วนของราวกันอันตราย กำแพงกันอันตราย รั้วเขตทาง แผงกั้น อุปกรณ์ดูดซับแรงกระแทก และราวกันอันตรายประเภทอื่นๆ", "output": "แห่ง"}, {"code": "21423", "name": "งานบำรุงรักษาสิ่งอำนวยความปลอดภัยอื่นๆ", "unit": "แห่ง", "level": "sub", "parent": "21420", "parentName": "งานสิ่งอำนวยความปลอดภัย", "desc": "หมายถึงงานทาสี ทำความสะอาด ปรับแต่ง ซ่อมแซม รื้อย้าย หรือติดตั้งเพิ่มเติมบางส่วนของสิ่งอำนวยความปลอดภัยอื่นๆ เช่น หมุดสะท้อนแสง เป้าสะท้อนแสง เป็นต้น", "output": "แห่ง"}, {"code": "21430", "name": "งานไฟฟ้าแสงสว่างและไฟสัญญาณจราจร", "unit": null, "level": "sub", "parent": "21400", "parentName": "งานจราจรสงเคราะห์และสิ่งอำนวยความปลอดภัย", "desc": "", "output": "-"}, {"code": "21431", "name": "งานไฟฟ้าแสงสว่าง", "unit": "ต้น, ดวง, อัน, แห่ง", "level": "sub", "parent": "21430", "parentName": "งานไฟฟ้าแสงสว่างและไฟสัญญาณจราจร", "desc": "หมายถึงงานทำความสะอาด ซ่อม ทาสี หรือเปลี่ยนอุปกรณ์ที่ชำรุดเสียหาย ได้แก่ หลอดไฟ ฟิวส์ บัลลาสต์ โฟโต้เซลล์ เซฟตี้สวิทช์ เสา หม้อแปลงไฟฟ้า และอื่นๆ ที่เกี่ยวข้อง รวมทั้งงานรื้อย้ายหรือติดตั้งใหม่ได้บ้างตามความเหมาะสม", "output": "แห่ง"}, {"code": "21432", "name": "งานไฟสัญญาณจราจร", "unit": "ต้น, ดวง, อัน, แห่ง", "level": "sub", "parent": "21430", "parentName": "งานไฟฟ้าแสงสว่างและไฟสัญญาณจราจร", "desc": "หมายถึงงานทำความสะอาด ซ่อม ทาสี หรือเปลี่ยนอุปกรณ์ที่ชำรุดเสียหาย ได้แก่ หลอดไฟ ฟิวส์ ออโตเมติกสวิทช์ ตู้ควบคุม และอื่นๆ ที่เกี่ยวข้อง รวมทั้งงานรื้อย้ายหรือติดตั้งใหม่ได้บ้างตามความเหมาะสม", "output": "แห่ง"}, {"code": "21500", "name": "งานภูมิทัศน์ทางหลวง", "unit": null, "level": "main", "parent": "21000", "parentName": "งานบำรุงปกติ", "desc": "", "output": "-"}, {"code": "21510", "name": "งานบำรุงรักษาลาดข้างทาง", "unit": "ตร.ม., ลบ.ม.", "level": "sub", "parent": "21500", "parentName": "งานภูมิทัศน์ทางหลวง", "desc": "หมายถึงงานซ่อมลาดข้างทางที่เสียหายให้คงสภาพเดิมหรือดีขึ้น เช่น งานปรับแต่ง ปลูกหญ้า เรียงหินยาแนว ลาดคอนกรีต เป็นต้น และให้รวมถึงงานป้องกันหินร่วงโดยใช้ตาข่าย หรืองานฝังยึดระหว่างหินด้วยกันหรือวิธีอื่นใดที่เห็นว่าเหมาะสม", "output": "แห่ง"}, {"code": "21520", "name": "งานตัดหญ้าและถางป่า", "unit": null, "level": "sub", "parent": "21500", "parentName": "งานภูมิทัศน์ทางหลวง", "desc": "", "output": "-"}, {"code": "21521", "name": "งานตัดหญ้า", "unit": "ตร.ม.", "level": "sub", "parent": "21520", "parentName": "งานตัดหญ้าและถางป่า", "desc": "หมายถึงงานตัดหญ้าบริเวณเกาะแบ่งถนน ซึ่งหมายถึงพื้นที่แบ่งช่องหรือทิศทางการจราจรทั้งใน Main Road และทางคู่ขนาน ชนิดยกเป็นแท่น (Raised Median) หรือชนิดเว้นเป็นร่อง (Depressed Median) ขอบไหล่ทาง ลาดคันทาง จนสุดเขตทางหลวง รวมถึงที่ดินนอกเขตทางของกรมทางหลวงด้วย", "output": "แห่ง"}, {"code": "21522", "name": "ถางป่า", "unit": "ตร.ม.", "level": "sub", "parent": "21520", "parentName": "งานตัดหญ้าและถางป่า", "desc": "หมายถึงงานถางป่าบริเวณตั้งแต่ขอบไหล่ทาง ลาดคันทาง จนสุดเขตทางหลวง รวมถึงที่ดินนอกเขตทางของกรมทางหลวงด้วย", "output": "แห่ง"}, {"code": "21530", "name": "งานบำรุงรักษาต้นไม้", "unit": "ต้น, ตร.ม.", "level": "sub", "parent": "21500", "parentName": "งานภูมิทัศน์ทางหลวง", "desc": "หมายถึงงานบำรุงรักษา รดน้ำ ใส่ปุ๋ย ตัดแต่งต้นไม้ ไม้พุ่ม ไม้ดอก ไม้ประดับ ตลอดจนหญ้าและพืชคลุมดิน รวมทั้งต้นไม้ที่ขึ้นเองตามธรรมชาติบริเวณเขตทางหลวง สวนริมทาง และที่ดินนอกเขตทางของกรมทางหลวง และให้รวมถึงงานกำจัดแมลงและวัชพืช ปรับปรุงปรับแต่งหรือเปลี่ยนดินที่ใช้ในการปลูก", "output": "แห่ง"}, {"code": "21540", "name": "งานปลูกต้นไม้", "unit": "ต้น, ตร.ม.", "level": "sub", "parent": "21500", "parentName": "งานภูมิทัศน์ทางหลวง", "desc": "หมายถึงงานปลูก ปลูกซ่อม หรือย้ายต้นไม้ ไม้พุ่ม ไม้ดอก ไม้ประดับ หญ้า และพืชคลุมดินในบริเวณเขตทางหลวง สวนริมทาง และที่ดินนอกเขตทางของกรมทางหลวง", "output": "แห่ง"}, {"code": "21550", "name": "งานที่พักผู้โดยสารและผู้เดินทาง", "unit": "แห่ง", "level": "sub", "parent": "21500", "parentName": "งานภูมิทัศน์ทางหลวง", "desc": "หมายถึงงานซ่อมแซม ทาสีอาคารที่พักผู้โดยสาร ศาลาทางหลวง และอาคารอื่นๆ ที่ได้จัดทำขึ้นไว้ในเขตทางหลวง ที่พักริมทาง หรือที่ดินนอกเขตทางของกรมทางหลวง ทั้งนี้ให้รวมถึงงานซ่อมหรือปรับปรุงที่จอดรถประจำทางได้ตามความจำเป็น", "output": "แห่ง"}, {"code": "21560", "name": "งานปรับแต่งพื้นที่", "unit": "แห่ง, ตร.ม.", "level": "sub", "parent": "21500", "parentName": "งานภูมิทัศน์ทางหลวง", "desc": "หมายถึงงานซ่อมแซม เกลี่ยแต่ง ปรับพื้นที่ภายในเขตทางหลวง สวนริมทาง ที่ดินสงวนนอกเขตทางหลวง บริเวณที่ถูกน้ำกัดเซาะ หรือบริเวณที่ต้องการปรับปรุงตกแต่งเพื่อความสวยงามและรักษาสภาพสิ่งแวดล้อม", "output": "แห่ง"}, {"code": "21570", "name": "งานทำความสะอาด", "unit": "ตร.ม.", "level": "sub", "parent": "21500", "parentName": "งานภูมิทัศน์ทางหลวง", "desc": "หมายถึงงานเก็บกวาดวัสดุ สิ่งปฏิกูล กิ่งไม้ บนผิวทาง ไหล่ทาง ทางเท้า ทางเชื่อม เกาะแบ่งถนน ทางจักรยาน สะพาน สะพานคนเดินข้าม และทางลอด ภายในบริเวณเขตทางหลวง สวนริมทาง และที่ดินนอกเขตทางของกรมทางหลวง ทั้งนี้อาจรวมถึงการจัดหาถังขยะ การล้างทำความสะอาด ฯลฯ", "output": "แห่ง"}, {"code": "21600", "name": "งานสนับสนุนเพื่อเพิ่มประสิทธิภาพงานบำรุงรักษาทางหลวง", "unit": null, "level": "main", "parent": "21000", "parentName": "งานบำรุงปกติ", "desc": "", "output": "-"}, {"code": "21610", "name": "งานศึกษาและพัฒนาระบบงานบำรุงรักษาทางหลวง", "unit": "กิจกรรม, โครงการ", "level": "sub", "parent": "21600", "parentName": "งานสนับสนุนเพื่อเพิ่มประสิทธิภาพงานบำรุงรักษาทางหลวง", "desc": "หมายถึงการดำเนินกิจกรรมหรือโครงการศึกษาเพื่อพัฒนาการวางแผน การบริหารงาน การประเมินและติดตามผล เพื่อเพิ่มประสิทธิภาพงานบำรุงรักษาทางหลวง", "output": "แห่ง"}, {"code": "21620", "name": "งานตรวจสอบและประเมินสภาพทรัพย์สินทางหลวง", "unit": "กิจกรรม, โครงการ", "level": "sub", "parent": "21600", "parentName": "งานสนับสนุนเพื่อเพิ่มประสิทธิภาพงานบำรุงรักษาทางหลวง", "desc": "หมายถึงการตรวจสอบและประเมินสภาพทรัพย์สินของกรมทางหลวง และ/หรือการติดตามและประเมินผลการดำเนินกิจกรรมงานบำรุงรักษาทางหลวง", "output": "แห่ง"}, {"code": "21630", "name": "งานประชาสัมพันธ์และส่งเสริมการมีส่วนร่วมของประชาชน", "unit": "กิจกรรม, โครงการ", "level": "sub", "parent": "21600", "parentName": "งานสนับสนุนเพื่อเพิ่มประสิทธิภาพงานบำรุงรักษาทางหลวง", "desc": "หมายถึงการจัดกิจกรรมหรือโครงการต่างๆ เพื่อเผยแพร่ข้อมูลของกรมทางหลวงในรูปแบบต่างๆ เพื่อให้ประชาชนได้รับทราบข่าวสารเกี่ยวกับกิจกรรมงานบำรุงรักษาทางหลวง และ/หรือส่งเสริมประชาชนได้มีส่วนร่วมแลกเปลี่ยนความคิดเห็นในกิจกรรมงานบำรุงรักษาทางหลวง เพื่อให้การดำเนินการสอดคล้องรองรับความต้องการของประชาชนและมีความเหมาะสมกับสภาพพื้นที่และชุมชน", "output": "แห่ง"}, {"code": "21640", "name": "งานอบรมสัมมนา", "unit": "กิจกรรม, โครงการ", "level": "sub", "parent": "21600", "parentName": "งานสนับสนุนเพื่อเพิ่มประสิทธิภาพงานบำรุงรักษาทางหลวง", "desc": "หมายถึงการจัดอบรมสัมมนาเพิ่มเติม เสริมสร้างความรู้ความเข้าใจแก่บุคลากรงานทางต่อระบบงานบำรุงปกติ หรือพัฒนาให้เกิดการเรียนรู้กระบวนงานหรือนวัตกรรมใหม่ๆ เพิ่มประสิทธิภาพในการบริหารงานบำรุงปกติ", "output": "แห่ง"}, {"code": "21650", "name": "งานอำนวยความสะดวกและปลอดภัย", "unit": "กิจกรรม, โครงการ", "level": "sub", "parent": "21600", "parentName": "งานสนับสนุนเพื่อเพิ่มประสิทธิภาพงานบำรุงรักษาทางหลวง", "desc": "หมายถึงกิจกรรมอำนวยความสะดวกและปลอดภัยแก่ประชาชน ตลอดจนการจัดการในสถานการณ์ต่างๆ เช่น การจัดเส้นทางเบี่ยงกรณีมีการปิดกั้นการจราจร การจัดการจราจรในช่วงเทศกาลต่างๆ รวมถึงเมื่อเกิดภัยพิบัติต่างๆ เช่น อุทกภัย วาตภัย ภัยแล้ง ภัยสึนามิ หรือการจัดการจราจรกรณีเกิดอุบัติเหตุต่างๆ ในทางหลวง เพื่อให้เกิดความปลอดภัยและอำนวยความสะดวกแก่ผู้ใช้ทาง", "output": "แห่ง"}, {"code": "21660", "name": "งานบริหารอำนวยการเพื่อสนับสนุนการปฏิบัติกิจกรรมงานบำรุงปกติ", "unit": "กิจกรรม, โครงการ", "level": "sub", "parent": "21600", "parentName": "งานสนับสนุนเพื่อเพิ่มประสิทธิภาพงานบำรุงรักษาทางหลวง", "desc": "หมายถึงงานบริหารอำนวยการใดๆ ที่ดำเนินการเพิ่มเติมเพื่อสนับสนุนให้การปฏิบัติงานบำรุงปกติเป็นไปอย่างมีประสิทธิภาพเพิ่มมากขึ้น เช่น งานจัดจ้างแรงงานในตำแหน่งพนักงานธุรการหมวดการทาง ซึ่งทำหน้าที่ด้านการรายงานหรือจัดทำฐานข้อมูลต่างๆ ยามรักษาการณ์ที่ทำหน้าที่ดูแลวัสดุอุปกรณ์เครื่องมือที่ใช้ในงานบำรุงปกติ พนักงานขับรถยนต์หรือเครื่องจักรยานพาหนะที่ใช้ในกิจกรรมงานบำรุงปกติ งานจัดซื้อจัดจ้างเพื่อซ่อมแซมปรับปรุงวัสดุครุภัณฑ์อุปกรณ์เครื่องมือ หรือกิจกรรมอื่นๆ ที่มีส่วนสนับสนุนในการเพิ่มประสิทธิภาพการปฏิบัติกิจกรรมงานบำรุงปกติ เป็นต้น", "output": "แห่ง"}];
+/* แปลง job_code_reference ระหว่างรูปแบบภายใน (code/name/desc) กับคอลัมน์ Sheet
+   (jobCode/jobName/description) — field อื่นชื่อตรงกันอยู่แล้ว */
+function jcFromApi(row){
+  return { code:row.jobCode, name:row.jobName, level:row.level||'', parent:row.parent||null,
+    parentName:row.parentName||null, unit:row.unit||null, output:row.output||'-', desc:row.description||'' };
+}
+function jcToApi(rec){
+  return { jobCode:rec.code, jobName:rec.name, unit:rec.unit, level:rec.level,
+    parent:rec.parent, parentName:rec.parentName, output:rec.output, description:rec.desc };
+}
+/* ข้อมูลรหัสงานจริงย้ายไปอยู่ที่ Google Sheets แท็บ "job_code_reference" แล้ว (แก้ปัญหาเดิม
+   ที่แก้ไขรหัสงานแล้วหายหลัง reload เพราะไม่เคยถูกรวมเข้า __collectState ของ localStorage)
+   หน้านี้โหลดจาก API ตอนเปิดหน้าเสมอ ดูฟังก์ชัน loadJobCodeReferenceFromApi() ด้านล่าง */
+let jobCodeReference = [];
+async function loadJobCodeReferenceFromApi(){
+  try{
+    jobCodeReference = (await apiGet('job_code_reference')).map(jcFromApi);
+  }catch(err){
+    console.error('โหลดข้อมูลรหัสงานจากฐานข้อมูลกลางล้มเหลว', err);
+    alert('โหลดข้อมูลรหัสงานจากฐานข้อมูลกลางไม่สำเร็จ: ' + err.message + '\nกรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ตแล้วรีเฟรชหน้าใหม่');
+  }
+}
 
 function jcRowHtml(r){
   return `
@@ -1527,7 +1723,7 @@ function closeJcForm(){
   document.getElementById('jc-form-overlay').classList.add('hidden');
   __jcEditingCode = null;
 }
-function saveJcEntry(){
+async function saveJcEntry(){
   if(!isAdmin()) return;
   const code = document.getElementById('jc-f-code').value.trim();
   if(!code){ alert('กรุณาระบุรหัสงาน'); return; }
@@ -1546,23 +1742,42 @@ function saveJcEntry(){
     output: output || '-',
     desc: document.getElementById('jc-f-desc').value.trim()
   };
-  if(__jcEditingCode){
-    const idx = jobCodeReference.findIndex(r=>r.code===__jcEditingCode);
-    if(idx>-1) jobCodeReference[idx] = rec;
-    jobCodeReference.forEach(r=>{ if(r.parent===__jcEditingCode){ r.parent=code; r.parentName=name; } });
-  } else {
-    jobCodeReference.push(rec);
+  /* รหัสงาน (jc-f-code) ปิดแก้ไขเสมอตอน edit (ดู openJcForm) ดังนั้น rec.code === __jcEditingCode
+     เสมอเมื่อแก้ไข — updateRow หาแถวเจอแน่นอนด้วย jobCode เดิม */
+  const affectedChildren = __jcEditingCode ? jobCodeReference.filter(r=>r.parent===__jcEditingCode) : [];
+  try{
+    if(__jcEditingCode){
+      await apiPost('update', 'job_code_reference', jcToApi(rec));
+      const idx = jobCodeReference.findIndex(r=>r.code===__jcEditingCode);
+      if(idx>-1) jobCodeReference[idx] = rec;
+      for(const child of affectedChildren){
+        child.parent = code; child.parentName = name;
+        await apiPost('update', 'job_code_reference', jcToApi(child));
+      }
+    } else {
+      const saved = await apiPost('add', 'job_code_reference', jcToApi(rec));
+      jobCodeReference.push(jcFromApi(saved));
+    }
+  }catch(err){
+    alert('บันทึกรหัสงานไปยังฐานข้อมูลกลางไม่สำเร็จ: ' + err.message);
+    return;
   }
   closeJcForm();
   document.querySelectorAll('[data-jctab]').forEach(x=>x.classList.remove('active'));
   document.querySelector(`[data-jctab="${level}"]`)?.classList.add('active');
   renderAll();
 }
-function deleteJcEntry(){
+async function deleteJcEntry(){
   if(!isAdmin() || !__jcEditingCode) return;
   const hasChildren = jobCodeReference.some(r=>r.parent===__jcEditingCode);
   if(hasChildren){ alert('ไม่สามารถลบได้ — มีรหัสงานย่อยที่สังกัดอยู่ใต้รหัสนี้ กรุณาลบหรือย้ายรหัสย่อยเหล่านั้นก่อน'); return; }
   if(!confirm(`ยืนยันลบรหัสงาน ${__jcEditingCode} ออกจากรายการอ้างอิงนี้?`)) return;
+  try{
+    await apiPost('delete', 'job_code_reference', null, __jcEditingCode);
+  }catch(err){
+    alert('ลบรหัสงานในฐานข้อมูลกลางไม่สำเร็จ: ' + err.message);
+    return;
+  }
   const idx = jobCodeReference.findIndex(r=>r.code===__jcEditingCode);
   if(idx>-1) jobCodeReference.splice(idx,1);
   closeJcForm();
@@ -1570,7 +1785,23 @@ function deleteJcEntry(){
 }
 
 /* ---- เหตุฉุกเฉิน ---- */
+function emFromApi(row){
+  return { no:Number(row.no), type:row.type, loc:row.loc||'', start:row.start, lastUpdate:row.lastUpdate, status:row.status||'ongoing' };
+}
+function emToApi(e){
+  return { no:e.no, type:e.type, loc:e.loc||'', start:e.start, lastUpdate:e.lastUpdate, status:e.status||'ongoing' };
+}
+/* ข้อมูลเหตุฉุกเฉินจริงย้ายไปอยู่ที่ Google Sheets แท็บ "emergencies" แล้ว (ตารางใหม่ที่ไม่เคย
+   มีใน backend มาก่อน) หน้านี้โหลดจาก API ตอนเปิดหน้าเสมอ ดูฟังก์ชัน loadEmergenciesFromApi() ด้านล่าง */
 let emergencies = [];
+async function loadEmergenciesFromApi(){
+  try{
+    emergencies = (await apiGet('emergencies')).map(emFromApi);
+  }catch(err){
+    console.error('โหลดข้อมูลเหตุฉุกเฉินจากฐานข้อมูลกลางล้มเหลว', err);
+    alert('โหลดข้อมูลเหตุฉุกเฉินจากฐานข้อมูลกลางไม่สำเร็จ: ' + err.message + '\nกรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ตแล้วรีเฟรชหน้าใหม่');
+  }
+}
 
 function emNextDue(e){
   if(e.status!=='ongoing') return {text:'—', overdue:false};
@@ -1598,7 +1829,10 @@ function emNextDue(e){
    การเปลี่ยนแปลงสายทางที่หมวดควบคุมในอนาคต โดยไม่ต้องแก้ไขโค้ดของระบบ
    ที่มา: สรุปสายทางในความควบคุมของหมวดทางหลวงเชิงเนิน (แขวงทางหลวงระยอง) สถานะ 29 ต.ค. 2567
    ============================================================ */
-let controlledRoutes = [
+/* ชุดข้อมูลตั้งต้น (สายทางควบคุม 7 สาย) — ใช้เป็นแหล่งข้อมูลสำหรับปุ่ม "ซิงก์ข้อมูลเดิม
+   ขึ้นฐานข้อมูลกลาง" ครั้งเดียวเท่านั้น ตัวแปร controlledRoutes ที่ใช้งานจริงโหลดจาก
+   apiGet('controlled_routes') แทน (ดู loadControlledRoutesFromApi() ด้านล่าง) */
+const CONTROLLED_ROUTES_SEED_FOR_MIGRATION = [
   {id:1, routeNo:'3',    controlNo:'0503', section:'ระยอง - กะเฉด',        ranges:[[223.650,247.902]],                distActual:24.252, dist2Lane:52.201, asphalt:52.201, concrete:0,     workQty:166.352},
   {id:2, routeNo:'36',   controlNo:'0203', section:'ทับมา - ปลวกเกตุ',      ranges:[[49.369,57.021]],                  distActual:7.652,  dist2Lane:33.760, asphalt:0,      concrete:33.760, workQty:112.758},
   {id:3, routeNo:'3139', controlNo:'0100', section:'บ้านแลง - หาดใหญ่',      ranges:[[0.000,21.234]],                   distActual:21.234, dist2Lane:21.234, asphalt:21.234, concrete:0,     workQty:69.542},
@@ -1607,6 +1841,33 @@ let controlledRoutes = [
   {id:6, routeNo:'3574', controlNo:'0202', section:'บ้านค่าย - ระยอง',       ranges:[[43.000,57.161]],                  distActual:14.161, dist2Lane:32.187, asphalt:27.415, concrete:4.772, workQty:115.710},
   {id:7, routeNo:'3575', controlNo:'0100', section:'ทางเข้าบ้านค่าย',        ranges:[[0.000,1.308],[2.346,3.292]],      distActual:2.254,  dist2Lane:2.254,  asphalt:2.254,  concrete:0,     workQty:7.880},
 ];
+/* แปลง controlled_routes ระหว่างรูปแบบภายใน (routeNo/section/ranges หลายช่วง) กับคอลัมน์
+   Sheet (highway/sectionName/rangesJson) — kmStart/kmEnd เก็บ min/max ของทุกช่วงไว้ใช้
+   กรอง/เรียงแบบง่ายเท่านั้น ช่วงเต็มที่ควบคุมจริงอยู่ใน rangesJson */
+function routeFromApi(row){
+  return { id:row.id, routeNo:row.highway, controlNo:row.controlNo||'', section:row.sectionName,
+    ranges: Array.isArray(row.rangesJson) && row.rangesJson.length ? row.rangesJson : [[Number(row.kmStart)||0, Number(row.kmEnd)||0]],
+    distActual:Number(row.distActual)||0, dist2Lane:Number(row.dist2Lane)||0,
+    asphalt:Number(row.asphalt)||0, concrete:Number(row.concrete)||0, workQty:Number(row.workQty)||0 };
+}
+function routeToApi(r){
+  const allKm = (r.ranges||[]).flat();
+  return { id:r.id, highway:r.routeNo, controlNo:r.controlNo||'', sectionName:r.section,
+    kmStart: allKm.length?Math.min(...allKm):0, kmEnd: allKm.length?Math.max(...allKm):0,
+    rangesJson:r.ranges||[], distActual:r.distActual||0, dist2Lane:r.dist2Lane||0,
+    asphalt:r.asphalt||0, concrete:r.concrete||0, workQty:r.workQty||0 };
+}
+/* ข้อมูลสายทางควบคุมจริงย้ายไปอยู่ที่ Google Sheets แท็บ "controlled_routes" แล้ว
+   หน้านี้โหลดจาก API ตอนเปิดหน้าเสมอ ดูฟังก์ชัน loadControlledRoutesFromApi() ด้านล่าง */
+let controlledRoutes = [];
+async function loadControlledRoutesFromApi(){
+  try{
+    controlledRoutes = (await apiGet('controlled_routes')).map(routeFromApi);
+  }catch(err){
+    console.error('โหลดข้อมูลสายทางควบคุมจากฐานข้อมูลกลางล้มเหลว', err);
+    alert('โหลดข้อมูลสายทางควบคุมจากฐานข้อมูลกลางไม่สำเร็จ: ' + err.message + '\nกรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ตแล้วรีเฟรชหน้าใหม่');
+  }
+}
 let __routesNextId = 8;
 let routesAsOf = '29 ต.ค. 2567';
 /* ตัวเลือกพิเศษใน "ทล. ปฏิบัติงาน" ที่ไม่ใช่สายทางควบคุม แต่เป็นสถานที่ปฏิบัติงาน (สำนักงาน) — วางไว้เหนือ "อื่นๆ / นอกฐานข้อมูลควบคุม"
@@ -1729,6 +1990,8 @@ function routeLabelPrefix(routeSelId){
   return route ? `ทล.${route.routeNo} (${route.section}) ` : '';
 }
 function renderRoutes(){
+  const migrateBtn = document.getElementById('migrate-legacy-btn');
+  if(migrateBtn) migrateBtn.classList.toggle('hidden', !isAdmin() || controlledRoutes.length>0);
   populateRouteSelects();
   const asOfEl = document.getElementById('routes-asof');
   if(asOfEl) asOfEl.textContent = `ข้อมูล ณ วันที่ ${routesAsOf}`;
@@ -1830,7 +2093,7 @@ function parseRangesInput(str){
   });
   return ranges;
 }
-function saveRoute(){
+async function saveRoute(){
   if(!isAdmin()) return;
   const routeNo = document.getElementById('rf-routeno').value.trim();
   const section = document.getElementById('rf-section').value.trim();
@@ -1850,19 +2113,35 @@ function saveRoute(){
     concrete: parseFloat(document.getElementById('rf-concrete').value)||0,
     workQty: parseFloat(document.getElementById('rf-workqty').value)||0,
   };
-  if(id){
-    const r = controlledRoutes.find(x=>x.id===Number(id));
-    if(r) Object.assign(r, data);
-  } else {
-    controlledRoutes.push({id: __routesNextId++, ...data});
+  try{
+    if(id){
+      const r = controlledRoutes.find(x=>x.id===Number(id));
+      if(r){
+        Object.assign(r, data);
+        await apiPost('update', 'controlled_routes', routeToApi(r));
+      }
+    } else {
+      const r = {id: __routesNextId++, ...data};
+      const saved = await apiPost('add', 'controlled_routes', routeToApi(r));
+      controlledRoutes.push(routeFromApi(saved));
+    }
+  }catch(err){
+    alert('บันทึกสายทางควบคุมไปยังฐานข้อมูลกลางไม่สำเร็จ: ' + err.message);
+    return;
   }
   closeRouteForm();
   renderAll();
 }
-function deleteRoute(id){
+async function deleteRoute(id){
   if(!isAdmin()) return;
   const r = controlledRoutes.find(x=>x.id===id); if(!r) return;
   if(!confirm(`ยืนยันลบสายทาง ทล.${r.routeNo} (${r.section}) ออกจากฐานข้อมูลควบคุม?\nข้อมูลที่เคยบันทึกไว้ในโมดูลอื่นจะไม่ถูกลบ แต่จะไม่สามารถเลือกสายทางนี้ในฟอร์มใหม่ได้อีก`)) return;
+  try{
+    await apiPost('delete', 'controlled_routes', null, id);
+  }catch(err){
+    alert('ลบสายทางควบคุมในฐานข้อมูลกลางไม่สำเร็จ: ' + err.message);
+    return;
+  }
   const idx = controlledRoutes.findIndex(x=>x.id===id);
   if(idx>=0) controlledRoutes.splice(idx,1);
   renderAll();
@@ -1871,11 +2150,9 @@ function deleteRoute(id){
 /* ============================================================
    LOGIN (สอดคล้องกับระบบรองที่ 1)
    ============================================================ */
-const ADMIN_NAMES = ["นายอิศรินทร์  อรุณสวัสดิ์", "นางสาวนันท์นภัสธ์  รัตนเสถียร"];
-const SYSTEM_USERS = ["นายอิศรินทร์  อรุณสวัสดิ์", "นางสาวนันท์นภัสธ์  รัตนเสถียร", "นางธนิภา  พึ่งผล", "นางสาวประภาพร  สุดแสง"];
-let pinCodes = { "นายอิศรินทร์  อรุณสวัสดิ์": "1234", "นางสาวนันท์นภัสธ์  รัตนเสถียร": "5678" };
-let currentUser = null;
-let adminVerified = false;
+/* ADMIN_NAMES/SYSTEM_USERS/pinCodes/currentUser/adminVerified ของเดิมถูกลบออก (โค้ดตาย
+   จากระบบ PIN-login รุ่นก่อนที่ยังไม่ได้ย้ายมาใช้ shared session ร่วมกับระบบรองที่ 1 —
+   ไม่มีจุดใดอ้างถึงอีกต่อไป) */
 function isAdmin(){
   try{
     const s = JSON.parse(localStorage.getItem('saraban_shared_session')||'null');
@@ -2012,10 +2289,19 @@ function renderPermits(filter){
     </tr>`;
   }).join('');
 }
-function updatePermitStatus(no, val){
+async function updatePermitStatus(no, val){
   if(!isAdmin()) return;
-  const p = permits.find(x=>x.no===no); if(p) p.status = val;
+  const p = permits.find(x=>x.no===no); if(!p) return;
+  const before = p.status;
+  p.status = val;
   renderPermits();
+  try{
+    await apiPost('update', 'permits', permitToApi(p));
+  }catch(err){
+    p.status = before;
+    alert('บันทึกสถานะคำขออนุญาตไปยังฐานข้อมูลกลางไม่สำเร็จ: ' + err.message);
+    renderPermits();
+  }
 }
 function togglePermitForm(){
   if(!requireAdmin()) return;
@@ -2023,19 +2309,26 @@ function togglePermitForm(){
   document.getElementById('pf-doc').value = TODAY.toISOString().slice(0,10);
   thdateSync(document.getElementById('pf-doc'));
 }
-function savePermit(){
+async function savePermit(){
   if(!isAdmin()) return;
   const name = document.getElementById('pf-name').value.trim();
   if(!name){ alert('กรุณาระบุชื่อผู้ขออนุญาต'); return; }
   if(!confirmRouteSave('pf-route','pf-km')) return;
-  permits.push({
+  const p = {
     no: permits.length ? Math.max(...permits.map(p=>p.no))+1 : 1,
     type: document.getElementById('pf-type').value,
     name, phone: document.getElementById('pf-phone').value,
     km: routeLabelPrefix('pf-route') + document.getElementById('pf-km').value,
     doc: document.getElementById('pf-doc').value || TODAY.toISOString().slice(0,10),
     status:'pending'
-  });
+  };
+  try{
+    const saved = await apiPost('add', 'permits', permitToApi(p));
+    permits.push(permitFromApi(saved));
+  }catch(err){
+    alert('บันทึกคำขออนุญาตไปยังฐานข้อมูลกลางไม่สำเร็จ: ' + err.message);
+    return;
+  }
   document.getElementById('permit-form-overlay').classList.add('hidden');
   renderAll();
 }
@@ -2051,50 +2344,94 @@ function renderEnc(filter){
   filter = filter || document.querySelector('[data-enctab].active')?.dataset.enctab || 'all';
   const q = (document.getElementById('enc-search')?.value || '').toLowerCase();
   let rows = encroachments.filter(e=>{
-    if(filter==='ongoing') return e.stage<4;
-    if(filter==='legal') return e.stage===4;
-    if(filter==='cleared') return false;
+    if(filter==='ongoing') return e.stage<4 && !e.cleared;
+    if(filter==='legal') return e.stage===4 && !e.cleared;
+    if(filter==='cleared') return !!e.cleared;
     return true;
   });
   if(q) rows = rows.filter(e=> e.name.toLowerCase().includes(q) || e.km.toLowerCase().includes(q));
   const dis = isAdmin() ? '' : 'disabled';
   document.getElementById('enc-body').innerHTML = rows.map(e=>{
     const due = encDue(e);
+    const stagePill = e.cleared ? '<span class="pill pill-ok">รื้อถอนแล้ว</span>'
+      : (e.stage===4? '<span class="pill pill-danger">'+encStageLabel[4]+'</span>' : `<span class="pill pill-warn">${encStageLabel[e.stage]}</span>`);
+    const dueCell = e.cleared ? `<span class="pill pill-neutral">—</span>` : (e.stage===4 ? '<span class="pill pill-neutral">—</span>' : slaBadge(due));
+    let actionBtn = '';
+    if(isAdmin() && !e.cleared){
+      actionBtn = e.stage<4
+        ? `<button class="btn btn-ghost btn-sm" onclick="advanceEnc('${e.code}')">เลื่อนขั้นถัดไป</button>`
+        : `<button class="btn btn-ghost btn-sm" onclick="markEncCleared('${e.code}')">✓ รื้อถอนแล้ว</button>`;
+    }
     return `<tr>
       <td>${e.code}</td>
       <td><div class="person"><div class="p-avatar">${e.name.slice(0,1)}</div><div class="p-name">${e.name}</div></div></td>
       <td>${e.km}</td>
       <td>${e.dist.toFixed(1)}</td>
       <td>${e.structure}</td>
-      <td>${e.stage===4? '<span class="pill pill-danger">'+encStageLabel[4]+'</span>' : `<span class="pill pill-warn">${encStageLabel[e.stage]}</span>`}</td>
-      <td>${e.stage===4 ? '<span class="pill pill-neutral">—</span>' : slaBadge(due)}</td>
-      <td>${isAdmin() && e.stage<4 ? `<button class="btn btn-ghost btn-sm" onclick="advanceEnc('${e.code}')">เลื่อนขั้นถัดไป</button>` : ''}</td>
+      <td>${stagePill}</td>
+      <td>${dueCell}</td>
+      <td>${actionBtn}</td>
     </tr>`;
   }).join('');
   const nextRep = nextEncReport();
   document.getElementById('enc-foot').textContent = `กำหนดส่งสรุปรายงานการรุกล้ำเขตทาง (3 งวด/ปี) — งวดถัดไป: ${nextRep.label} ภายในวันที่ ${fmtDateShort(nextRep.due)} (เหลืออีก ${nextRep.left} วัน)`;
 }
-function advanceEnc(code){
+async function advanceEnc(code){
   if(!isAdmin()) return;
   const e = encroachments.find(x=>x.code===code); if(!e) return;
+  const before = {stage:e.stage, stageDate:e.stageDate};
   e.stage = Math.min(4, e.stage+1);
   e.stageDate = TODAY.toISOString().slice(0,10);
+  try{
+    await apiPost('update', 'encroachments', encToApi(e));
+  }catch(err){
+    Object.assign(e, before);
+    alert('บันทึกขั้นตอนงานรุกล้ำไปยังฐานข้อมูลกลางไม่สำเร็จ: ' + err.message);
+    return;
+  }
+  renderAll();
+}
+/* ทำเครื่องหมาย "รื้อถอนแล้ว" — ใช้ได้เฉพาะเคสที่แจ้งความร้องทุกข์แล้ว (stage 4) เป็นผล
+   ลัพธ์สุดท้ายแยกจาก stage การแจ้งเตือน ไม่ใช่ stage ที่ 5 (แก้บั๊กเดิม: แท็บ "รื้อถอนแล้ว"
+   ไม่เคยมีทางไปถึงได้เลยเพราะไม่มี field ให้ทำเครื่องหมาย) */
+async function markEncCleared(code){
+  if(!isAdmin()) return;
+  const e = encroachments.find(x=>x.code===code); if(!e || e.stage<4) return;
+  if(!confirm(`ยืนยันว่ารื้อถอนสิ่งปลูกสร้างรุกล้ำของ "${e.name}" (${e.code}) เรียบร้อยแล้ว?`)) return;
+  const before = {cleared:e.cleared, clearedDate:e.clearedDate};
+  e.cleared = true;
+  e.clearedDate = TODAY.toISOString().slice(0,10);
+  try{
+    await apiPost('update', 'encroachments', encToApi(e));
+  }catch(err){
+    Object.assign(e, before);
+    alert('บันทึกสถานะรื้อถอนไปยังฐานข้อมูลกลางไม่สำเร็จ: ' + err.message);
+    return;
+  }
   renderAll();
 }
 function toggleEncForm(){ if(!requireAdmin()) return; document.getElementById('enc-form-overlay').classList.toggle('hidden'); document.getElementById('ef-date').value = TODAY.toISOString().slice(0,10); thdateSync(document.getElementById('ef-date')); }
-function saveEnc(){
+async function saveEnc(){
   if(!isAdmin()) return;
   const name = document.getElementById('ef-name').value.trim();
   if(!name){ alert('กรุณาระบุชื่อผู้รุกล้ำ'); return; }
   if(!confirmRouteSave('ef-route','ef-km')) return;
   const n = encroachments.length+1;
-  encroachments.push({
+  const e = {
     code:'อค.'+String(n).padStart(3,'0'), name,
     km: routeLabelPrefix('ef-route') + document.getElementById('ef-km').value,
     dist: parseFloat(document.getElementById('ef-dist').value)||0,
     structure: document.getElementById('ef-structure').value,
-    stage:1, stageDate: document.getElementById('ef-date').value || TODAY.toISOString().slice(0,10)
-  });
+    stage:1, stageDate: document.getElementById('ef-date').value || TODAY.toISOString().slice(0,10),
+    cleared:false, clearedDate:null
+  };
+  try{
+    const saved = await apiPost('add', 'encroachments', encToApi(e));
+    encroachments.push(encFromApi(saved));
+  }catch(err){
+    alert('บันทึกงานรุกล้ำไปยังฐานข้อมูลกลางไม่สำเร็จ: ' + err.message);
+    return;
+  }
   document.getElementById('enc-form-overlay').classList.add('hidden');
   renderAll();
 }
@@ -2371,7 +2708,7 @@ function closeBmmForm(){
   __bmmEditingNo = null;
   __bfSuppDraft = [];
 }
-function saveBmmEntry(){
+async function saveBmmEntry(){
   if(!isAdmin()) return;
   const code = document.getElementById('bf-job').value;
   const job = findJob(code);
@@ -2390,14 +2727,24 @@ function saveBmmEntry(){
     contract: 0,
     supplementLog: kind==='plan' ? __bfSuppDraft.slice() : []
   };
-  if(__bmmEditingNo!=null){
-    const idx = bmmEntries.findIndex(e=>e.no===__bmmEditingNo);
-    if(idx>-1) bmmEntries[idx] = Object.assign({}, bmmEntries[idx], data);
-  } else {
-    bmmEntries.push(Object.assign(
-      { no: bmmEntries.length ? Math.max(...bmmEntries.map(e=>e.no))+1 : 1, baseline:false, asOfMonth:null },
-      data
-    ));
+  try{
+    if(__bmmEditingNo!=null){
+      const idx = bmmEntries.findIndex(e=>e.no===__bmmEditingNo);
+      if(idx>-1){
+        const merged = Object.assign({}, bmmEntries[idx], data);
+        await apiPost('update', 'bmm_plan_actual', bmmToApi(merged));
+        bmmEntries[idx] = merged;
+      }
+    } else {
+      const rec = Object.assign({ baseline:false, asOfMonth:null }, data);
+      const saved = await apiPost('add', 'bmm_plan_actual', bmmToApi(rec));
+      const fromApi = bmmFromApi(saved);
+      fromApi.no = bmmEntries.length ? Math.max(...bmmEntries.map(e=>e.no))+1 : 1;
+      bmmEntries.push(fromApi);
+    }
+  }catch(err){
+    alert('บันทึกแผน/ผลงานบำรุงปกติไปยังฐานข้อมูลกลางไม่สำเร็จ: ' + err.message);
+    return;
   }
   closeBmmForm();
   renderAll();
@@ -2406,10 +2753,31 @@ function saveBmmEntry(){
 /* ============================================================
    ชุดปฏิบัติงานภาคสนาม (field crews) — ชื่อชุดเป็นเพียงชื่อเรียก แก้ไขสมาชิกได้ตลอด
    ============================================================ */
-let fieldCrews = [
+/* ชุดข้อมูลตั้งต้น (ชุดปฏิบัติงาน 2 ชุด) — ใช้เป็นแหล่งข้อมูลสำหรับปุ่ม "ซิงก์ข้อมูลเดิมขึ้น
+   ฐานข้อมูลกลาง" ครั้งเดียวเท่านั้น ตัวแปร fieldCrews ที่ใช้งานจริงโหลดจาก
+   apiGet('field_crews') แทน */
+const FIELD_CREWS_SEED_FOR_MIGRATION = [
   {id:1, name:'ชุดปะซ่อม', leader:'นางสำเนียง นุ่มดี', members:['นางดวงใจ ช่างไม้','นายประเสริฐ งามสุวรรณ์','นางสมเพชร เนตรหลับ','นายอรัญ สุขคุ้ม']},
   {id:2, name:'ชุดตัดหญ้า', leader:'น.ส.พรนพิน คุชนาค', members:['นางมาลินี ท้าวธรรมศรี','นางพิศมัย ประสิทธิ์','นายสมเดช ประสิทธิ์','นายทูล กุยแก้วพะเนา','นายณภัทร ประสิทธิ์']}
 ];
+/* field_crews ตรงกับ schema Sheet อยู่แล้วทุก field — แค่ JSON.stringify(members) ตอนส่ง */
+function crewFromApi(row){
+  return { id:row.id, name:row.name, leader:row.leader||'', members: Array.isArray(row.membersJson) ? row.membersJson : [] };
+}
+function crewToApi(c){
+  return { id:c.id, name:c.name, leader:c.leader||'', membersJson:c.members||[] };
+}
+/* ข้อมูลชุดปฏิบัติงานจริงย้ายไปอยู่ที่ Google Sheets แท็บ "field_crews" แล้ว
+   หน้านี้โหลดจาก API ตอนเปิดหน้าเสมอ ดูฟังก์ชัน loadFieldCrewsFromApi() ด้านล่าง */
+let fieldCrews = [];
+async function loadFieldCrewsFromApi(){
+  try{
+    fieldCrews = (await apiGet('field_crews')).map(crewFromApi);
+  }catch(err){
+    console.error('โหลดข้อมูลชุดปฏิบัติงานจากฐานข้อมูลกลางล้มเหลว', err);
+    alert('โหลดข้อมูลชุดปฏิบัติงานจากฐานข้อมูลกลางไม่สำเร็จ: ' + err.message + '\nกรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ตแล้วรีเฟรชหน้าใหม่');
+  }
+}
 let __crewNextId = 3;
 let __crewDraft = null; /* {id: number|null, name, leader, members:[]} — working copy edited inside the modal */
 function crewAllMembers(crew){ return crew ? [crew.leader, ...crew.members] : []; }
@@ -2568,7 +2936,7 @@ function removeDraftMember(idx){
   __crewDraft.members.splice(idx,1);
   renderCrewModalMembers();
 }
-function saveCrewModal(){
+async function saveCrewModal(){
   if(!__crewDraft || !isAdmin()) return;
   const name = document.getElementById('crew-modal-name').value.trim();
   if(!name){ __showCrewModalError('กรุณากรอกชื่อชุดทำงาน'); return; }
@@ -2584,18 +2952,33 @@ function saveCrewModal(){
     }
   }
   __hideCrewModalError();
-  if(__crewDraft.id==null){
-    fieldCrews.push({id:__crewNextId++, name, leader, members:[...__crewDraft.members]});
-  } else {
-    const c = fieldCrews.find(x=>x.id===__crewDraft.id);
-    if(c){ c.name = name; c.leader = leader; c.members = [...__crewDraft.members]; }
+  try{
+    if(__crewDraft.id==null){
+      const saved = await apiPost('add', 'field_crews', crewToApi({name, leader, members:[...__crewDraft.members]}));
+      fieldCrews.push(crewFromApi(saved));
+    } else {
+      const c = fieldCrews.find(x=>x.id===__crewDraft.id);
+      if(c){
+        c.name = name; c.leader = leader; c.members = [...__crewDraft.members];
+        await apiPost('update', 'field_crews', crewToApi(c));
+      }
+    }
+  }catch(err){
+    alert('บันทึกชุดปฏิบัติงานไปยังฐานข้อมูลกลางไม่สำเร็จ: ' + err.message);
+    return;
   }
   closeCrewModal();
   renderAll();
 }
-function deleteCrewFromModal(){
+async function deleteCrewFromModal(){
   if(!__crewDraft || __crewDraft.id==null || !isAdmin()) return;
   if(!confirm('ต้องการลบชุดทำงานนี้หรือไม่?')) return;
+  try{
+    await apiPost('delete', 'field_crews', null, __crewDraft.id);
+  }catch(err){
+    alert('ลบชุดปฏิบัติงานในฐานข้อมูลกลางไม่สำเร็จ: ' + err.message);
+    return;
+  }
   const i = fieldCrews.findIndex(x=>x.id===__crewDraft.id);
   if(i>-1) fieldCrews.splice(i,1);
   closeCrewModal();
@@ -2606,17 +2989,50 @@ function deleteCrewFromModal(){
    อ่านข้อมูลข้ามระบบ — เครื่องจักร/รถ + ทะเบียนพัสดุ (ระบบรองที่ 3)
    และข้อมูลการลา (ระบบรองที่ 1) — เพื่อใช้ในใบสั่งการรายวันเท่านั้น จุดแก้ไขข้อมูลจริงยังอยู่ที่ระบบต้นทาง
    ============================================================ */
-const __SUBSYS3_KEY = 'saraban_subsystem3_v2';
-const __SUBSYS1_KEY = 'saraban_subsystem1_v2';
-function getSubsys3State(){
-  try{
-    const raw = localStorage.getItem(__SUBSYS3_KEY);
-    return raw ? JSON.parse(raw) : {};
-  }catch(e){ return {}; }
+/* ระบบรองที่ 3 (พัสดุและเครื่องจักร) ย้าย machinery/materials/fuel_transactions ไปอยู่บน
+   ฐานข้อมูลกลางแล้ว (ไม่เขียนลง localStorage ให้ระบบอื่นอ่านต่ออีกต่อไป) จึงต้องอ่าน 3
+   ตารางนี้ผ่าน apiGet ตรงๆ แทนการอ่าน localStorage คีย์เดิมของระบบรองที่ 3 — โหลดครั้งเดียว
+   ตอนเปิดหน้า (ดู loadSubsys3RefDataFromApi ท้ายไฟล์) เก็บ cache ไว้ใช้งาน read-only เท่านั้น
+   จุดแก้ไขข้อมูลจริงยังอยู่ที่ระบบรองที่ 3 เหมือนเดิม */
+let __subsys3Vehicles = [];
+let __subsys3Materials = [];
+let __subsys3FuelTx = [];
+let __subsys3MaterialTx = [];
+function subsys3VehicleFromApi(row){
+  return { id:row.id, label:row.label, fuelType:row.fuelType||'', note:row.operatorName||'',
+    monthlyRent: row.monthlyRent!==''&&row.monthlyRent!=null?Number(row.monthlyRent):undefined,
+    maxKmPerDay: row.mileageThresholdOverride!==''&&row.mileageThresholdOverride!=null?Number(row.mileageThresholdOverride):undefined,
+    fuelRate: row.fuelRate!==''&&row.fuelRate!=null?Number(row.fuelRate):undefined, fuelRateUnit:row.fuelRateUnit||undefined };
 }
-function getVehiclesX(){ const s = getSubsys3State(); return Array.isArray(s.vehicles) ? s.vehicles : []; }
-function getMaterialsX(){ const s = getSubsys3State(); return Array.isArray(s.materials) ? s.materials : []; }
-function getFuelTxX(){ const s = getSubsys3State(); return Array.isArray(s.fuelTransactions) ? s.fuelTransactions : []; }
+function subsys3MaterialFromApi(row){
+  return { code:row.code, name:row.itemName, unit:row.unit, accountType:row.category,
+    stock:Number(row.openingStock)||0, reorder:Number(row.reorderPoint)||0,
+    unitPrice: row.unitPrice!==''&&row.unitPrice!=null?Number(row.unitPrice):undefined };
+}
+function subsys3FuelTxFromApi(row){
+  return { id:row.id, date:row.date, fuelType:row.fuelType, kind:row.kind, liters:Number(row.qty)||0,
+    vehicle:row.vehicleId, note:row.note||'', unitPrice: row.unitPrice!==''&&row.unitPrice!=null?Number(row.unitPrice):undefined,
+    relatedDailyWorkOrderId:row.relatedDailyWorkOrderId||undefined };
+}
+function subsys3MatTxFromApi(row){
+  return { id:row.id, date:row.date, itemCode:row.materialId, kind:row.type, qty:Number(row.qty)||0,
+    note:row.note||'', relatedDailyWorkOrderId:row.relatedDailyWorkOrderId||undefined };
+}
+async function loadSubsys3RefDataFromApi(){
+  try{
+    const [veh, mat, fuel, matTx] = await Promise.all([apiGet('machinery'), apiGet('materials'), apiGet('fuel_transactions'), apiGet('material_transactions')]);
+    __subsys3Vehicles = veh.map(subsys3VehicleFromApi);
+    __subsys3Materials = mat.map(subsys3MaterialFromApi);
+    __subsys3FuelTx = fuel.map(subsys3FuelTxFromApi);
+    __subsys3MaterialTx = matTx.map(subsys3MatTxFromApi);
+  }catch(err){
+    console.error('โหลดข้อมูลอ้างอิงเครื่องจักร/พัสดุ/น้ำมันจากระบบรองที่ 3 ล้มเหลว', err);
+  }
+}
+function getVehiclesX(){ return __subsys3Vehicles; }
+function getMaterialsX(){ return __subsys3Materials; }
+function getFuelTxX(){ return __subsys3FuelTx; }
+const __SUBSYS1_KEY = 'saraban_subsystem1_v2';
 function getSubsys1State(){
   try{
     const raw = localStorage.getItem(__SUBSYS1_KEY);
@@ -2640,21 +3056,25 @@ function latestFuelPriceX(fuelType){
   txs.sort((a,b)=> b.date.localeCompare(a.date) || (b.id-a.id));
   return txs[0].unitPrice;
 }
-/* เขียนรายการเบิกน้ำมัน/พัสดุกลับเข้าไปในระบบรองที่ 3 (อ่าน-รวม-เขียนทับเฉพาะฟิลด์ที่เกี่ยวข้อง ไม่แตะข้อมูลอื่น) */
-function pushToSubsys3(fuelTx, materialTx){
-  try{
-    const raw = localStorage.getItem(__SUBSYS3_KEY);
-    const obj = raw ? JSON.parse(raw) : {};
-    if(!Array.isArray(obj.fuelTransactions)) obj.fuelTransactions = [];
-    if(!Array.isArray(obj.materialTransactions)) obj.materialTransactions = [];
-    let fuelNextId = obj.__fuelTxNextId || (obj.fuelTransactions.length ? Math.max(...obj.fuelTransactions.map(t=>t.id||0))+1 : 1);
-    let matNextId = obj.__matTxNextId || (obj.materialTransactions.length ? Math.max(...obj.materialTransactions.map(t=>t.id||0))+1 : 1);
-    fuelTx.forEach(t=>{ obj.fuelTransactions.push({id:fuelNextId++, ...t}); });
-    materialTx.forEach(t=>{ obj.materialTransactions.push({id:matNextId++, ...t}); });
-    obj.__fuelTxNextId = fuelNextId;
-    obj.__matTxNextId = matNextId;
-    localStorage.setItem(__SUBSYS3_KEY, JSON.stringify(obj));
-  }catch(e){ console.error('ส่งข้อมูลเบิกน้ำมัน/พัสดุไปยังระบบพัสดุ/เครื่องจักรล้มเหลว', e); }
+/* บันทึกรายการเบิกน้ำมัน/พัสดุ (จากใบสั่งการรายวัน) ขึ้นฐานข้อมูลกลางตรงๆ — เดิมเขียนผ่าน
+   localStorage คีย์ของระบบรองที่ 3 แต่ตั้งแต่ระบบรองที่ 3 ย้ายไปใช้ backend จริงแล้ว
+   (ไม่อ่าน localStorage อีกต่อไป) ต้องเขียนผ่าน apiPost ตรงๆ แทน ไม่ใช่ fire-and-forget —
+   ผู้เรียก (proceedSaveDailyEntry) ต้อง await ฟังก์ชันนี้เพื่อรู้ผลว่าสำเร็จหรือไม่ */
+async function pushToSubsys3(fuelTx, materialTx){
+  for(const t of fuelTx){
+    const saved = await apiPost('add', 'fuel_transactions', {
+      vehicleId:t.vehicle, fuelType:t.fuelType, kind:t.kind, date:t.date, qty:t.liters, note:t.note||'',
+      relatedDailyWorkOrderId: t.sourceDailyId!=null ? String(t.sourceDailyId) : undefined
+    });
+    __subsys3FuelTx.push(subsys3FuelTxFromApi(saved));
+  }
+  for(const t of materialTx){
+    const saved = await apiPost('add', 'material_transactions', {
+      materialId:t.itemCode, type:t.kind, qty:t.qty, date:t.date, note:t.note||'',
+      relatedDailyWorkOrderId: t.sourceDailyId!=null ? String(t.sourceDailyId) : undefined
+    });
+    __subsys3MaterialTx.push(subsys3MatTxFromApi(saved));
+  }
 }
 function checkDwLeaveConflict(){
   const msg = document.getElementById('dw-leave-msg');
@@ -3498,7 +3918,7 @@ function renderUcSummary(){
   document.getElementById('uc-sum-fuel-share').textContent = fmtNum(t.qtyday>0?t.fuel/t.qtyday:0,2);
   document.getElementById('uc-sum-rent-share').textContent = fmtNum(t.qtyday>0?t.rent/t.qtyday:0,2);
 }
-function saveUcEntry(){
+async function saveUcEntry(){
   if(!isAdmin()) return;
   const code = document.getElementById('uc-job').value;
   if(!code){ alert('กรุณาเลือกรหัสงานก่อนบันทึก'); return; }
@@ -3509,13 +3929,23 @@ function saveUcEntry(){
   const materialRows = ucMaterialRowsData();
   const vehicleRows = ucVehicleRowsData();
   const isEdit = !!__ucEditingNo;
-  const no = isEdit ? __ucEditingNo : (unitCostRecords.length ? Math.max(...unitCostRecords.map(r=>r.no))+1 : 1);
-  const record = { no, code, jobName: job?job.name:code, unit: document.getElementById('uc-unit-label').value||(job?job.unit:''), fy, qtyPerDay, laborRows, materialRows, vehicleRows };
-  if(isEdit){
-    const idx = unitCostRecords.findIndex(r=>r.no===no);
-    if(idx>-1) unitCostRecords[idx]=record; else unitCostRecords.push(record);
-  } else {
-    unitCostRecords.push(record);
+  const record = { no: isEdit ? __ucEditingNo : (unitCostRecords.length ? Math.max(...unitCostRecords.map(r=>r.no))+1 : 1),
+    __backendId: isEdit ? (unitCostRecords.find(r=>r.no===__ucEditingNo)||{}).__backendId : undefined,
+    code, jobName: job?job.name:code, unit: document.getElementById('uc-unit-label').value||(job?job.unit:''), fy, qtyPerDay, laborRows, materialRows, vehicleRows };
+  try{
+    if(isEdit){
+      await apiPost('update', 'unit_cost_records', ucToApi(record));
+      const idx = unitCostRecords.findIndex(r=>r.no===record.no);
+      if(idx>-1) unitCostRecords[idx]=record; else unitCostRecords.push(record);
+    } else {
+      const saved = await apiPost('add', 'unit_cost_records', ucToApi(record));
+      const fromApi = ucFromApi(saved);
+      fromApi.no = record.no;
+      unitCostRecords.push(fromApi);
+    }
+  }catch(err){
+    alert('บันทึกค่างานต่อหน่วยไปยังฐานข้อมูลกลางไม่สำเร็จ: ' + err.message);
+    return;
   }
   closeUcForm();
   renderUcTable();
@@ -3528,7 +3958,13 @@ function deleteUcEntry(no){
     `ยืนยันลบค่างานต่อหน่วย รหัสงาน ${r.code} — ${r.jobName}?`,
     'รายการนี้จะถูกลบออกจากตารางค่างานต่อหน่วยถาวร (ไม่กระทบใบสั่งการรายวันหรือข้อมูลอื่นในระบบ)',
     'ลบรายการ',
-    function(){
+    async function(){
+      try{
+        await apiPost('delete', 'unit_cost_records', null, r.__backendId);
+      }catch(err){
+        alert('ลบค่างานต่อหน่วยในฐานข้อมูลกลางไม่สำเร็จ: ' + err.message);
+        return;
+      }
       const idx = unitCostRecords.findIndex(x=>x.no===no);
       if(idx>-1) unitCostRecords.splice(idx,1);
       closeUcForm();
@@ -3715,10 +4151,16 @@ function deleteDailyEntry(no){
     `ยืนยันลบใบสั่งการรายวัน\n${fmtDateShort(d.date)} (รหัสงาน ${d.code})?`,
     'รายการน้ำมัน/วัสดุที่เบิกตามใบสั่งการนี้ในระบบพัสดุ/น้ำมัน (พ.1-02/พ.1-03) จะถูกลบไปด้วย',
     'ลบรายการ',
-    function(){
+    async function(){
+      try{
+        await apiPost('delete', 'daily_work_orders', null, d.__backendId);
+      }catch(err){
+        alert('ลบใบสั่งการรายวันในฐานข้อมูลกลางไม่สำเร็จ: ' + err.message);
+        return;
+      }
+      await removeSubsys3TxBySource(d.__backendId);
       const idx = dailyWorkOrders.findIndex(x=>x.no===no);
       if(idx>-1) dailyWorkOrders.splice(idx,1);
-      removeSubsys3TxBySource(no);
       renderAll();
       showSuccessModal('ลบใบสั่งการรายวันเรียบร้อยแล้ว');
     }
@@ -3835,14 +4277,22 @@ function editDailyEntry(no){
   refreshDwAccBadges();
 }
 /* ล้างรายการเบิกน้ำมัน/พัสดุเดิมของใบสั่งการนี้ในระบบรองที่ 3 (พ.1-03 ฯลฯ) ก่อนเขียนรายการใหม่เข้าไปแทน — ใช้ตอนแก้ไขใบสั่งการรายวันเพื่อไม่ให้ยอดซ้ำ */
-function removeSubsys3TxBySource(no){
-  try{
-    const raw = localStorage.getItem(__SUBSYS3_KEY);
-    const obj = raw ? JSON.parse(raw) : {};
-    if(Array.isArray(obj.fuelTransactions)) obj.fuelTransactions = obj.fuelTransactions.filter(t=>t.sourceDailyId!==no);
-    if(Array.isArray(obj.materialTransactions)) obj.materialTransactions = obj.materialTransactions.filter(t=>t.sourceDailyId!==no);
-    localStorage.setItem(__SUBSYS3_KEY, JSON.stringify(obj));
-  }catch(e){ console.error('ล้างรายการเบิกเดิมก่อนแก้ไขล้มเหลว', e); }
+/* ลบรายการเบิกน้ำมัน/พัสดุที่เชื่อมโยงกับใบสั่งการรายวันนี้ออกจากฐานข้อมูลกลาง (เรียกก่อนบันทึกซ้ำ
+   ตอนแก้ไขใบสั่งการ หรือตอนลบใบสั่งการทั้งใบ) — เทียบด้วย relatedDailyWorkOrderId ที่ตั้งไว้ตอนสร้าง */
+async function removeSubsys3TxBySource(no){
+  const key = String(no);
+  const fuelHits = __subsys3FuelTx.filter(t=>t.relatedDailyWorkOrderId===key);
+  const matHits = __subsys3MaterialTx.filter(t=>t.relatedDailyWorkOrderId===key);
+  for(const t of fuelHits){
+    try{ await apiPost('delete', 'fuel_transactions', null, t.id); }
+    catch(e){ console.error('ลบรายการน้ำมันที่เชื่อมโยงกับใบสั่งการนี้ล้มเหลว', e); }
+  }
+  for(const t of matHits){
+    try{ await apiPost('delete', 'material_transactions', null, t.id); }
+    catch(e){ console.error('ลบรายการพัสดุที่เชื่อมโยงกับใบสั่งการนี้ล้มเหลว', e); }
+  }
+  __subsys3FuelTx = __subsys3FuelTx.filter(t=>t.relatedDailyWorkOrderId!==key);
+  __subsys3MaterialTx = __subsys3MaterialTx.filter(t=>t.relatedDailyWorkOrderId!==key);
 }
 function saveDailyEntry(){
   if(!isAdmin()) return;
@@ -3893,7 +4343,7 @@ function saveDailyEntry(){
   proceedSaveDailyEntry(date, code, kmStart, kmEnd, locText, qtyPending, staffList, staffLabel);
 }
 /* แยกออกจาก saveDailyEntry() เพื่อให้เรียกได้ทั้งกรณีไม่มี conflict (เรียกตรง) และกรณีมี job-conflict ที่ผู้ใช้กดยืนยันบันทึกต่อผ่าน modal */
-function proceedSaveDailyEntry(date, code, kmStart, kmEnd, locText, qtyPending, staffList, staffLabel){
+async function proceedSaveDailyEntry(date, code, kmStart, kmEnd, locText, qtyPending, staffList, staffLabel){
   const vehRows = dwVehicleRowsData();
   const vehicleLabels = vehRows.map(r=>r.vehicle.label);
   const partRows = Array.from(document.getElementById('dw-part-items').children).map(div=>{
@@ -3903,9 +4353,10 @@ function proceedSaveDailyEntry(date, code, kmStart, kmEnd, locText, qtyPending, 
     return partCode && qty>0 ? {code:partCode, qty} : null;
   }).filter(Boolean);
   const isEdit = __dwEditingNo != null;
+  const existing = isEdit ? dailyWorkOrders.find(d=>d.no===__dwEditingNo) : null;
   const recNo = isEdit ? __dwEditingNo : (dailyWorkOrders.length ? Math.max(...dailyWorkOrders.map(d=>d.no))+1 : 1);
   const record = {
-    no: recNo,
+    no: recNo, __backendId: existing ? existing.__backendId : undefined,
     date, code, kmStart, kmEnd, route: document.getElementById('dw-route').value || '',
     loc: (routeLabelPrefix('dw-route') + locText).trim(),
     staff: staffList, staffLabel,
@@ -3919,16 +4370,25 @@ function proceedSaveDailyEntry(date, code, kmStart, kmEnd, locText, qtyPending, 
     rent: +document.getElementById('dw-rent').value||0,
     fuel: +document.getElementById('dw-fuel').value||0
   };
-  if(isEdit){
-    const idx = dailyWorkOrders.findIndex(d=>d.no===recNo);
-    if(idx>-1) dailyWorkOrders[idx] = record; else dailyWorkOrders.push(record);
-    removeSubsys3TxBySource(recNo);
-  } else {
-    dailyWorkOrders.push(record);
+  try{
+    if(isEdit){
+      await apiPost('update', 'daily_work_orders', dwoToApi(record));
+      const idx = dailyWorkOrders.findIndex(d=>d.no===recNo);
+      if(idx>-1) dailyWorkOrders[idx] = record; else dailyWorkOrders.push(record);
+      await removeSubsys3TxBySource(record.__backendId);
+    } else {
+      const saved = await apiPost('add', 'daily_work_orders', dwoToApi(record));
+      record.__backendId = saved.id;
+      dailyWorkOrders.push(record);
+    }
+    const fuelTx = vehRows.filter(r=>r.liters>0).map(r=>({date, fuelType:r.vehicle.fuelType, kind:'issue', liters:r.liters, vehicle:r.vehicle.label, crew:staffLabel, note:'เบิกตามใบสั่งการรายวัน', sourceDailyId:record.__backendId}));
+    const materialTx = partRows.map(p=>({date, itemCode:p.code, kind:'issue', qty:p.qty, vehicle:vehicleLabels.join(', '), crew:staffLabel, note:'เบิกตามใบสั่งการรายวัน', sourceDailyId:record.__backendId}));
+    if(fuelTx.length || materialTx.length) await pushToSubsys3(fuelTx, materialTx);
+  }catch(err){
+    alert('บันทึกใบสั่งการรายวันไปยังฐานข้อมูลกลางไม่สำเร็จ: ' + err.message);
+    renderAll();
+    return;
   }
-  const fuelTx = vehRows.filter(r=>r.liters>0).map(r=>({date, fuelType:r.vehicle.fuelType, kind:'issue', liters:r.liters, vehicle:r.vehicle.label, crew:staffLabel, note:'เบิกตามใบสั่งการรายวัน', sourceDailyId:recNo}));
-  const materialTx = partRows.map(p=>({date, itemCode:p.code, kind:'issue', qty:p.qty, vehicle:vehicleLabels.join(', '), crew:staffLabel, note:'เบิกตามใบสั่งการรายวัน', sourceDailyId:recNo}));
-  if(fuelTx.length || materialTx.length) pushToSubsys3(fuelTx, materialTx);
   __dwEditingNo = null;
   document.getElementById('daily-form-title').textContent = 'บันทึกใบสั่งการรายวัน';
   document.getElementById('daily-form-save-btn').textContent = 'บันทึกใบสั่งการ';
@@ -3975,28 +4435,38 @@ function renderRollup(){
     </tr>`;
   }).join('') : (rows.__pendingCount ? '' : `<tr><td colspan="8" style="text-align:center;color:var(--ink-400);">ยังไม่มีใบสั่งการรายวันของเดือนนี้</td></tr>`));
 }
-function commitRollupToActual(){
+async function commitRollupToActual(){
   if(!isAdmin()) return;
   const rows = rollupRows();
   if(rows.__pendingCount && !confirm(`มีใบสั่งการรายวัน ${rows.__pendingCount} ใบที่ยังไม่ทราบปริมาณงาน จะไม่ถูกรวมในการบันทึกครั้งนี้ ต้องการบันทึกเฉพาะรายการที่ครบถ้วนต่อหรือไม่?`)) return;
   if(!rows.length){ alert('ไม่มีข้อมูลใบสั่งการรายวันของเดือนที่เลือกให้สรุป'); return; }
   const fy = +document.getElementById('rollup-fy').value || 2569;
   const month = +document.getElementById('rollup-month').value;
-  rows.forEach(r=>{
-    const job = findJob(r.code);
-    if(!job) return;
-    const existing = bmmEntries.find(e=> e.kind==='actual' && !e.baseline && e.fy===fy && e.month===month && e.code===r.code);
-    if(existing){
-      existing.qty=r.qty; existing.material=r.material; existing.labor=r.labor; existing.rent=r.rent; existing.fuel=r.fuel; existing.service=0; existing.contract=0;
-    } else {
-      bmmEntries.push({
-        no: bmmEntries.length ? Math.max(...bmmEntries.map(e=>e.no))+1 : 1,
-        code: job.code, unit: job.unit, name: job.name, level: 'sub',
-        kind:'actual', fy, month, baseline:false, asOfMonth:null,
-        qty:r.qty, material:r.material, labor:r.labor, rent:r.rent, fuel:r.fuel, service:0, contract:0
-      });
+  try{
+    for(const r of rows){
+      const job = findJob(r.code);
+      if(!job) continue;
+      const existing = bmmEntries.find(e=> e.kind==='actual' && !e.baseline && e.fy===fy && e.month===month && e.code===r.code);
+      if(existing){
+        existing.qty=r.qty; existing.material=r.material; existing.labor=r.labor; existing.rent=r.rent; existing.fuel=r.fuel; existing.service=0; existing.contract=0;
+        await apiPost('update', 'bmm_plan_actual', bmmToApi(existing));
+      } else {
+        const rec = {
+          code: job.code, unit: job.unit, name: job.name, level: 'sub',
+          kind:'actual', fy, month, baseline:false, asOfMonth:null,
+          qty:r.qty, material:r.material, labor:r.labor, rent:r.rent, fuel:r.fuel, service:0, contract:0
+        };
+        const saved = await apiPost('add', 'bmm_plan_actual', bmmToApi(rec));
+        const fromApi = bmmFromApi(saved);
+        fromApi.no = bmmEntries.length ? Math.max(...bmmEntries.map(e=>e.no))+1 : 1;
+        bmmEntries.push(fromApi);
+      }
     }
-  });
+  }catch(err){
+    alert('บันทึกผลงานบำรุงปกติไปยังฐานข้อมูลกลางไม่สำเร็จ (บางรายการอาจบันทึกไปแล้ว): ' + err.message);
+    renderAll();
+    return;
+  }
   showSuccessModal('บันทึกผลบำรุงปกติของเดือน '+monthLabel(month)+' '+fy+' เรียบร้อย');
   renderAll();
 }
@@ -4023,20 +4493,43 @@ function renderEm(filter){
     </tr>`;
   }).join('');
 }
-function updateEm(no){ if(!isAdmin()) return; const e=emergencies.find(x=>x.no===no); if(e) e.lastUpdate = TODAY.toISOString().slice(0,16).replace('T',' '); renderAll(); }
-function endEm(no){ if(!isAdmin()) return; const e=emergencies.find(x=>x.no===no); if(e){ e.status='ended'; e.lastUpdate = TODAY.toISOString().slice(0,16).replace('T',' '); } renderAll(); }
+async function updateEm(no){
+  if(!isAdmin()) return;
+  const e=emergencies.find(x=>x.no===no); if(!e) return;
+  const before = e.lastUpdate;
+  e.lastUpdate = TODAY.toISOString().slice(0,16).replace('T',' ');
+  renderAll();
+  try{ await apiPost('update', 'emergencies', emToApi(e)); }
+  catch(err){ e.lastUpdate = before; alert('บันทึกอัปเดตสถานการณ์ไปยังฐานข้อมูลกลางไม่สำเร็จ: ' + err.message); renderAll(); }
+}
+async function endEm(no){
+  if(!isAdmin()) return;
+  const e=emergencies.find(x=>x.no===no); if(!e) return;
+  const before = {status:e.status, lastUpdate:e.lastUpdate};
+  e.status='ended'; e.lastUpdate = TODAY.toISOString().slice(0,16).replace('T',' ');
+  renderAll();
+  try{ await apiPost('update', 'emergencies', emToApi(e)); }
+  catch(err){ Object.assign(e, before); alert('บันทึกการยุติเหตุการณ์ไปยังฐานข้อมูลกลางไม่สำเร็จ: ' + err.message); renderAll(); }
+}
 function toggleEmForm(){ if(!requireAdmin()) return; document.getElementById('em-form-overlay').classList.toggle('hidden'); document.getElementById('ef2-start').value = TODAY.toISOString().slice(0,16); }
-function saveEm(){
+async function saveEm(){
   if(!isAdmin()) return;
   const loc = document.getElementById('ef2-loc').value.trim();
   if(!loc){ alert('กรุณาระบุตำแหน่งที่เกิดเหตุ'); return; }
   if(!confirmRouteSave('ef2-route','ef2-loc')) return;
   const startVal = document.getElementById('ef2-start').value || TODAY.toISOString().slice(0,16);
-  emergencies.push({
+  const e = {
     no: emergencies.length ? Math.max(...emergencies.map(e=>e.no))+1 : 1,
     type: document.getElementById('ef2-type').value,
     loc: routeLabelPrefix('ef2-route') + loc, start: startVal.replace('T',' '), lastUpdate: startVal.replace('T',' '), status:'ongoing'
-  });
+  };
+  try{
+    const saved = await apiPost('add', 'emergencies', emToApi(e));
+    emergencies.push(emFromApi(saved));
+  }catch(err){
+    alert('บันทึกเหตุฉุกเฉินไปยังฐานข้อมูลกลางไม่สำเร็จ: ' + err.message);
+    return;
+  }
   document.getElementById('em-form-overlay').classList.add('hidden');
   renderAll();
 }
@@ -4055,73 +4548,12 @@ function renderAll(){
 }
 
 /* ============================================================
-   บันทึกข้อมูลอัตโนมัติ (localStorage) — สำหรับช่วงทดลองใช้งาน
-   หมายเหตุ: ข้อมูลนี้อยู่เฉพาะเบราว์เซอร์/เครื่องนี้เท่านั้น
+   permits/encroachments/bmmEntries/dailyWorkOrders/emergencies/controlledRoutes/
+   fieldCrews/unitCostRecords ย้ายไปอยู่บนฐานข้อมูลกลาง (Google Sheets) ทั้งหมดแล้ว
+   จึงไม่มีอะไรเหลือให้เก็บใน localStorage ของหน้านี้อีกต่อไป (เดิมมี bug ที่
+   jobCodeReference ไม่เคยถูกรวมเข้ากลไกนี้เลย ทำให้แก้ไขแล้วหายหลัง reload —
+   ปัญหานี้หมดไปเองเพราะ jobCodeReference ก็ย้ายไป backend เช่นกัน)
    ============================================================ */
-const __STORAGE_KEY = 'saraban_subsystem2_v2';
-/* bump นี้ทุกครั้งที่โครงสร้าง bmmEntries เปลี่ยน — ป้องกันไม่ให้ข้อมูล bmmEntries เก่าที่เคยบันทึกไว้ในเบราว์เซอร์ (ก่อนแก้ไข)
-   มาทับข้อมูลตั้งต้นที่ถูกต้องในไฟล์นี้ ถ้าเวอร์ชันไม่ตรง จะไม่ดึง bmmEntries ที่เคยบันทึกไว้กลับมาใช้ (ข้อมูลอื่นยังคงถูกดึงกลับมาตามปกติ) */
-const __BMM_SCHEMA_VERSION = 2;
-/* bump นี้ทุกครั้งที่โครงสร้าง controlledRoutes เปลี่ยน (เช่น เพิ่ม field ใหม่) — ป้องกันข้อมูลสายทางเก่าที่เคยบันทึกไว้
-   ในเบราว์เซอร์มาทับโครงสร้างใหม่ที่ถูกต้อง ถ้าเวอร์ชันไม่ตรง จะไม่ดึงสายทางที่เคยบันทึกไว้กลับมาใช้ (ใช้ชุดข้อมูลตั้งต้นในไฟล์แทน) */
-const __ROUTES_SCHEMA_VERSION = 1;
-
-function __collectState(){
-  return { permits, encroachments, bmmEntries, dailyWorkOrders, emergencies,
-    controlledRoutes, __routesNextId, routesAsOf, __bmmSchemaVersion: __BMM_SCHEMA_VERSION, __routesSchemaVersion: __ROUTES_SCHEMA_VERSION,
-    fieldCrews, __crewNextId, unitCostRecords };
-}
-function __applyState(saved){
-  if(saved.permits && saved.permits.length){ permits.length=0; permits.push(...saved.permits); }
-  if(saved.encroachments && saved.encroachments.length){ encroachments.length=0; encroachments.push(...saved.encroachments); }
-  if(saved.bmmEntries && saved.bmmEntries.length && saved.__bmmSchemaVersion === __BMM_SCHEMA_VERSION){
-    bmmEntries.length=0; bmmEntries.push(...saved.bmmEntries);
-  }
-  if(saved.dailyWorkOrders && saved.dailyWorkOrders.length){ dailyWorkOrders.length=0; dailyWorkOrders.push(...saved.dailyWorkOrders); }
-  if(saved.emergencies && saved.emergencies.length){ emergencies.length=0; emergencies.push(...saved.emergencies); }
-  if(saved.controlledRoutes && saved.controlledRoutes.length && saved.__routesSchemaVersion === __ROUTES_SCHEMA_VERSION){
-    controlledRoutes.length=0; controlledRoutes.push(...saved.controlledRoutes);
-    if(saved.__routesNextId) __routesNextId = saved.__routesNextId;
-    if(saved.routesAsOf) routesAsOf = saved.routesAsOf;
-  }
-  if(saved.fieldCrews && saved.fieldCrews.length){ fieldCrews.length=0; fieldCrews.push(...saved.fieldCrews); }
-  if(saved.__crewNextId) __crewNextId = saved.__crewNextId;
-  if(saved.unitCostRecords && saved.unitCostRecords.length){ unitCostRecords.length=0; unitCostRecords.push(...saved.unitCostRecords); }
-}
-function __loadPersistedState(){
-  try{
-    const raw = localStorage.getItem(__STORAGE_KEY);
-    if(raw) __applyState(JSON.parse(raw));
-  }catch(e){ console.error('โหลดข้อมูลที่บันทึกไว้ล้มเหลว', e); }
-}
-let __lastSavedJSON = '';
-function __saveState(){
-  try{
-    const json = JSON.stringify(__collectState());
-    if(json !== __lastSavedJSON){
-      localStorage.setItem(__STORAGE_KEY, json);
-      __lastSavedJSON = json;
-    }
-  }catch(e){ console.error('บันทึกข้อมูลล้มเหลว', e); }
-}
-setInterval(__saveState, 3000);
-window.addEventListener('beforeunload', __saveState);
-window.addEventListener('storage', function(e){
-  if(e.key === __STORAGE_KEY && e.newValue){
-    try{
-      __applyState(JSON.parse(e.newValue));
-      __lastSavedJSON = e.newValue;
-      renderAll();
-    }catch(err){ console.error('ซิงก์ข้อมูลจากระบบหลักล้มเหลว', err); }
-  }
-});
-
-
-
-
-__loadPersistedState();
-/* ============ จบส่วนบันทึกข้อมูล ============ */
-
 /* ============ แสดง/ซ่อนแถบหมายเหตุท้ายตาราง (ปุ่ม ⋮) ============ */
 function __toggleNote(id, btn){
   const note = document.getElementById(id);
@@ -4132,7 +4564,91 @@ function __toggleNote(id, btn){
   btn.classList.toggle('is-open', show);
 }
 
+/* ============================================================
+   ซิงก์ข้อมูลเดิมขึ้นฐานข้อมูลกลาง — ใช้ครั้งเดียวเท่านั้น (ดูปุ่ม migrate-legacy-btn)
+   นำ *_SEED_FOR_MIGRATION ที่ยังฝังอยู่ในไฟล์ขึ้น Google Sheets ผ่าน backend จริง หลังกด
+   สำเร็จและตรวจสอบใน Sheets แล้ว ให้ลบฟังก์ชันนี้ ปุ่ม migrate-legacy-btn และค่าคงที่
+   *_SEED_FOR_MIGRATION ทั้งหมดทิ้งได้ (ไม่ต้องใช้อีก) — permits/encroachments/emergencies/
+   unitCostRecords/dailyWorkOrders ไม่มีข้อมูลตั้งต้นฝังไว้ (เริ่มจากว่างเปล่าอยู่แล้ว) จึงไม่ต้องซิงก์
+   ============================================================ */
+async function migrateLegacyDataToServer(){
+  if(!isAdmin()) return;
+  const total = CONTROLLED_ROUTES_SEED_FOR_MIGRATION.length + FIELD_CREWS_SEED_FOR_MIGRATION.length
+    + JOB_CODE_REFERENCE_SEED_FOR_MIGRATION.length + BMM_ENTRIES_SEED_FOR_MIGRATION.length;
+  const ok = confirm(`จะนำเข้าข้อมูลเดิมทั้งหมด ${total} รายการขึ้นฐานข้อมูลกลาง `
+    + `(สายทางควบคุม ${CONTROLLED_ROUTES_SEED_FOR_MIGRATION.length}, ชุดปฏิบัติงาน ${FIELD_CREWS_SEED_FOR_MIGRATION.length}, `
+    + `รหัสงาน ${JOB_CODE_REFERENCE_SEED_FOR_MIGRATION.length}, แผน/ผลงานบำรุงปกติ ${BMM_ENTRIES_SEED_FOR_MIGRATION.length})\n\n`
+    + `อาจใช้เวลาสักครู่ ห้ามปิด/รีเฟรชหน้านี้ระหว่างทำงาน และกดครั้งเดียวเท่านั้น ดำเนินการต่อหรือไม่?`);
+  if(!ok) return;
+  const btn = document.getElementById('migrate-legacy-btn');
+  let done = 0;
+  function setProgress(label){ if(btn) btn.textContent = `⏳ กำลังซิงก์${label} (${done}/${total})`; }
+  try{
+    for(const r of CONTROLLED_ROUTES_SEED_FOR_MIGRATION){
+      if(!controlledRoutes.some(x=>x.routeNo===r.routeNo)){
+        const saved = await apiPost('add', 'controlled_routes', routeToApi(Object.assign({}, r, {id:undefined})));
+        controlledRoutes.push(routeFromApi(saved));
+      }
+      done++; setProgress('สายทางควบคุม');
+    }
+    for(const c of FIELD_CREWS_SEED_FOR_MIGRATION){
+      if(!fieldCrews.some(x=>x.name===c.name)){
+        const saved = await apiPost('add', 'field_crews', crewToApi(Object.assign({}, c, {id:undefined})));
+        fieldCrews.push(crewFromApi(saved));
+      }
+      done++; setProgress('ชุดปฏิบัติงาน');
+    }
+    for(const j of JOB_CODE_REFERENCE_SEED_FOR_MIGRATION){
+      if(!jobCodeReference.some(x=>x.code===j.code)){
+        const saved = await apiPost('add', 'job_code_reference', jcToApi(j));
+        jobCodeReference.push(jcFromApi(saved));
+      }
+      done++; setProgress('รหัสงาน');
+    }
+    for(const b of BMM_ENTRIES_SEED_FOR_MIGRATION){
+      const saved = await apiPost('add', 'bmm_plan_actual', bmmToApi(b));
+      const fromApi = bmmFromApi(saved);
+      fromApi.no = bmmEntries.length ? Math.max(...bmmEntries.map(e=>e.no))+1 : 1;
+      bmmEntries.push(fromApi);
+      done++; setProgress('แผน/ผลงานบำรุงปกติ');
+    }
+  }catch(err){
+    alert(`ซิงก์ข้อมูลเดิมไม่สำเร็จที่รายการที่ ${done+1} จากทั้งหมด ${total} (สำเร็จไปแล้ว ${done} รายการก่อนหน้า): ${err.message}\n`
+      + `กรุณาตรวจสอบการเชื่อมต่อแล้วกดปุ่มนี้ใหม่อีกครั้ง — สายทาง/ชุดปฏิบัติงาน/รหัสงานที่ซิงก์ไปแล้วจะไม่ซ้ำ `
+      + `แต่แผน/ผลงานบำรุงปกติที่ซิงก์ไปแล้วก่อนจุดที่ผิดพลาดอาจซ้ำ ควรตรวจสอบใน Google Sheets ก่อนกดซ้ำ`);
+    if(btn) btn.textContent = '⬆ ซิงก์ข้อมูลเดิมขึ้นฐานข้อมูลกลาง';
+    renderAll();
+    return;
+  }
+  if(btn) btn.classList.add('hidden');
+  showSuccessModal(`ซิงก์ข้อมูลเดิมขึ้นฐานข้อมูลกลางเรียบร้อยแล้ว ${total} รายการ — ตรวจสอบจำนวนแถวใน Google Sheets ให้ครบถ้วนแล้วลบฟังก์ชัน migrateLegacyDataToServer, ปุ่มนี้ และค่าคงที่ *_SEED_FOR_MIGRATION ทั้งหมดออกจากโค้ดทิ้งได้`);
+  renderAll();
+}
+
 renderAll();
+(async function __initApiData(){
+  await Promise.all([
+    loadControlledRoutesFromApi(),
+    loadFieldCrewsFromApi(),
+    loadJobCodeReferenceFromApi(),
+    loadDailyWorkOrdersFromApi(),
+    loadBmmEntriesFromApi(),
+    loadUnitCostRecordsFromApi(),
+    loadPermitsFromApi(),
+    loadEncroachmentsFromApi(),
+    loadEmergenciesFromApi(),
+    loadSubsys3RefDataFromApi()
+  ]);
+  // เลข id ที่ backend สร้างให้ controlled_routes/field_crews เป็น timestamp (เช่น RTE-...) ไม่ใช่ตัวเลขล้วน
+  // แต่โค้ดเดิมยังมีบางจุด (rf-id ในฟอร์ม, การเทียบ id) ที่คาดว่า __routesNextId/__crewNextId เป็นตัวเลขถัดไปสำหรับ
+  // "รายการที่ยังไม่เคยส่ง backend" เท่านั้น (กรณี id เป็น undefined ตอนสร้างใหม่) — ตั้งค่าเริ่มต้นให้สูงกว่า id ตัวเลข
+  // ที่มีอยู่จริงเสมอ กันชนกัน
+  const numericRouteIds = controlledRoutes.map(r=>Number(r.id)).filter(n=>!isNaN(n));
+  __routesNextId = numericRouteIds.length ? Math.max(...numericRouteIds)+1 : 1;
+  const numericCrewIds = fieldCrews.map(c=>Number(c.id)).filter(n=>!isNaN(n));
+  __crewNextId = numericCrewIds.length ? Math.max(...numericCrewIds)+1 : 1;
+  renderAll();
+})();
 
 /* ปิด Modal ด้วย Esc — มาตรฐานเดียวกันทุกระบบ ปิดได้เฉพาะปุ่ม ✕ กับ Esc เท่านั้น (ไม่ปิดด้วยคลิกนอกกรอบ) */
 document.addEventListener('keydown', function(e){

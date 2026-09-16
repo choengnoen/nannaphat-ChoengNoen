@@ -440,9 +440,26 @@
         <div class="section">
           <div class="section-head">
             <h2>การควบคุมงบประมาณและค่าใช้จ่าย</h2>
-            <select id="budget-cycle" onchange="renderBudget()"></select>
+            <div class="toolbar">
+              <button class="btn btn-ghost hidden" id="budget-edit-btn" onclick="openBudgetEditModal()">✎ แก้ไขวงเงินงบประมาณ</button>
+              <select id="budget-cycle" onchange="renderBudget()"></select>
+            </div>
           </div>
           <div id="budget-detail"></div>
+
+          <div id="budget-edit-overlay" class="modal-overlay hidden">
+            <div class="modal-box">
+              <div class="modal-head">
+                <h3>แก้ไขวงเงินงบประมาณ ปีงบประมาณ <span id="budget-edit-fy"></span></h3>
+                <button type="button" class="modal-close" onclick="closeBudgetEditModal()">✕</button>
+              </div>
+              <div class="modal-body" id="budget-edit-body"></div>
+              <div class="toolbar" style="justify-content:flex-end;padding:0 20px 18px;">
+                <button class="btn btn-ghost" onclick="closeBudgetEditModal()">ยกเลิก</button>
+                <button class="btn btn-primary" onclick="saveBudgetEditModal()">💾 บันทึก</button>
+              </div>
+            </div>
+          </div>
           <div class="legend-block" id="budget-note-block">
             <button type="button" class="legend-dot-btn no-print" id="budget-note-toggle" onclick="__toggleBudgetNote(this)" aria-expanded="false" title="แสดง/ซ่อนหมายเหตุ">⋮</button>
             <div class="foot-note" id="budget-note" style="display:none;background:transparent;border-top:none;">รวมยอดเบิกจ่ายค่าวัสดุจากระบบที่ 3 และค่าจ้างจากบัญชีแรงงานรายวันมาแสดงผลแบบ Real-time</div>
@@ -461,6 +478,7 @@
                 <span class="fy-picker-label">ปีงบประมาณ</span>
                 <select id="util-fy-select" onchange="onUtilFyChange(this.value)"></select>
               </div>
+              <button class="btn btn-danger hidden no-print" id="migrate-legacy-btn" onclick="migrateLegacyDataToServer()" title="นำเข้าบิลค่าสาธารณูปโภค/เลขมิเตอร์น้ำย้อนหลังที่เคยกรอกไว้ก่อนหน้านี้ขึ้นฐานข้อมูลกลาง — กดครั้งเดียวเท่านั้น">⬆ ซิงก์ข้อมูลเดิมขึ้นฐานข้อมูลกลาง</button>
               <button class="btn btn-primary" onclick="toggleUtilForm(true)">➕ บันทึกบิลใหม่</button>
             </div>
           </div>
@@ -578,6 +596,39 @@
    DATA MODEL
    ============================================================ */
 const TODAY = new Date();
+
+/* ============================================================
+   เชื่อมต่อฐานข้อมูลกลาง (Google Sheets ผ่าน Google Apps Script Web App)
+   คัดลอกมาจาก choengnoen1-saraban.html แบบเดียวกันทุกจุด — ใช้แทน
+   localStorage สำหรับ utility_bills, water_meter_log, ot_requests, budget_allocations
+   หมายเหตุ: ต้องส่ง Content-Type เป็น text/plain;charset=utf-8 ตอน POST
+   (ไม่ใช่ application/json) ไม่งั้น Apps Script จะโดน CORS preflight บล็อก
+   ============================================================ */
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbwFxTEynojnNy4bHIS5ZQ9N7aBrsAFDT7a3Vcxugy7KGodhLZ18DNdj-v4MYPOGtBtL/exec';
+const APP_TOKEN = '5UWqjtNRWO59wZlnoN1Ysn0FxdTOGm';
+function apiCurrentUsername(){
+  const s = __getSharedSession();
+  return (s && s.name) || 'ไม่ระบุผู้ใช้';
+}
+async function apiGet(table){
+  const res = await fetch(GAS_URL + '?token=' + encodeURIComponent(APP_TOKEN) + '&table=' + encodeURIComponent(table));
+  const json = await res.json();
+  if(!json.ok) throw new Error(json.error || 'โหลดข้อมูลจากฐานข้อมูลกลางไม่สำเร็จ');
+  return json.data;
+}
+async function apiPost(action, table, data, id){
+  const body = { token: APP_TOKEN, username: apiCurrentUsername(), table, action, data };
+  if(id!==undefined) body.id = id;
+  const res = await fetch(GAS_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify(body)
+  });
+  const json = await res.json();
+  if(!json.ok) throw new Error(json.error || 'บันทึกข้อมูลไปยังฐานข้อมูลกลางไม่สำเร็จ');
+  return json.result;
+}
+/* ============ จบส่วนเชื่อมต่อฐานข้อมูลกลาง ============ */
 
 // เชื่อมโยงรายชื่อพนักงานจริงจากระบบที่ 1 (ฐานข้อมูลบุคลากร) แทนการจำลอง —
 // ระบบที่ 1 เขียนรายชื่อพนักงานลง localStorage คีย์นี้ทุกครั้งที่บันทึกข้อมูล (ดู __saveSharedStaff ในไฟล์ระบบที่ 1)
@@ -758,31 +809,89 @@ function onLaborFYChange(){
 // สถานะ "ส่งบัญชีแรงงานรายวันแล้ว" ต่อรอบเดือน — ติ๊กด้วยมือ ไม่ผูกกับปุ่มพิมพ์ใดๆ
 // เพราะเจ้าหน้าที่อาจพิมพ์เอกสารจากไฟล์ภายนอกระบบก็ได้ คีย์คือ "YYYY-MM" ค่าเป็น true/false
 let laborSentStatus = {};
+/* แปลง ot_requests ระหว่างรูปแบบภายใน (name/date/task/approvedOn/reportedOn) กับคอลัมน์
+   Sheet (staffName/workDate/reason/approvedDate/reportDate) — otRequests ใช้ array index (i)
+   เป็น key ภายในโค้ดหน้านี้อยู่แล้วหลายจุด เก็บ __backendId ไว้คู่กันสำหรับ update ที่ backend
+   ต้องใช้ id จริง (no ยังคงเป็นเลขที่เอกสารที่ frontend คีย์เอง ส่งขึ้น backend ตรงๆ ได้เลย) */
+function otFromApi(row){
+  return { __backendId:row.id, no:row.no, name:row.staffName, team:row.team||'', date:row.workDate,
+    time:row.time||'', task:row.reason, amount:Number(row.amount)||0, status:row.status||'pending',
+    approvedOn:row.approvedDate||undefined, reportedOn:row.reportDate||undefined };
+}
+function otToApi(o){
+  return { id:o.__backendId, no:o.no, staffName:o.name, team:o.team||'', workDate:o.date, time:o.time||'',
+    reason:o.task, amount:o.amount||0, status:o.status||'pending', approvedDate:o.approvedOn, reportDate:o.reportedOn };
+}
+/* ข้อมูล OT จริงย้ายไปอยู่ที่ Google Sheets แท็บ "ot_requests" แล้ว
+   หน้านี้โหลดจาก API ตอนเปิดหน้าเสมอ ดูฟังก์ชัน loadOtRequestsFromApi() ด้านล่าง */
 let otRequests = [];
+async function loadOtRequestsFromApi(){
+  try{
+    otRequests = (await apiGet('ot_requests')).map(otFromApi);
+  }catch(err){
+    console.error('โหลดข้อมูล OT จากฐานข้อมูลกลางล้มเหลว', err);
+    alert('โหลดข้อมูล OT จากฐานข้อมูลกลางไม่สำเร็จ: ' + err.message + '\nกรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ตแล้วรีเฟรชหน้าใหม่');
+  }
+}
 let otCounter = 1;
 
-// งบประมาณต่อรอบเดือน
+// งบประมาณต่อรอบเดือน — schema เดิม (fiscalYear + category เป็นหลายแถวต่อปี) ถูกต้องอยู่แล้ว
+// จุดที่ผิดคือ frontend เดิมใช้ object แบนค่าคงที่ 0 ตลอด ไม่มี UI ให้กรอกวงเงินจริงเลย
+// (ดู setBudgetAllocation()/openBudgetEditModal() ด้านล่าง ที่เพิ่มเข้ามาแก้ปัญหานี้)
 let budgetCategories = ["งบดำเนินงาน","ค่าวัสดุ","ค่าสาธารณูปโภค","งบซ่อมบำรุง"];
-let budgetAllocation = {
-  "งบดำเนินงาน": 0,
-  "ค่าวัสดุ": 0,
-  "ค่าสาธารณูปโภค": 0,
-  "งบซ่อมบำรุง": 0,
-};
-// ยอดเบิกจ่ายสะสมอื่น ๆ ที่ไม่ใช่ค่าจ้าง/ค่าวัสดุ/ค่าสาธารณูปโภค (จำลองรายการเบ็ดเตล็ด)
-let miscSpending = {};
+/* แปลง budget_allocations ระหว่างรูปแบบภายใน กับคอลัมน์ Sheet — field ชื่อตรงกันอยู่แล้ว
+   ยกเว้น amount<-allocatedAmount */
+function budgetAllocFromApi(row){
+  return { id:row.id, fiscalYear:Number(row.fiscalYear), category:row.category, amount:Number(row.allocatedAmount)||0 };
+}
+function budgetAllocToApi(b){
+  return { id:b.id, fiscalYear:b.fiscalYear, category:b.category, allocatedAmount:b.amount||0 };
+}
+/* ข้อมูลวงเงินงบประมาณจริงย้ายไปอยู่ที่ Google Sheets แท็บ "budget_allocations" แล้ว
+   หน้านี้โหลดจาก API ตอนเปิดหน้าเสมอ ดูฟังก์ชัน loadBudgetAllocationsFromApi() ด้านล่าง */
+let budgetAllocations = [];
+async function loadBudgetAllocationsFromApi(){
+  try{
+    budgetAllocations = (await apiGet('budget_allocations')).map(budgetAllocFromApi);
+  }catch(err){
+    console.error('โหลดข้อมูลวงเงินงบประมาณจากฐานข้อมูลกลางล้มเหลว', err);
+    alert('โหลดข้อมูลวงเงินงบประมาณจากฐานข้อมูลกลางไม่สำเร็จ: ' + err.message + '\nกรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ตแล้วรีเฟรชหน้าใหม่');
+  }
+}
+function getBudgetAllocation(fy, cat){
+  const r = budgetAllocations.find(x=>x.fiscalYear===fy && x.category===cat);
+  return r ? r.amount : 0;
+}
+async function setBudgetAllocation(fy, cat, amount){
+  const existing = budgetAllocations.find(x=>x.fiscalYear===fy && x.category===cat);
+  if(existing){
+    existing.amount = amount;
+    await apiPost('update', 'budget_allocations', budgetAllocToApi(existing));
+  } else {
+    const saved = await apiPost('add', 'budget_allocations', budgetAllocToApi({fiscalYear:fy, category:cat, amount}));
+    budgetAllocations.push(budgetAllocFromApi(saved));
+  }
+}
 // ยอดค่าวัสดุที่ดึงจากระบบที่ 3 จริง (เดิมเป็นค่า 0 ตายตัว ไม่เคยเชื่อมข้อมูลจริงเลย)
 // อ่านจาก materialTransactions ของระบบที่ 3 ตรงๆ (origin เดียวกัน) นับเฉพาะรายการ "รับเข้าคลัง" (kind:'receive')
 // ในรอบบิลนั้น เพราะเป็นจุดที่มีการจ่ายเงินซื้อจริง (มี unitPrice/totalPrice บันทึกไว้) — รายการ "เบิกจ่ายออก"
 // ไปใช้งานภาคสนาม (kind:'issue') ไม่มีราคาต่อหน่วยบันทึกไว้ในระบบที่ 3 เลย จึงคำนวณเป็นมูลค่าไม่ได้
-function materialSpendingOf(cycleKey){
+/* เดิมอ่านยอดรับเข้าวัสดุของระบบรองที่ 3 ผ่าน localStorage คีย์ 'saraban_subsystem3_v2'
+   แต่ตั้งแต่ระบบรองที่ 3 ย้าย material_transactions ไปอยู่บนฐานข้อมูลกลางแล้ว (ไม่เขียน
+   localStorage อีกต่อไป) ฟังก์ชันนี้จะได้ [] เสมอ (ยอดค่าวัสดุเงียบๆ กลายเป็น 0 ตลอด) —
+   แก้โดยโหลด material_transactions จาก apiGet ครั้งเดียวตอนเปิดหน้าแทน (ดู
+   __subsys3MaterialTx / loadSubsys3MaterialTxFromApi ท้ายไฟล์) แล้วอ่านจาก cache นี้ */
+let __subsys3MaterialTx = [];
+async function loadSubsys3MaterialTxFromApi(){
   try{
-    const raw = localStorage.getItem('saraban_subsystem3_v2');
-    const state = raw ? JSON.parse(raw) : {};
-    const txs = state.materialTransactions || [];
-    return txs.filter(t=>t.kind==='receive' && (t.date||'').slice(0,7)===cycleKey)
-      .reduce((s,t)=>s+(t.totalPrice||0),0);
-  }catch(e){ return 0; }
+    __subsys3MaterialTx = await apiGet('material_transactions');
+  }catch(err){
+    console.error('โหลดข้อมูลยอดรับเข้าวัสดุจากระบบรองที่ 3 ล้มเหลว', err);
+  }
+}
+function materialSpendingOf(cycleKey){
+  return __subsys3MaterialTx.filter(t=>t.type==='receive' && (t.date||'').slice(0,7)===cycleKey)
+    .reduce((s,t)=>s+(Number(t.totalPrice)||0),0);
 }
 
 // ทะเบียนคุมค่าสาธารณูปโภค
@@ -827,9 +936,59 @@ const UTILITY_HISTORICAL_SEED = [
   {type:'ค่าโทรศัพท์', cycle:'2026-06', amount:104.70, due:'2026-06-24', status:'จ่ายแล้ว'},
   {type:'ค่าน้ำประปา', cycle:'2026-07', amount:699.12, due:'2026-07-24', status:'จ่ายแล้ว'},
 ];
-let utilityBills = UTILITY_HISTORICAL_SEED.map(b=>({...b}));
+/* ชุดข้อมูลตั้งต้น (บิลค่าสาธารณูปโภคจริงย้อนหลัง ต.ค.2568-ก.ค.2569) ใช้เป็นแหล่งข้อมูล
+   สำหรับปุ่ม "ซิงก์ข้อมูลเดิมขึ้นฐานข้อมูลกลาง" ครั้งเดียวเท่านั้น ตัวแปร utilityBills ที่ใช้
+   งานจริงโหลดจาก apiGet('utility_bills') แทน */
+const UTILITY_BILLS_SEED_FOR_MIGRATION = UTILITY_HISTORICAL_SEED.map(b=>({...b}));
+/* แปลง utility_bills ระหว่างรูปแบบภายใน (type/amount/due) กับคอลัมน์ Sheet
+   (billType/billAmount/dueDate) — utilityBills ใช้ array index (i) เป็น key ภายในโค้ดหน้านี้
+   อยู่แล้วหลายจุด (editUtility(i)/deleteUtility(i)/toggleUtilPaid(i)) จึงเก็บ __backendId
+   ไว้คู่กันสำหรับ update/delete แทนที่จะรื้อทุกจุดมาใช้ id จริง */
+function utilFromApi(row){
+  return { __backendId:row.id, type:row.billType, cycle:row.cycle, amount:Number(row.billAmount)||0,
+    due:row.dueDate, status:row.status||'รอเบิกจ่าย' };
+}
+function utilToApi(b){
+  return { id:b.__backendId, cycle:b.cycle, billType:b.type, billAmount:b.amount, dueDate:b.due, status:b.status||'รอเบิกจ่าย', note:'' };
+}
+/* ข้อมูลบิลค่าสาธารณูปโภคจริงย้ายไปอยู่ที่ Google Sheets แท็บ "utility_bills" แล้ว
+   หน้านี้โหลดจาก API ตอนเปิดหน้าเสมอ ดูฟังก์ชัน loadUtilityBillsFromApi() ด้านล่าง */
+let utilityBills = [];
+async function loadUtilityBillsFromApi(){
+  try{
+    utilityBills = (await apiGet('utility_bills')).map(utilFromApi);
+  }catch(err){
+    console.error('โหลดข้อมูลบิลค่าสาธารณูปโภคจากฐานข้อมูลกลางล้มเหลว', err);
+    alert('โหลดข้อมูลบิลค่าสาธารณูปโภคจากฐานข้อมูลกลางไม่สำเร็จ: ' + err.message + '\nกรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ตแล้วรีเฟรชหน้าใหม่');
+  }
+}
 // ทะเบียนคุมมิเตอร์ย่อยค่าน้ำประปา (ธนิภา / ชุลีพร)
+/* แปลง water_meter_log ระหว่างรูปแบบภายใน (subA/subB/...) กับคอลัมน์ Sheet (subAReading/
+   subBReading/...) — cycle เป็น key ทางธุรกิจที่โค้ดหน้านี้ใช้ค้นหาอยู่แล้ว (editWater(cycle)/
+   deleteWater(cycle)) เก็บ __backendId ไว้คู่กันสำหรับ update/delete ที่ backend ต้องใช้ id จริง */
+function waterFromApi(row){
+  const n = v => (v!==''&&v!=null) ? Number(v) : null;
+  return { __backendId:row.id, cycle:row.cycle, mainReading:n(row.mainReading), billAmount:n(row.billAmount),
+    subA:n(row.subAReading), subAPaid:row.paidDateA||null, subAUsageOverride:n(row.usageOverrideA),
+    subB:n(row.subBReading), subBPaid:row.paidDateB||null, subBUsageOverride:n(row.usageOverrideB),
+    note:row.note||'' };
+}
+function waterToApi(r){
+  return { id:r.__backendId, cycle:r.cycle, mainReading:r.mainReading, subAReading:r.subA, subBReading:r.subB,
+    billAmount:r.billAmount, paidDateA:r.subAPaid, paidDateB:r.subBPaid,
+    usageOverrideA:r.subAUsageOverride, usageOverrideB:r.subBUsageOverride, note:r.note||'' };
+}
+/* ข้อมูลมิเตอร์น้ำจริงย้ายไปอยู่ที่ Google Sheets แท็บ "water_meter_log" แล้ว
+   หน้านี้โหลดจาก API ตอนเปิดหน้าเสมอ ดูฟังก์ชัน loadWaterMeterLogFromApi() ด้านล่าง */
 let waterMeterLog = [];
+async function loadWaterMeterLogFromApi(){
+  try{
+    waterMeterLog = (await apiGet('water_meter_log')).map(waterFromApi);
+  }catch(err){
+    console.error('โหลดข้อมูลมิเตอร์น้ำจากฐานข้อมูลกลางล้มเหลว', err);
+    alert('โหลดข้อมูลมิเตอร์น้ำจากฐานข้อมูลกลางไม่สำเร็จ: ' + err.message + '\nกรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ตแล้วรีเฟรชหน้าใหม่');
+  }
+}
 let utilFilter = 'unpaid'; // all | unpaid | paid — มุมมองการเรียกดูทะเบียนคุมค่าสาธารณูปโภค
 let waterFilter = 'unpaid'; // all | unpaid | paid — มุมมองการเรียกดูตารางรายละเอียดค่าน้ำประปา
 // การรายงานไปแขวงรายเดือน (แยกจากสถานะจ่ายเงิน) — เดือนย้อนหลังทั้งหมดที่มีบิลจริงถือว่ารายงานแขวงแล้ว ตามที่ผู้ใช้ยืนยัน
@@ -867,7 +1026,6 @@ window.addEventListener('storage', function(e){
   if(e.key===__PROFILE_KEY){ __renderAvatar(); }
   if(e.key===__SHARED_LEAVE_KEY){ __clearAttendanceCache(); renderLabor(); } // ข้อมูลลาจากระบบที่ 1 เปลี่ยน → ล้างแคชแล้วคำนวณ ง.3-12 ใหม่
   if(e.key===__SHARED_STAFF_KEY){ __refreshLaborRoster(); __clearAttendanceCache(); renderAll(); } // รายชื่อ/ตำแหน่ง/หน้าที่พิเศษจากระบบที่ 1 เปลี่ยน → ดึงรายชื่อใหม่ทั้งหมด
-  if(e.key==='saraban_subsystem3_v2'){ renderAll(); } // ยอดรับเข้าวัสดุจากระบบที่ 3 เปลี่ยน → คำนวณค่าวัสดุใหม่ (materialSpendingOf อ่านสดทุกครั้งอยู่แล้ว แค่ต้อง render ใหม่)
 });
 /* ============ Avatar ผู้ใช้ (รูปโปรไฟล์) ============ */
 const __PROFILE_KEY = 'saraban_user_profiles_v1';
@@ -978,11 +1136,14 @@ function laborSpendOf(cycleKey){
 function utilitySpendOf(cycleKey){
   return utilityBills.filter(b=>b.cycle===cycleKey).reduce((s,b)=>s+b.amount,0);
 }
+/* แก้บั๊กเดิม: หมวด "งบดำเนินงาน" รวมยอด OT ทุกคำขอตั้งแต่เริ่มระบบ ไม่กรองตามรอบเดือน
+   (cycleKey) เหมือนหมวดอื่นทั้งหมด ทำให้สลับ dropdown รอบบิลแล้วตัวเลขไม่เปลี่ยน —
+   ตอนนี้กรองด้วย workDate (o.date) ให้อยู่ในรอบเดียวกับ cycleKey เหมือนหมวดอื่น */
 function budgetSpentOf(cat, cycleKey){
-  if(cat==="งบดำเนินงาน") return (miscSpending["งบดำเนินงาน"]||0) + otRequests.filter(o=>o.status!=='rejected').reduce((s,o)=>s+(o.amount||0),0);
+  if(cat==="งบดำเนินงาน") return otRequests.filter(o=>o.status!=='rejected' && (o.date||'').slice(0,7)===cycleKey).reduce((s,o)=>s+(o.amount||0),0);
   if(cat==="ค่าวัสดุ") return materialSpendingOf(cycleKey);
   if(cat==="ค่าสาธารณูปโภค") return utilitySpendOf(cycleKey);
-  if(cat==="งบซ่อมบำรุง") return (miscSpending["งบซ่อมบำรุง"]||0) + laborSpendOf(cycleKey);
+  if(cat==="งบซ่อมบำรุง") return laborSpendOf(cycleKey);
   return 0;
 }
 
@@ -1184,10 +1345,44 @@ function otActionButtons(o,i){
   if(o.status==='reported') return `<button class="btn btn-ghost btn-sm" onclick="printOTReport(${i})">🖨️ รายงานผล+หลักฐานจ่ายเงิน</button>`;
   return '';
 }
-function approveOT(i){ otRequests[i].status='awaiting_report'; otRequests[i].approvedOn = TODAY.toISOString().slice(0,10); renderAll(); }
-function rejectOT(i){ otRequests[i].status='rejected'; renderAll(); }
-function startAwaitOT(i){ otRequests[i].status='awaiting_report'; renderAll(); }
-function reportOT(i){ otRequests[i].status='reported'; otRequests[i].reportedOn = TODAY.toISOString().slice(0,10); renderAll(); }
+/* บันทึก OT ผ่าน backend เสมอ — ถ้าไม่สำเร็จให้คืนสถานะเดิม (optimistic update) เพื่อไม่ให้
+   หน้าจอกับฐานข้อมูลกลางไม่ตรงกัน */
+async function __saveOtStatus(i, before){
+  try{
+    await apiPost('update', 'ot_requests', otToApi(otRequests[i]));
+  }catch(err){
+    Object.assign(otRequests[i], before);
+    alert('บันทึกสถานะ OT ไปยังฐานข้อมูลกลางไม่สำเร็จ: ' + err.message);
+  }
+  renderAll();
+}
+/* แก้บั๊กเดิม: กด "อนุมัติ" แล้วข้าม status 'approved' ไปที่ 'awaiting_report' ตรงๆ ทำให้ปุ่ม
+   "ปฏิบัติงานแล้ว" (startAwaitOT, เปลี่ยน 'approved'->'awaiting_report') ไม่มีทางถูกกดถึงได้เลย
+   ตอนนี้ approveOT ตั้ง status เป็น 'approved' ตามลำดับขั้นตอนจริงแล้ว */
+function approveOT(i){
+  const before = {status:otRequests[i].status, approvedOn:otRequests[i].approvedOn};
+  otRequests[i].status='approved'; otRequests[i].approvedOn = TODAY.toISOString().slice(0,10);
+  renderAll();
+  __saveOtStatus(i, before);
+}
+function rejectOT(i){
+  const before = {status:otRequests[i].status};
+  otRequests[i].status='rejected';
+  renderAll();
+  __saveOtStatus(i, before);
+}
+function startAwaitOT(i){
+  const before = {status:otRequests[i].status};
+  otRequests[i].status='awaiting_report';
+  renderAll();
+  __saveOtStatus(i, before);
+}
+function reportOT(i){
+  const before = {status:otRequests[i].status, reportedOn:otRequests[i].reportedOn};
+  otRequests[i].status='reported'; otRequests[i].reportedOn = TODAY.toISOString().slice(0,10);
+  renderAll();
+  __saveOtStatus(i, before);
+}
 function openOTModal(){
   document.getElementById('ot-date').value='';
   document.getElementById('ot-time').value='';
@@ -1198,14 +1393,22 @@ function openOTModal(){
 function closeOTModal(){
   document.getElementById('ot-modal-overlay').classList.add('hidden');
 }
-function submitOT(){
+async function submitOT(){
   const name = document.getElementById('ot-name').value;
   const date = document.getElementById('ot-date').value;
   const time = document.getElementById('ot-time').value;
   const task = document.getElementById('ot-task').value;
   const amount = parseFloat(document.getElementById('ot-amount').value)||0;
   if(!name||!date||!time||!task){ alert('กรุณากรอกข้อมูลให้ครบถ้วน'); return; }
-  otRequests.unshift({no:`บช.OT-0${otCounter++}/2569`, name, team:'', date, time, task, amount, status:'pending'});
+  const rec = {no:`บช.OT-0${otCounter++}/2569`, name, team:'', date, time, task, amount, status:'pending'};
+  try{
+    const saved = await apiPost('add', 'ot_requests', otToApi(rec));
+    otRequests.unshift(otFromApi(saved));
+  }catch(err){
+    otCounter--;
+    alert('บันทึกคำขอ OT ไปยังฐานข้อมูลกลางไม่สำเร็จ: ' + err.message);
+    return;
+  }
   document.getElementById('ot-date').value='';
   document.getElementById('ot-time').value='';
   document.getElementById('ot-task').value='';
@@ -1263,9 +1466,12 @@ function populateBudgetCycles(){
 }
 function renderBudget(){
   const cyc = document.getElementById('budget-cycle').value || currentCycle();
+  const fy = cycleFiscalYearBE(cyc);
+  const editBtn = document.getElementById('budget-edit-btn');
+  if(editBtn) editBtn.classList.toggle('hidden', !isAdmin());
   let html = '';
   budgetCategories.forEach(cat=>{
-    const alloc = budgetAllocation[cat];
+    const alloc = getBudgetAllocation(fy, cat);
     const spent = budgetSpentOf(cat, cyc);
     const pct = alloc>0 ? Math.min(100, Math.round((spent/alloc)*100)) : 0;
     const remainPct = 100-pct;
@@ -1282,6 +1488,40 @@ function renderBudget(){
     </div>`;
   });
   document.getElementById('budget-detail').innerHTML = html;
+}
+/* แก้ปัญหาเดิม: budget_allocations ไม่เคยมี UI ให้กรอกวงเงินจริงเลย (ค่าเป็น 0 ตลอด ทำให้
+   แถบ % งบใช้ไปไม่มีความหมาย) — เปิดฟอร์มกรอกวงเงินจัดสรรของปีงบประมาณที่กำลังดูอยู่ ทีละ 4 หมวด */
+function openBudgetEditModal(){
+  if(!isAdmin()) return;
+  const cyc = document.getElementById('budget-cycle').value || currentCycle();
+  const fy = cycleFiscalYearBE(cyc);
+  document.getElementById('budget-edit-fy').textContent = fy;
+  document.getElementById('budget-edit-body').innerHTML = budgetCategories.map(cat=>`
+    <div class="f-row" style="margin-bottom:12px;">
+      <label style="display:block;margin-bottom:4px;">${cat}</label>
+      <input type="number" min="0" step="0.01" class="edit-input" id="budget-edit-${cat}" value="${getBudgetAllocation(fy,cat)}">
+    </div>`).join('');
+  document.getElementById('budget-edit-overlay').classList.remove('hidden');
+}
+function closeBudgetEditModal(){
+  document.getElementById('budget-edit-overlay').classList.add('hidden');
+}
+async function saveBudgetEditModal(){
+  if(!isAdmin()) return;
+  const cyc = document.getElementById('budget-cycle').value || currentCycle();
+  const fy = cycleFiscalYearBE(cyc);
+  try{
+    for(const cat of budgetCategories){
+      const amount = parseFloat(document.getElementById('budget-edit-'+cat).value)||0;
+      await setBudgetAllocation(fy, cat, amount);
+    }
+  }catch(err){
+    alert('บันทึกวงเงินงบประมาณไปยังฐานข้อมูลกลางไม่สำเร็จ (บางหมวดอาจบันทึกไปแล้ว): ' + err.message);
+    renderAll();
+    return;
+  }
+  closeBudgetEditModal();
+  renderAll();
 }
 
 /* ============================================================
@@ -1312,34 +1552,63 @@ function editUtility(i){
   document.getElementById('util-modal-title').textContent = 'แก้ไขบิลค่าสาธารณูปโภค';
   document.getElementById('util-form-overlay').classList.remove('hidden');
 }
-function deleteUtility(i){
+async function deleteUtility(i){
   if(!isAdmin()) return;
   if(!confirm('ยืนยันการลบรายการนี้?')) return;
+  try{
+    await apiPost('delete', 'utility_bills', null, utilityBills[i].__backendId);
+  }catch(err){
+    alert('ลบบิลค่าสาธารณูปโภคในฐานข้อมูลกลางไม่สำเร็จ: ' + err.message);
+    return;
+  }
   utilityBills.splice(i,1);
   if(utilEditIndex===i){ utilEditIndex=null; document.getElementById('util-form-overlay').classList.add('hidden'); }
   renderAll();
 }
-function saveUtility(){
+async function saveUtility(){
   const type = document.getElementById('util-type').value;
   const cycle = document.getElementById('util-cycle').value;
   const amount = parseFloat(document.getElementById('util-amount').value)||0;
   const due = document.getElementById('util-due').value;
   if(!cycle||!amount||!due){ alert('กรุณากรอกข้อมูลให้ครบถ้วน'); return; }
-  if(utilEditIndex!=null){
-    utilityBills[utilEditIndex] = {...utilityBills[utilEditIndex], type, cycle, amount, due};
-    utilEditIndex = null;
-    document.getElementById('util-save-btn').textContent = 'บันทึก';
-  } else {
-    utilityBills.unshift({type, cycle, amount, due, status:'รอเบิกจ่าย'});
+  try{
+    if(utilEditIndex!=null){
+      const merged = {...utilityBills[utilEditIndex], type, cycle, amount, due};
+      await apiPost('update', 'utility_bills', utilToApi(merged));
+      utilityBills[utilEditIndex] = merged;
+      utilEditIndex = null;
+      document.getElementById('util-save-btn').textContent = 'บันทึก';
+    } else {
+      const saved = await apiPost('add', 'utility_bills', utilToApi({type, cycle, amount, due, status:'รอเบิกจ่าย'}));
+      utilityBills.unshift(utilFromApi(saved));
+    }
+  }catch(err){
+    alert('บันทึกบิลค่าสาธารณูปโภคไปยังฐานข้อมูลกลางไม่สำเร็จ: ' + err.message);
+    return;
   }
   document.getElementById('util-amount').value='';
   toggleUtilForm();
   selectedUtilFY = cycleFiscalYearBE(cycle);
   renderAll();
 }
-function toggleUtilPaid(i){ if(!isAdmin())return; utilityBills[i].status = utilityBills[i].status==='จ่ายแล้ว'?'รอเบิกจ่าย':'จ่ายแล้ว'; renderAll(); }
+async function toggleUtilPaid(i){
+  if(!isAdmin())return;
+  const b = utilityBills[i];
+  const before = b.status;
+  b.status = b.status==='จ่ายแล้ว'?'รอเบิกจ่าย':'จ่ายแล้ว';
+  renderAll();
+  try{
+    await apiPost('update', 'utility_bills', utilToApi(b));
+  }catch(err){
+    b.status = before;
+    alert('บันทึกสถานะจ่ายเงินไปยังฐานข้อมูลกลางไม่สำเร็จ: ' + err.message);
+    renderAll();
+  }
+}
 function setUtilFilter(f){ utilFilter = f; renderUtility(); }
 function renderUtility(){
+  const migrateBtn = document.getElementById('migrate-legacy-btn');
+  if(migrateBtn) migrateBtn.classList.toggle('hidden', !isAdmin() || utilityBills.length>0);
   populateUtilFYSelect();
   // จำกัดขอบเขตทั้งตารางและตัวนับตามปีงบประมาณที่เลือกไว้ (selectedUtilFY) ก่อน แล้วค่อยกรองซ้ำด้วยสถานะจ่าย/ไม่จ่าย
   const billsInFY = utilityBills.map((b,i)=>({b,i})).filter(({b})=>cycleFiscalYearBE(b.cycle)===selectedUtilFY);
@@ -1522,7 +1791,11 @@ function toggleWaterForm(forceNew){
    ============================================================ */
 // ปรับข้อมูลชุดนี้แล้ว (ปรับครั้งเดียวตอนย้ายไปใช้การคำนวณแบบ backward-diff): subA/subB ของแต่ละแถวตอนนี้คือเลขมิเตอร์ที่อ่าน/ถ่ายรูปจริง "ในเดือนของแถวนั้นเอง"
 // (เดิมเก็บเป็นเลขเริ่มของเดือนถัดไป) ตัวเลขจึงเลื่อนขึ้นมา 1 แถวจากชุดข้อมูลเดิม ส่วน mainReading/billAmount/วันที่ชำระ/หมายเหตุ อยู่รอบเดิมไม่เปลี่ยน
-const WATER_FY2569_SEED = [
+/* ชุดข้อมูลตั้งต้น (เลขมิเตอร์น้ำจริงย้อนหลัง ก.ย.2568-ส.ค.2569) — เดิมมีปุ่ม importWaterSeed()
+   ให้กดนำเข้า แต่ไม่มีปุ่มในหน้าเว็บเรียกใช้จริง (โค้ดตายเข้าไม่ถึง) ใช้เป็นแหล่งข้อมูลสำหรับ
+   ปุ่ม "ซิงก์ข้อมูลเดิมขึ้นฐานข้อมูลกลาง" ครั้งเดียวแทน ตัวแปร waterMeterLog ที่ใช้งานจริง
+   โหลดจาก apiGet('water_meter_log') แทน */
+const WATER_METER_LOG_SEED_FOR_MIGRATION = [
   {cycle:'2025-09', subA:4507,    subB:2697, mainReading:2828, billAmount:null,    subAPaid:null,          subBPaid:null,          note:'แถวฐาน — เลขมิเตอร์เริ่มต้นปีงบประมาณ 2569 (อ่านค่า 1 ก.ย.2568) ใช้คำนวณหน่วยใช้ของเดือน ต.ค.2568 เป็นเดือนแรก'},
   {cycle:'2025-10', subA:4524,    subB:2698, mainReading:2888, billAmount:1369.60, subAPaid:'2025-10-24', subBPaid:'2025-10-02', note:''},
   {cycle:'2025-11', subA:4541,    subB:2702, mainReading:2938, billAmount:1123.50, subAPaid:'2025-11-27', subBPaid:'2025-11-27', note:''},
@@ -1536,26 +1809,6 @@ const WATER_FY2569_SEED = [
   {cycle:'2026-07', subA:177.444, subB:2761, mainReading:3423, billAmount:1172.72, subAPaid:null,          subBPaid:null,          note:''},
   {cycle:'2026-08', subA:null,    subB:null, mainReading:null, billAmount:null,    subAPaid:null,          subBPaid:null,          note:''},
 ];
-function importWaterSeed(){
-  if(!isAdmin()) return;
-  if(!confirm(`นำเข้าข้อมูลมิเตอร์น้ำย้อนหลัง ${WATER_FY2569_SEED.length} รายการ (ก.ย.2568 เป็นแถวอ้างอิงมิเตอร์หลัก, ต.ค.2568 - ส.ค.2569 เป็นข้อมูลจริงตามไฟล์อ้างอิง) หากรอบบิลใดมีข้อมูลอยู่แล้วในระบบ จะถูกเขียนทับด้วยข้อมูลชุดนี้ ดำเนินการต่อหรือไม่?`)) return;
-  WATER_FY2569_SEED.forEach(seed=>{
-    const rec = {...seed};
-    const existing = waterMeterLog.findIndex(w=>w.cycle===rec.cycle);
-    if(existing>=0) waterMeterLog[existing] = rec; else waterMeterLog.push(rec);
-    if(rec.billAmount!=null){
-      const due = rec.cycle + '-24';
-      const uidx = utilityBills.findIndex(b=>b.type==='ค่าน้ำประปา' && b.cycle===rec.cycle);
-      if(uidx>=0){ utilityBills[uidx].amount = rec.billAmount; }
-      else { utilityBills.unshift({type:'ค่าน้ำประปา', cycle:rec.cycle, amount:rec.billAmount, due, status:(rec.subAPaid && rec.subBPaid)?'จ่ายแล้ว':'รอเบิกจ่าย'}); }
-    }
-  });
-  __saveState();
-  selectedUtilFY = 2569;
-  renderAll();
-  alert('นำเข้าข้อมูลย้อนหลังเรียบร้อยแล้ว');
-}
-
 function editWater(cycle){
   if(!isAdmin()) return;
   const r = waterMeterLog.find(w=>w.cycle===cycle);
@@ -1575,14 +1828,21 @@ function editWater(cycle){
   document.getElementById('water-modal-title').textContent = 'แก้ไขข้อมูลมิเตอร์น้ำ';
   document.getElementById('water-form-overlay').classList.remove('hidden');
 }
-function deleteWater(cycle){
+async function deleteWater(cycle){
   if(!isAdmin()) return;
   if(!confirm('ยืนยันการลบรายการเลขมิเตอร์รอบบิลนี้? (จะไม่ลบรายการบิลในทะเบียนคุมค่าสาธารณูปโภคด้านบน)')) return;
   const idx = waterMeterLog.findIndex(w=>w.cycle===cycle);
-  if(idx>=0) waterMeterLog.splice(idx,1);
+  if(idx<0) return;
+  try{
+    await apiPost('delete', 'water_meter_log', null, waterMeterLog[idx].__backendId);
+  }catch(err){
+    alert('ลบข้อมูลมิเตอร์น้ำในฐานข้อมูลกลางไม่สำเร็จ: ' + err.message);
+    return;
+  }
+  waterMeterLog.splice(idx,1);
   renderAll();
 }
-function saveWaterMeter(){
+async function saveWaterMeter(){
   const cycle = document.getElementById('water-cycle').value;
   const mainReadingRaw = parseFloat(document.getElementById('water-main').value);
   const billAmountRaw = parseFloat(document.getElementById('water-amount').value);
@@ -1600,16 +1860,35 @@ function saveWaterMeter(){
   const subB = isNaN(subBRaw) ? null : subBRaw;
   const subAUsageOverride = isNaN(subAOverrideRaw) ? null : subAOverrideRaw;
   const subBUsageOverride = isNaN(subBOverrideRaw) ? null : subBOverrideRaw;
-  const rec = {cycle, mainReading, billAmount, subA, subAPaid, subAUsageOverride, subB, subBPaid, subBUsageOverride, note};
-  const existing = waterMeterLog.findIndex(w=>w.cycle===cycle);
-  if(existing>=0) waterMeterLog[existing] = rec; else waterMeterLog.push(rec);
+  const existingIdx = waterMeterLog.findIndex(w=>w.cycle===cycle);
+  const rec = {__backendId: existingIdx>=0 ? waterMeterLog[existingIdx].__backendId : undefined,
+    cycle, mainReading, billAmount, subA, subAPaid, subAUsageOverride, subB, subBPaid, subBUsageOverride, note};
 
-  // บันทึกยอดบิลลงทะเบียนบิลรวม (ค่าน้ำประปา) ให้อัตโนมัติ ป้องกันการกรอกซ้ำ — เฉพาะเมื่อมียอดบิลแล้วเท่านั้น
-  if(billAmount!=null){
-    const due = cycle + '-24';
-    const uidx = utilityBills.findIndex(b=>b.type==='ค่าน้ำประปา' && b.cycle===cycle);
-    if(uidx>=0){ utilityBills[uidx].amount = billAmount; }
-    else { utilityBills.unshift({type:'ค่าน้ำประปา', cycle, amount:billAmount, due, status:'รอเบิกจ่าย'}); }
+  try{
+    if(existingIdx>=0){
+      await apiPost('update', 'water_meter_log', waterToApi(rec));
+      waterMeterLog[existingIdx] = rec;
+    } else {
+      const saved = await apiPost('add', 'water_meter_log', waterToApi(rec));
+      waterMeterLog.push(waterFromApi(saved));
+    }
+
+    // บันทึกยอดบิลลงทะเบียนบิลรวม (ค่าน้ำประปา) ให้อัตโนมัติ ป้องกันการกรอกซ้ำ — เฉพาะเมื่อมียอดบิลแล้วเท่านั้น
+    if(billAmount!=null){
+      const due = cycle + '-24';
+      const uidx = utilityBills.findIndex(b=>b.type==='ค่าน้ำประปา' && b.cycle===cycle);
+      if(uidx>=0){
+        utilityBills[uidx].amount = billAmount;
+        await apiPost('update', 'utility_bills', utilToApi(utilityBills[uidx]));
+      } else {
+        const savedBill = await apiPost('add', 'utility_bills', utilToApi({type:'ค่าน้ำประปา', cycle, amount:billAmount, due, status:'รอเบิกจ่าย'}));
+        utilityBills.unshift(utilFromApi(savedBill));
+      }
+    }
+  }catch(err){
+    alert('บันทึกข้อมูลมิเตอร์น้ำไปยังฐานข้อมูลกลางไม่สำเร็จ: ' + err.message);
+    renderAll();
+    return;
   }
 
   document.getElementById('water-cycle').disabled = false;
@@ -1745,22 +2024,24 @@ populateBudgetCycles();
    ============================================================ */
 const __STORAGE_KEY = 'saraban_subsystem4_v2';
 
+/* otRequests/utilityBills/waterMeterLog/budgetAllocations ย้ายไปอยู่บนฐานข้อมูลกลาง
+   (Google Sheets) แล้ว ไม่เก็บซ้ำใน localStorage อีกต่อไป — ยกเว้น budgetSpentSnapshot และ
+   budgetAllocation (ชื่อคีย์เดิมเจตนาคงไว้) ที่ยังคงเขียนไว้เป็นค่า snapshot อ่านอย่างเดียว
+   เพราะ choengnoen0-main.html (หน้าบริหารหมวด) ยังอ่านค่าสองตัวนี้จาก localStorage คีย์นี้อยู่
+   (บริหารหมวดไม่ได้อยู่ในขอบเขตงานเชื่อมต่อ backend รอบนี้ — เชื่อม 3 ระบบรองเท่านั้น) districtReports/
+   laborSentStatus เป็น local-only จริงๆ (ไม่มีตารางฝั่ง backend รองรับแนวคิดนี้) */
 function __collectState(){
-  // แนบยอดเบิกจ่ายจริงต่อหมวด (คำนวณจาก budgetSpentOf ซึ่งรวมค่าจ้างแรงงานตามเวลาทำงานจริง + ค่าวัสดุ
-  // + ค่าสาธารณูปโภค + รายจ่ายเบ็ดเตล็ดครบทุกองค์ประกอบ) ไปกับ state ตอนบันทึกด้วย เพื่อให้ไฟล์อื่น
-  // (หน้าบริหารหมวด) อ่านยอดที่ถูกต้องครบถ้วนได้ตรงๆ โดยไม่ต้องคัดลอกตรรกะคำนวณเวลาทำงาน/วันหยุด/
-  // อัตราค่าจ้างมาไว้ซ้ำอีกที่หนึ่ง (จุดเดียวที่คำนวณ ลดความเสี่ยงตัวเลขสองที่ไม่ตรงกัน)
   const cyc = currentCycle();
+  const fy = cycleFiscalYearBE(cyc);
   const budgetSpentSnapshot = {};
-  budgetCategories.forEach(cat=>{ budgetSpentSnapshot[cat] = budgetSpentOf(cat, cyc); });
-  return { otRequests, utilityBills, budgetAllocation, miscSpending, waterMeterLog, districtReports, budgetSpentSnapshot, laborSentStatus };
+  const budgetAllocation = {};
+  budgetCategories.forEach(cat=>{
+    budgetSpentSnapshot[cat] = budgetSpentOf(cat, cyc);
+    budgetAllocation[cat] = getBudgetAllocation(fy, cat);
+  });
+  return { districtReports, budgetSpentSnapshot, budgetAllocation, laborSentStatus };
 }
 function __applyState(saved){
-  if(saved.otRequests){ otRequests.length=0; otRequests.push(...saved.otRequests); }
-  if(saved.utilityBills){ utilityBills.length=0; utilityBills.push(...saved.utilityBills); }
-  if(saved.budgetAllocation){ Object.keys(budgetAllocation).forEach(k=>delete budgetAllocation[k]); Object.assign(budgetAllocation, saved.budgetAllocation); }
-  if(saved.miscSpending){ Object.keys(miscSpending).forEach(k=>delete miscSpending[k]); Object.assign(miscSpending, saved.miscSpending); }
-  if(saved.waterMeterLog){ waterMeterLog.length=0; waterMeterLog.push(...saved.waterMeterLog); }
   if(saved.districtReports){ districtReports.length=0; districtReports.push(...saved.districtReports); }
   if(saved.laborSentStatus){ Object.keys(laborSentStatus).forEach(k=>delete laborSentStatus[k]); Object.assign(laborSentStatus, saved.laborSentStatus); }
 }
@@ -1840,28 +2121,79 @@ function __toggleWaterNote(btn){
 // รับประกันว่าบิลย้อนหลังจริง (UTILITY_HISTORICAL_SEED) และสถานะรายงานแขวงของเดือนเหล่านั้น
 // จะมีอยู่ในระบบเสมอ แม้ localStorage ของเบราว์เซอร์นี้จะเคยมีข้อมูลชุดเก่า (เช่นข้อมูลตัวอย่าง/ทดลอง) อยู่ก่อนแล้ว
 // เติมเฉพาะรายการที่ยังไม่มี (ไม่ทับของที่ผู้ใช้แก้ไขเองไปแล้วสำหรับ type+cycle เดียวกัน)
-function __ensureHistoricalUtilitySeed(){
+/* utilityBills/waterMeterLog ย้ายไปอยู่บนฐานข้อมูลกลางแล้ว (โหลดจาก apiGet ตอนเปิดหน้า
+   แทน) ฟังก์ชันนี้จึงดูแลเฉพาะ districtReports ซึ่งยังเป็น local-only จริงๆ (ไม่มีตาราง backend
+   รองรับแนวคิด "รายงานแขวงต่อรอบเดือน" นี้) */
+function __ensureHistoricalDistrictReportSeed(){
   let changed = false;
-  UTILITY_HISTORICAL_SEED.forEach(seed=>{
-    const exists = utilityBills.some(b=>b.type===seed.type && b.cycle===seed.cycle);
-    if(!exists){ utilityBills.push({...seed}); changed = true; }
-  });
   DISTRICT_REPORT_HISTORICAL_SEED.forEach(seed=>{
     const exists = districtReports.some(d=>d.cycle===seed.cycle);
     if(!exists){ districtReports.push({...seed}); changed = true; }
   });
-  // เติมข้อมูลมิเตอร์น้ำย้อนหลัง (WATER_FY2569_SEED) ให้ด้วย เพราะแถว "ค่าน้ำประปา" ของตารางสรุปปีงบประมาณ
-  // ดึงค่า "ยอด สนง." มาจากการคำนวณของตารางนี้ — ถ้าไม่มีข้อมูลมิเตอร์น้ำ แถวนี้จะว่างเปล่า
-  WATER_FY2569_SEED.forEach(seed=>{
-    const exists = waterMeterLog.some(w=>w.cycle===seed.cycle);
-    if(!exists){ waterMeterLog.push({...seed}); changed = true; }
-  });
   if(changed) __saveState();
 }
 __loadPersistedState();
-__ensureHistoricalUtilitySeed();
+__ensureHistoricalDistrictReportSeed();
 /* ============ จบส่วนบันทึกข้อมูล ============ */
+
+/* ============================================================
+   ซิงก์ข้อมูลเดิมขึ้นฐานข้อมูลกลาง — ใช้ครั้งเดียวเท่านั้น (ดูปุ่ม migrate-legacy-btn)
+   นำ *_SEED_FOR_MIGRATION ที่ยังฝังอยู่ในไฟล์ขึ้น Google Sheets ผ่าน backend จริง หลังกด
+   สำเร็จและตรวจสอบใน Sheets แล้ว ให้ลบฟังก์ชันนี้ ปุ่ม migrate-legacy-btn และค่าคงที่
+   *_SEED_FOR_MIGRATION ทั้งหมดทิ้งได้ (ไม่ต้องใช้อีก) — ot_requests/budget_allocations
+   ไม่มีข้อมูลตั้งต้นฝังไว้ (เริ่มจากว่างเปล่าอยู่แล้ว) จึงไม่ต้องซิงก์
+   ============================================================ */
+async function migrateLegacyDataToServer(){
+  if(!isAdmin()) return;
+  const total = UTILITY_BILLS_SEED_FOR_MIGRATION.length + WATER_METER_LOG_SEED_FOR_MIGRATION.length;
+  const ok = confirm(`จะนำเข้าข้อมูลเดิมทั้งหมด ${total} รายการขึ้นฐานข้อมูลกลาง `
+    + `(บิลค่าสาธารณูปโภค ${UTILITY_BILLS_SEED_FOR_MIGRATION.length}, เลขมิเตอร์น้ำ ${WATER_METER_LOG_SEED_FOR_MIGRATION.length})\n\n`
+    + `อาจใช้เวลาสักครู่ ห้ามปิด/รีเฟรชหน้านี้ระหว่างทำงาน และกดครั้งเดียวเท่านั้น ดำเนินการต่อหรือไม่?`);
+  if(!ok) return;
+  const btn = document.getElementById('migrate-legacy-btn');
+  let done = 0;
+  function setProgress(label){ if(btn) btn.textContent = `⏳ กำลังซิงก์${label} (${done}/${total})`; }
+  try{
+    for(const b of UTILITY_BILLS_SEED_FOR_MIGRATION){
+      if(!utilityBills.some(x=>x.type===b.type && x.cycle===b.cycle)){
+        const saved = await apiPost('add', 'utility_bills', utilToApi(b));
+        utilityBills.push(utilFromApi(saved));
+      }
+      done++; setProgress('บิลค่าสาธารณูปโภค');
+    }
+    for(const w of WATER_METER_LOG_SEED_FOR_MIGRATION){
+      if(!waterMeterLog.some(x=>x.cycle===w.cycle)){
+        const saved = await apiPost('add', 'water_meter_log', waterToApi(w));
+        waterMeterLog.push(waterFromApi(saved));
+      }
+      done++; setProgress('เลขมิเตอร์น้ำ');
+    }
+  }catch(err){
+    alert(`ซิงก์ข้อมูลเดิมไม่สำเร็จที่รายการที่ ${done+1} จากทั้งหมด ${total} (สำเร็จไปแล้ว ${done} รายการก่อนหน้า): ${err.message}\n`
+      + `กรุณาตรวจสอบการเชื่อมต่อแล้วกดปุ่มนี้ใหม่อีกครั้ง — รายการที่ซิงก์ไปแล้วจะไม่ซ้ำ (เช็ครอบบิลซ้ำให้อัตโนมัติ)`);
+    if(btn) btn.textContent = '⬆ ซิงก์ข้อมูลเดิมขึ้นฐานข้อมูลกลาง';
+    renderAll();
+    return;
+  }
+  if(btn) btn.classList.add('hidden');
+  alert(`ซิงก์ข้อมูลเดิมขึ้นฐานข้อมูลกลางเรียบร้อยแล้ว ${total} รายการ — ตรวจสอบจำนวนแถวใน Google Sheets ให้ครบถ้วนแล้วลบฟังก์ชัน migrateLegacyDataToServer, ปุ่มนี้ และค่าคงที่ *_SEED_FOR_MIGRATION ทั้งหมดออกจากโค้ดทิ้งได้`);
+  renderAll();
+}
+
 renderAll();
+(async function __initApiData(){
+  await Promise.all([
+    loadUtilityBillsFromApi(),
+    loadWaterMeterLogFromApi(),
+    loadOtRequestsFromApi(),
+    loadBudgetAllocationsFromApi(),
+    loadSubsys3MaterialTxFromApi()
+  ]);
+  // เลขที่เอกสาร OT (otCounter) ต้องเริ่มถัดจากเลขสูงสุดที่มีอยู่จริงใน backend เสมอ กันเลขซ้ำ
+  const otNums = otRequests.map(o=>{ const m = String(o.no||'').match(/OT-0*(\d+)/); return m ? Number(m[1]) : 0; });
+  otCounter = otNums.length ? Math.max(...otNums)+1 : 1;
+  renderAll();
+})();
 
 /* ปิด Modal ด้วย Esc — มาตรฐานเดียวกันทุกระบบ ปิดได้เฉพาะปุ่ม ✕ กับ Esc เท่านั้น (ไม่ปิดด้วยคลิกนอกกรอบ) */
 document.addEventListener('keydown', function(e){
