@@ -2182,13 +2182,14 @@ async function migrateLegacyDataToServer(){
 
 renderAll();
 (async function __initApiData(){
-  await Promise.all([
-    loadUtilityBillsFromApi(),
-    loadWaterMeterLogFromApi(),
-    loadOtRequestsFromApi(),
-    loadBudgetAllocationsFromApi(),
-    loadSubsys3MaterialTxFromApi()
-  ]);
+  // เรียกทีละตาราง (ไม่ Promise.all พร้อมกัน) — ยิง Apps Script พร้อมกันหลายคำขอ
+  // เคยทำให้โดน Google จำกัดการเรียกชั่วคราว (ได้ HTML error page แทน JSON) ยอมโหลดช้าลง
+  // สักหน่อยแลกกับความเสถียร
+  await loadUtilityBillsFromApi();
+  await loadWaterMeterLogFromApi();
+  await loadOtRequestsFromApi();
+  await loadBudgetAllocationsFromApi();
+  await loadSubsys3MaterialTxFromApi();
   // เลขที่เอกสาร OT (otCounter) ต้องเริ่มถัดจากเลขสูงสุดที่มีอยู่จริงใน backend เสมอ กันเลขซ้ำ
   const otNums = otRequests.map(o=>{ const m = String(o.no||'').match(/OT-0*(\d+)/); return m ? Number(m[1]) : 0; });
   otCounter = otNums.length ? Math.max(...otNums)+1 : 1;

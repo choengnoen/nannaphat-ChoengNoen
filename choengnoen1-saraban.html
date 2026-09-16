@@ -2513,12 +2513,12 @@ function __toggleNote(id, btn){
 
 renderAll();
 (async function __initApiData(){
-  await Promise.all([
-    loadStaffFromApi(),
-    loadLeaveRequestsFromApi(),
-    loadPublicHolidaysFromApi(),
-    loadControlledRoutesCacheFromApi()
-  ]);
+  // เรียกทีละตาราง (ไม่ Promise.all พร้อมกัน) — ลดความเสี่ยงโดน Google จำกัดการเรียก
+  // Apps Script ชั่วคราวตอนมีหลายระบบเปิดพร้อมกัน (ได้ HTML error page แทน JSON)
+  await loadStaffFromApi();
+  await loadLeaveRequestsFromApi();
+  await loadPublicHolidaysFromApi();
+  await loadControlledRoutesCacheFromApi();
   __syncLeaveStatusFromShared();
   __saveSharedLeaveRequests();
   renderAll();

@@ -3020,7 +3020,12 @@ function subsys3MatTxFromApi(row){
 }
 async function loadSubsys3RefDataFromApi(){
   try{
-    const [veh, mat, fuel, matTx] = await Promise.all([apiGet('machinery'), apiGet('materials'), apiGet('fuel_transactions'), apiGet('material_transactions')]);
+    // เรียกทีละตาราง (ไม่ Promise.all พร้อมกัน) — ยิง Apps Script พร้อมกันหลายคำขอเกินไป
+    // เคยทำให้โดน Google จำกัดการเรียกชั่วคราว (ได้ HTML error page แทน JSON)
+    const veh = await apiGet('machinery');
+    const mat = await apiGet('materials');
+    const fuel = await apiGet('fuel_transactions');
+    const matTx = await apiGet('material_transactions');
     __subsys3Vehicles = veh.map(subsys3VehicleFromApi);
     __subsys3Materials = mat.map(subsys3MaterialFromApi);
     __subsys3FuelTx = fuel.map(subsys3FuelTxFromApi);
@@ -4627,18 +4632,19 @@ async function migrateLegacyDataToServer(){
 
 renderAll();
 (async function __initApiData(){
-  await Promise.all([
-    loadControlledRoutesFromApi(),
-    loadFieldCrewsFromApi(),
-    loadJobCodeReferenceFromApi(),
-    loadDailyWorkOrdersFromApi(),
-    loadBmmEntriesFromApi(),
-    loadUnitCostRecordsFromApi(),
-    loadPermitsFromApi(),
-    loadEncroachmentsFromApi(),
-    loadEmergenciesFromApi(),
-    loadSubsys3RefDataFromApi()
-  ]);
+  // เรียกทีละตาราง (ไม่ Promise.all พร้อมกัน) — ยิง Apps Script พร้อมกันหลายสิบคำขอ
+  // เคยทำให้โดน Google จำกัดการเรียกชั่วคราว (ได้ HTML error page แทน JSON) ยอมโหลดช้าลง
+  // สักหน่อยแลกกับความเสถียร
+  await loadControlledRoutesFromApi();
+  await loadFieldCrewsFromApi();
+  await loadJobCodeReferenceFromApi();
+  await loadDailyWorkOrdersFromApi();
+  await loadBmmEntriesFromApi();
+  await loadUnitCostRecordsFromApi();
+  await loadPermitsFromApi();
+  await loadEncroachmentsFromApi();
+  await loadEmergenciesFromApi();
+  await loadSubsys3RefDataFromApi();
   // เลข id ที่ backend สร้างให้ controlled_routes/field_crews เป็น timestamp (เช่น RTE-...) ไม่ใช่ตัวเลขล้วน
   // แต่โค้ดเดิมยังมีบางจุด (rf-id ในฟอร์ม, การเทียบ id) ที่คาดว่า __routesNextId/__crewNextId เป็นตัวเลขถัดไปสำหรับ
   // "รายการที่ยังไม่เคยส่ง backend" เท่านั้น (กรณี id เป็น undefined ตอนสร้างใหม่) — ตั้งค่าเริ่มต้นให้สูงกว่า id ตัวเลข

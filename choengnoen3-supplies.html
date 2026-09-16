@@ -4281,15 +4281,16 @@ async function migrateLegacyDataToServer(){
 
 renderAll();
 (async function __initApiData(){
-  await Promise.all([
-    loadMaterialsFromApi(),
-    loadMaterialTransactionsFromApi(),
-    loadVehiclesFromApi(),
-    loadFuelTransactionsFromApi(),
-    loadMachineryLogsFromApi(),
-    loadVehicleRequestsFromApi(),
-    loadControlledRoutesCacheFromApi()
-  ]);
+  // เรียกทีละตาราง (ไม่ Promise.all พร้อมกัน) — ยิง Apps Script พร้อมกันหลายคำขอ
+  // เคยทำให้โดน Google จำกัดการเรียกชั่วคราว (ได้ HTML error page แทน JSON) ยอมโหลดช้าลง
+  // สักหน่อยแลกกับความเสถียร
+  await loadMaterialsFromApi();
+  await loadMaterialTransactionsFromApi();
+  await loadVehiclesFromApi();
+  await loadFuelTransactionsFromApi();
+  await loadMachineryLogsFromApi();
+  await loadVehicleRequestsFromApi();
+  await loadControlledRoutesCacheFromApi();
   renderAll();
 })();
 
