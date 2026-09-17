@@ -122,6 +122,10 @@
   .table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;}
   .table-wrap-scroll{max-height:62vh;overflow-y:auto;}
   .table-wrap-scroll thead th{box-shadow:0 1px 0 var(--line);}
+  /* ตาราง "ติดตามคำร้องทุกข์": หัวตารางกับข้อมูลอยู่กึ่งกลางแนวนอนทุกคอลัมน์ ยกเว้น "เรื่อง"/"หมายเหตุ" (คอลัมน์ที่ 6,7) ที่เป็นข้อความยาวจึงชิดซ้ายตามเดิม */
+  #panel-complaints table thead th{text-align:center;}
+  #complaint-body td{text-align:center;}
+  #complaint-body td:nth-child(6), #complaint-body td:nth-child(7){text-align:left;}
   @media (max-width:760px){
     thead th{padding:8px 10px;font-size:10.5px;}
     tbody td{padding:8px 10px;font-size:13px;}
@@ -164,7 +168,8 @@
   .modal-overlay{position:fixed;inset:0;background:rgba(7,27,48,.6);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);z-index:100;display:flex;align-items:center;justify-content:center;padding:20px;animation:modalFadeIn .15s ease;}
   @keyframes modalFadeIn{from{opacity:0;}to{opacity:1;}}
   @keyframes modalPopIn{from{opacity:0;transform:translateY(10px) scale(.97);}to{opacity:1;transform:translateY(0) scale(1);}}
-  .modal-box{background:#fff;border-radius:20px;max-width:640px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 28px 64px -14px rgba(7,27,48,.45),0 10px 26px -10px rgba(7,27,48,.22);animation:modalPopIn .18s cubic-bezier(.22,.9,.32,1.2);}
+  /* max-height + overflow อยู่ที่ modal-body ไม่ใช่ modal-box ทั้งกล่อง เพื่อให้แถบเลื่อนขึ้นลงอยู่ใต้หัวโมดัลลอย (modal-head) เท่านั้น ไม่ทับหัวโมดัล */
+  .modal-box{background:#fff;border-radius:20px;max-width:640px;width:100%;max-height:90vh;display:flex;flex-direction:column;box-shadow:0 28px 64px -14px rgba(7,27,48,.45),0 10px 26px -10px rgba(7,27,48,.22);animation:modalPopIn .18s cubic-bezier(.22,.9,.32,1.2);}
   .modal-head{padding:18px 22px;border-bottom:none;display:flex;align-items:center;gap:12px;background:linear-gradient(135deg,var(--navy-900),var(--navy-800) 75%);border-radius:20px 20px 0 0;position:sticky;top:0;z-index:1;}
   .modal-head h3{margin:0;color:#fff;font-size:15.5px;font-family:'Kanit';display:flex;align-items:center;gap:8px;font-weight:600;}
   .modal-head-icon{width:38px;height:38px;border-radius:11px;background:rgba(255,255,255,.14);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:17px;}
@@ -175,7 +180,7 @@
   .confirm-modal-msg{font-size:13.5px;line-height:1.7;color:var(--ink-700,#2b3a4a);white-space:pre-line;text-align:center;}
   .confirm-warn{margin-top:12px;padding:10px 13px;background:#fff6e6;border:1px solid #f3d9a3;border-radius:11px;font-size:12.8px;line-height:1.65;color:#8a5a00;white-space:pre-line;text-align:left;}
   .modal-close:hover{background:rgba(255,255,255,.14);color:#fff;}
-  .modal-body{padding:20px 22px 4px;}
+  .modal-body{padding:20px 22px 4px;overflow-y:auto;flex:1 1 auto;min-height:0;}
   .modal-foot{padding:16px 22px;border-top:1px solid var(--line);display:flex;gap:8px;justify-content:flex-end;background:var(--paper-50);border-radius:0 0 20px 20px;position:sticky;bottom:0;}
   .field-group{border:1px solid var(--line);border-radius:14px;padding:16px 18px 6px;margin-bottom:14px;background:var(--paper-50);}
   .field-group-title{font-size:12.5px;font-weight:700;color:var(--navy-800);margin:0 0 12px;display:flex;align-items:center;gap:7px;text-transform:uppercase;letter-spacing:.3px;}
@@ -426,8 +431,8 @@
             <div class="f-row"><label>ข้อมูลการรักษาพยาบาล</label><input class="edit-input" id="as-med" placeholder="สิทธิ/สถานพยาบาล"></div>
           </div>
           <div class="modal-foot">
-            <button class="btn btn-ghost" onclick="closeAddStaff()">ยกเลิก</button>
-            <button class="btn btn-primary" onclick="submitAddStaff()">บันทึกเจ้าหน้าที่</button>
+            <button class="btn btn-ghost" id="as-cancel-btn" onclick="closeAddStaff()">ยกเลิก</button>
+            <button class="btn btn-primary" id="as-save-btn" onclick="submitAddStaff()">บันทึกเจ้าหน้าที่</button>
           </div>
         </div>
       </div>
@@ -440,7 +445,7 @@
               ติดตามคำร้องทุกข์
             </h2>
             <div class="toolbar">
-              <select id="complaint-route-filter" class="edit-input" style="width:260px;" onchange="renderComplaints()">
+              <select id="complaint-route-filter" class="edit-input" style="width:130px;" onchange="renderComplaints()">
                 <option value="all">ทุกสายทาง</option>
               </select>
               <button class="btn btn-primary" onclick="openAddComplaint()">+ เพิ่มคำร้องทุกข์</button>
@@ -1368,6 +1373,48 @@ function cancelComplaintEdit(){
   }
 }
 const COMPLAINT_STATUS_OPTIONS = ['รอดำเนินการ','กำลังดำเนินการ','รอหน่วยงานภายนอกดำเนินการ','ดำเนินการแล้วเสร็จ'];
+/* ไทม์ไลน์ความคืบหน้าของคำร้องทุกข์ เก็บเป็น JSON array ในฟิลด์ updatesJson ของ backend
+   ({date, by, note, statusAfter}) แยกจาก remark เดิม (ข้อความตอนบันทึกคำร้องครั้งแรกเท่านั้น) */
+function complaintUpdatesOf(c){
+  try{ const arr = JSON.parse(c.updatesJson||'[]'); return Array.isArray(arr) ? arr : []; }
+  catch(e){ return []; }
+}
+function complaintTimelineHtml(c){
+  const updates = complaintUpdatesOf(c).slice().reverse();
+  if(!updates.length) return '<div style="color:var(--ink-400);font-size:12.5px;padding:6px 0;">ยังไม่มีการบันทึกความคืบหน้า</div>';
+  return updates.map(u=>`
+    <div style="padding:8px 0;border-top:1px solid var(--line);">
+      <div style="font-size:11.5px;color:var(--ink-400);display:flex;justify-content:space-between;gap:8px;">
+        <span>${u.date?fmtDate(u.date):'—'} · ${u.by||'ไม่ระบุผู้บันทึก'}</span>
+        ${u.statusAfter?complaintStatusPill(u.statusAfter):''}
+      </div>
+      <div style="font-size:13.5px;color:var(--ink-900);margin-top:2px;">${u.note||''}</div>
+    </div>
+  `).join('');
+}
+async function addComplaintUpdate(){
+  if(!isAdmin() || complaintModalIndex===null) return;
+  const noteEl = document.getElementById('cp-update-note');
+  const statusEl = document.getElementById('cp-update-status');
+  const note = noteEl.value.trim();
+  if(!note){ alert('กรุณากรอกข้อความความคืบหน้า'); return; }
+  const c = complaints[complaintModalIndex];
+  const newStatus = statusEl.value;
+  const updates = complaintUpdatesOf(c);
+  updates.push({ date: new Date().toISOString().slice(0,10), by: apiCurrentUsername(), note, statusAfter: newStatus });
+  const btn = document.getElementById('cp-update-btn');
+  btn.disabled = true; btn.textContent = 'กำลังบันทึก...';
+  try{
+    const saved = await apiPost('update', 'complaints', {...c, status: newStatus, updatesJson: JSON.stringify(updates)});
+    Object.assign(c, saved);
+  }catch(err){
+    alert('บันทึกความคืบหน้าไปยังฐานข้อมูลกลางไม่สำเร็จ: ' + err.message);
+    btn.disabled = false; btn.textContent = 'บันทึกความคืบหน้า';
+    return;
+  }
+  renderComplaintModal(c);
+  renderComplaints();
+}
 function renderComplaintModal(data){
   const isView = complaintModalMode==='view';
   document.getElementById('cp-icon').textContent = complaintModalMode==='add' ? '📝' : (complaintModalMode==='edit' ? '✏️' : '📋');
@@ -1385,9 +1432,28 @@ function renderComplaintModal(data){
         <div style="grid-column:1/-1;"><div class="d-label">หมายเหตุ</div><div class="d-val">${data.remark||'—'}</div></div>
         <div><div class="d-label">สถานะความคืบหน้า</div><div>${complaintStatusPill(data.status)}</div></div>
       </div>
+      <div style="margin-top:16px;">
+        <div class="d-label" style="margin-bottom:4px;">ไทม์ไลน์ความคืบหน้า</div>
+        ${complaintTimelineHtml(data)}
+      </div>
+      ${isAdmin()?`
+      <div style="margin-top:10px;padding-top:10px;border-top:1px dashed var(--line);">
+        <div class="f-row" style="margin-bottom:8px;"><label>บันทึกความคืบหน้าใหม่</label><input class="edit-input" id="cp-update-note" placeholder="เช่น ประสานหน่วยงานที่เกี่ยวข้องแล้ว, ดำเนินการซ่อมแซมเรียบร้อย"></div>
+        <div class="two-col" style="align-items:end;">
+          <div class="f-row" style="margin-bottom:0;"><label>สถานะหลังบันทึกนี้</label><select class="edit-input" id="cp-update-status">
+            ${COMPLAINT_STATUS_OPTIONS.map(s=>`<option value="${s}" ${data.status===s?'selected':''}>${s}</option>`).join('')}
+          </select></div>
+          <button class="btn btn-primary" id="cp-update-btn" onclick="addComplaintUpdate()">บันทึกความคืบหน้า</button>
+        </div>
+      </div>`:''}
     `;
+    foot.style.justifyContent = isAdmin() ? 'space-between' : 'flex-end';
     foot.innerHTML = isAdmin()
-      ? `<button class="btn btn-ghost" onclick="closeComplaintModal()">ปิด</button><button class="btn btn-primary" onclick="startComplaintEdit()">แก้ไขรายการ</button>`
+      ? `<button class="btn btn-danger" onclick="deleteComplaint()">ลบรายการ</button>
+         <div style="display:flex;gap:8px;">
+           <button class="btn btn-ghost" onclick="closeComplaintModal()">ปิด</button>
+           <button class="btn btn-primary" onclick="startComplaintEdit()">แก้ไขรายการ</button>
+         </div>`
       : `<button class="btn btn-ghost" onclick="closeComplaintModal()">ปิด</button>`;
   } else {
     body.innerHTML = `
@@ -1405,11 +1471,14 @@ function renderComplaintModal(data){
         ${COMPLAINT_STATUS_OPTIONS.map(s=>`<option value="${s}" ${data.status===s?'selected':''}>${s}</option>`).join('')}
       </select></div>
     `;
-    foot.innerHTML = `<button class="btn btn-ghost" onclick="cancelComplaintEdit()">ยกเลิก</button><button class="btn btn-primary" onclick="saveComplaint()">บันทึก</button>`;
+    foot.style.justifyContent = 'flex-end';
+    foot.innerHTML = `<button class="btn btn-ghost" id="cp-cancel-btn" onclick="cancelComplaintEdit()">ยกเลิก</button><button class="btn btn-primary" id="cp-save-btn" onclick="saveComplaint()">บันทึก</button>`;
   }
 }
 async function saveComplaint(){
   if(!isAdmin()) return;
+  const saveBtn = document.getElementById('cp-save-btn');
+  const cancelBtn = document.getElementById('cp-cancel-btn');
   const form = {
     date: document.getElementById('cp-date').value,
     receiveNo: document.getElementById('cp-receiveno').value.trim(),
@@ -1420,6 +1489,9 @@ async function saveComplaint(){
     status: document.getElementById('cp-status').value
   };
   if(!form.subject){ alert('กรุณากรอกเรื่องคำร้องทุกข์'); return; }
+  // ป้องกันการกดซ้ำระหว่างรอผลจากเซิร์ฟเวอร์ (สาเหตุของแถวซ้ำที่เคยเกิดขึ้น) — ปิดปุ่มและแสดงสถานะกำลังบันทึกให้เห็นชัดเจน
+  saveBtn.disabled = true; cancelBtn.disabled = true;
+  saveBtn.textContent = 'กำลังบันทึก...';
   try{
     if(complaintModalMode==='edit' && complaintModalIndex!==null){
       const existing = complaints[complaintModalIndex];
@@ -1433,10 +1505,33 @@ async function saveComplaint(){
       closeComplaintModal();
     }
   }catch(err){
-    alert('บันทึกคำร้องทุกข์ไปยังฐานข้อมูลกลางไม่สำเร็จ: ' + err.message);
+    alert('บันทึกคำร้องทุกข์ไปยังฐานข้อมูลกลางไม่สำเร็จ: ' + err.message + '\nกรุณาตรวจสอบรายการในตารางก่อนกดบันทึกซ้ำ เผื่อข้อมูลถูกบันทึกไปแล้วจริงแต่การตอบกลับล่าช้า');
+    saveBtn.disabled = false; cancelBtn.disabled = false;
+    saveBtn.textContent = 'บันทึก';
     return;
   }
   renderComplaints();
+}
+function deleteComplaint(){
+  if(!isAdmin() || complaintModalIndex===null) return;
+  const c = complaints[complaintModalIndex];
+  if(!c) return;
+  showConfirm({
+    title:'ลบคำร้องทุกข์',
+    message:`ยืนยันลบคำร้องทุกข์เรื่อง <b>"${c.subject||''}"</b> (เลขรับแขวง ${c.receiveNo||'—'})?`,
+    warn:'การลบไม่สามารถย้อนกลับได้',
+    onConfirm: async ()=>{
+      try{
+        await apiPost('delete', 'complaints', null, c.id);
+      }catch(err){
+        alert('ลบคำร้องทุกข์ในฐานข้อมูลกลางไม่สำเร็จ: ' + err.message);
+        return;
+      }
+      complaints.splice(complaintModalIndex,1);
+      closeComplaintModal();
+      renderComplaints();
+    }
+  });
 }
 
 /* ============================================================
@@ -1542,8 +1637,8 @@ function renderStaffDetailModal(){
     `;
     foot.style.justifyContent = 'flex-end';
     foot.innerHTML = `
-      <button class="btn btn-ghost" onclick="toggleStaffDetailEdit(false)">ยกเลิก</button>
-      <button class="btn btn-primary" onclick="saveStaffDetail()">บันทึกการแก้ไข</button>
+      <button class="btn btn-ghost" id="sd-cancel-btn" onclick="toggleStaffDetailEdit(false)">ยกเลิก</button>
+      <button class="btn btn-primary" id="sd-save-btn" onclick="saveStaffDetail()">บันทึกการแก้ไข</button>
     `;
   } else {
     const age = ageFromBirth(s.birth);
@@ -1609,6 +1704,10 @@ async function saveStaffDetail(){
   s.rate = rateVal ? Number(rateVal) : null;
   s.shirt = document.getElementById('sd-shirt').value.trim() || null;
   s.med = document.getElementById('sd-med').value.trim() || null;
+  // ป้องกันการกดซ้ำระหว่างรอผลจากเซิร์ฟเวอร์ (ปุ่มถูกสร้างใหม่ทุกครั้งที่ renderStaffDetailModal ทำงาน จึงกลับมาใช้ได้เองทั้งกรณีสำเร็จและผิดพลาด)
+  const saveBtn = document.getElementById('sd-save-btn'), cancelBtn = document.getElementById('sd-cancel-btn');
+  if(saveBtn){ saveBtn.disabled = true; saveBtn.textContent = 'กำลังบันทึก...'; }
+  if(cancelBtn) cancelBtn.disabled = true;
   try{
     const saved = await apiPost('update', 'staff', s);
     Object.assign(s, saved);
@@ -1629,6 +1728,9 @@ function openAddStaff(){
   ['as-name','as-nickname','as-role','as-duty','as-rate','as-shirt','as-med','as-birth','as-startdate'].forEach(id=>{ document.getElementById(id).value=''; });
   document.getElementById('as-ptype').value = 'ลูกจ้างชั่วคราว';
   document.getElementById('as-status').value = 'ok';
+  const saveBtn = document.getElementById('as-save-btn');
+  saveBtn.disabled = false; saveBtn.textContent = 'บันทึกเจ้าหน้าที่';
+  document.getElementById('as-cancel-btn').disabled = false;
   document.getElementById('add-staff-modal').classList.remove('hidden');
 }
 function closeAddStaff(){ document.getElementById('add-staff-modal').classList.add('hidden'); }
@@ -1650,11 +1752,16 @@ async function submitAddStaff(){
     status: document.getElementById('as-status').value,
     startDate: document.getElementById('as-startdate').value || null
   };
+  const saveBtn = document.getElementById('as-save-btn'), cancelBtn = document.getElementById('as-cancel-btn');
+  saveBtn.disabled = true; cancelBtn.disabled = true;
+  saveBtn.textContent = 'กำลังบันทึก...';
   try{
     const saved = await apiPost('add', 'staff', newStaff);
     staff.push(saved);
   }catch(err){
-    alert('เพิ่มข้อมูลพนักงานไปยังฐานข้อมูลกลางไม่สำเร็จ: ' + err.message);
+    alert('เพิ่มข้อมูลพนักงานไปยังฐานข้อมูลกลางไม่สำเร็จ: ' + err.message + '\nกรุณาตรวจสอบรายการในตารางก่อนกดบันทึกซ้ำ เผื่อข้อมูลถูกบันทึกไปแล้วจริงแต่การตอบกลับล่าช้า');
+    saveBtn.disabled = false; cancelBtn.disabled = false;
+    saveBtn.textContent = 'บันทึกเจ้าหน้าที่';
     return;
   }
   closeAddStaff();
