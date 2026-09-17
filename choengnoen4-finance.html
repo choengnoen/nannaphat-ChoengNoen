@@ -46,6 +46,13 @@
   .topbar-right{display:flex;align-items:center;gap:18px;}
   .clock{font-size:13px;color:var(--ink-600);font-family:'Kanit';}
   .avatar{width:34px;height:34px;border-radius:50%;background:var(--orange-600);color:#fff;display:flex;align-items:center;justify-content:center;font-family:'Kanit';font-weight:600;font-size:13px;}
+  /* เมนูผู้ใช้ที่ซ่อนอยู่หลังรูปโปรไฟล์ — กดรูปเพื่อเปิด แสดงชื่อ/ตำแหน่ง/ปุ่มออกจากระบบ แทนที่จะแสดงตลอดเวลาบน topbar */
+  .user-menu-wrap{position:relative;}
+  .user-menu-panel{position:absolute;top:calc(100% + 10px);right:0;background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:0 16px 34px -10px rgba(7,27,48,.3);padding:10px;min-width:230px;display:flex;flex-direction:column;gap:4px;z-index:60;}
+  .user-menu-panel.hidden{display:none;}
+  .user-menu-item{display:flex;align-items:center;gap:8px;padding:9px 10px;border:none;background:transparent;border-radius:9px;font-family:'Sarabun';font-size:13px;text-align:left;cursor:pointer;color:var(--ink-900);width:100%;}
+  .user-menu-item:hover{background:var(--paper-50);}
+  .user-menu-item.danger{color:var(--danger);}
 
   .content{padding:26px 30px 60px;max-width:none;}
 
@@ -315,8 +322,14 @@
     <header class="topbar">
       <div class="crumb" id="crumb">ระบบรองที่ 4 · <b>งานบัญชีและการเงิน</b></div>
       <div class="topbar-right no-print">
-        <span id="login-badge" class="pill pill-neutral" title="เข้าสู่ระบบที่หน้าระบบหลัก (งานบริหารหมวด) เพื่อรับสิทธิ์แก้ไข">กำลังตรวจสอบสิทธิ์…</span>
-        <div class="avatar" id="user-avatar" onclick="__openAvatarUpload()">จท</div>
+        <div class="user-menu-wrap">
+          <div class="avatar" id="user-avatar" onclick="__toggleUserMenu(event)">จท</div>
+          <div class="user-menu-panel hidden" id="user-menu-panel">
+            <span id="login-badge" class="pill pill-neutral" style="text-align:center;" title="เข้าสู่ระบบที่หน้าระบบหลัก (งานบริหารหมวด) เพื่อรับสิทธิ์แก้ไข">กำลังตรวจสอบสิทธิ์…</span>
+            <button class="user-menu-item" onclick="__openAvatarUpload()">🖼️ เปลี่ยนรูปโปรไฟล์</button>
+            <button id="logout-btn" class="user-menu-item danger" onclick="doLogout()" style="display:none;">🚪 ออกจากระบบ</button>
+          </div>
+        </div>
       </div>
     </header>
 
@@ -1018,15 +1031,39 @@ function isAdmin(){
 function populateLogin(){
   const badge = document.getElementById('login-badge');
   if(!badge) return;
-  if(isAdmin()){
-    badge.textContent = 'สิทธิ์แก้ไข (เข้าสู่ระบบผ่านระบบหลัก)';
+  const logoutBtn = document.getElementById('logout-btn');
+  const s = __getSharedSession();
+  if(isAdmin() && s){
+    badge.textContent = s.name + (s.position ? ' ตำแหน่ง '+s.position : '');
     badge.className = 'pill pill-ok';
+    if(logoutBtn) logoutBtn.style.display = 'flex';
   } else {
     badge.textContent = 'ดูอย่างเดียว — เข้าสู่ระบบที่ระบบหลักเพื่อแก้ไข';
     badge.className = 'pill pill-neutral';
+    if(logoutBtn) logoutBtn.style.display = 'none';
   }
 }
 function doLogin(){ populateLogin(); }
+/* ออกจากระบบได้จากทุกระบบย่อย ไม่ต้องย้อนกลับไปที่ระบบหลักเสมอไป — ล้าง session ที่ใช้ร่วมกันแล้วรีเฟรชสิทธิ์/หน้าจอทันที */
+function doLogout(){
+  localStorage.removeItem('saraban_shared_session');
+  const panel = document.getElementById('user-menu-panel');
+  if(panel) panel.classList.add('hidden');
+  populateLogin();
+  __renderAvatar();
+  renderAll();
+}
+function __toggleUserMenu(e){
+  if(e) e.stopPropagation();
+  document.getElementById('user-menu-panel').classList.toggle('hidden');
+}
+document.addEventListener('click', function(e){
+  const panel = document.getElementById('user-menu-panel');
+  const wrap = document.querySelector('.user-menu-wrap');
+  if(panel && !panel.classList.contains('hidden') && wrap && !wrap.contains(e.target)){
+    panel.classList.add('hidden');
+  }
+});
 window.addEventListener('storage', function(e){
   if(e.key==='saraban_shared_session'){ populateLogin(); renderAll(); __renderAvatar(); }
   if(e.key===__PROFILE_KEY){ __renderAvatar(); }
@@ -1067,12 +1104,12 @@ function __renderAvatar(){
       el.textContent = __initials(s.name);
     }
     el.style.cursor='pointer';
-    el.title = s.name + ' — คลิกเพื่อเปลี่ยนรูปโปรไฟล์';
+    el.title = s.name + ' — คลิกเพื่อดูข้อมูล/ออกจากระบบ';
   } else {
     el.style.backgroundImage='none';
     el.textContent='จท';
-    el.style.cursor='default';
-    el.title='';
+    el.style.cursor='pointer';
+    el.title='ผู้เยี่ยมชม (ดูอย่างเดียว)';
   }
 }
 function __openAvatarUpload(){

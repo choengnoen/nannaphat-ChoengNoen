@@ -46,6 +46,13 @@
   .topbar-right{display:flex;align-items:center;gap:18px;}
   .clock{font-size:13px;color:var(--ink-600);font-family:'Kanit';}
   .avatar{width:34px;height:34px;border-radius:50%;background:var(--orange-600);color:#fff;display:flex;align-items:center;justify-content:center;font-family:'Kanit';font-weight:600;font-size:13px;}
+  /* เมนูผู้ใช้ที่ซ่อนอยู่หลังรูปโปรไฟล์ — กดรูปเพื่อเปิด แสดงชื่อ/ตำแหน่ง/ปุ่มออกจากระบบ แทนที่จะแสดงตลอดเวลาบน topbar */
+  .user-menu-wrap{position:relative;}
+  .user-menu-panel{position:absolute;top:calc(100% + 10px);right:0;background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:0 16px 34px -10px rgba(7,27,48,.3);padding:10px;min-width:230px;display:flex;flex-direction:column;gap:4px;z-index:60;}
+  .user-menu-panel.hidden{display:none;}
+  .user-menu-item{display:flex;align-items:center;gap:8px;padding:9px 10px;border:none;background:transparent;border-radius:9px;font-family:'Sarabun';font-size:13px;text-align:left;cursor:pointer;color:var(--ink-900);width:100%;}
+  .user-menu-item:hover{background:var(--paper-50);}
+  .user-menu-item.danger{color:var(--danger);}
 
   .content{padding:26px 30px 60px;max-width:none;}
   .page-head{margin-bottom:16px;}
@@ -363,8 +370,14 @@
     <header class="topbar">
       <div class="crumb" id="crumb">ระบบรองที่ 1 · <b>งานสารบรรณและบุคลากร</b></div>
       <div class="topbar-right no-print">
-        <span id="login-badge" class="pill pill-neutral" title="เข้าสู่ระบบที่หน้าระบบหลัก (งานบริหารหมวด) เพื่อรับสิทธิ์แก้ไข">กำลังตรวจสอบสิทธิ์…</span>
-        <div class="avatar" id="user-avatar" onclick="__openAvatarUpload()">จท</div>
+        <div class="user-menu-wrap">
+          <div class="avatar" id="user-avatar" onclick="__toggleUserMenu(event)">จท</div>
+          <div class="user-menu-panel hidden" id="user-menu-panel">
+            <span id="login-badge" class="pill pill-neutral" style="text-align:center;" title="เข้าสู่ระบบที่หน้าระบบหลัก (งานบริหารหมวด) เพื่อรับสิทธิ์แก้ไข">กำลังตรวจสอบสิทธิ์…</span>
+            <button class="user-menu-item" onclick="__openAvatarUpload()">🖼️ เปลี่ยนรูปโปรไฟล์</button>
+            <button id="logout-btn" class="user-menu-item danger" onclick="doLogout()" style="display:none;">🚪 ออกจากระบบ</button>
+          </div>
+        </div>
       </div>
     </header>
 
@@ -765,6 +778,24 @@ async function apiGet(table){
       const json = await res.json();
       if(!json.ok) throw new Error(json.error || 'โหลดข้อมูลจากฐานข้อมูลกลางไม่สำเร็จ');
       return json.data;
+    }catch(err){
+      if(attempt >= maxRetries) throw err;
+      await new Promise(r=>setTimeout(r, 700 * (attempt+1)));
+    }
+  }
+}
+/* โหลดหลายตารางในคำขอเดียว (ลดจำนวน round-trip ตอนเปิดหน้าเว็บ — เดิมยิง apiGet
+   ทีละตารางเรียงลำดับกันหลายครั้ง แต่ละครั้งมี latency คงที่จาก Apps Script เอง
+   ไม่ว่าข้อมูลจะเยอะหรือน้อย ยิ่งตารางเยอะยิ่งรวมเวลารอนานขึ้นเรื่อยๆ) คืนค่าเป็น
+   object {ชื่อตาราง: ข้อมูล} ตรงกับชื่อที่ส่งเข้าไปใน tableNames */
+async function apiGetMultiple(tableNames){
+  const maxRetries = 2;
+  for(let attempt=0; attempt<=maxRetries; attempt++){
+    try{
+      const res = await fetch(GAS_URL + '?token=' + encodeURIComponent(APP_TOKEN) + '&tables=' + encodeURIComponent(tableNames.join(',')));
+      const json = await res.json();
+      if(!json.ok) throw new Error(json.error || 'โหลดข้อมูลจากฐานข้อมูลกลางไม่สำเร็จ');
+      return json.tables;
     }catch(err){
       if(attempt >= maxRetries) throw err;
       await new Promise(r=>setTimeout(r, 700 * (attempt+1)));
@@ -1206,15 +1237,39 @@ function isAdmin(){
 function populateLogin(){
   const badge = document.getElementById('login-badge');
   if(!badge) return;
-  if(isAdmin()){
-    badge.textContent = 'สิทธิ์แก้ไข (เข้าสู่ระบบผ่านระบบหลัก)';
+  const logoutBtn = document.getElementById('logout-btn');
+  const s = __getSharedSession();
+  if(isAdmin() && s){
+    badge.textContent = s.name + (s.position ? ' ตำแหน่ง '+s.position : '');
     badge.className = 'pill pill-ok';
+    if(logoutBtn) logoutBtn.style.display = 'flex';
   } else {
     badge.textContent = 'ดูอย่างเดียว — เข้าสู่ระบบที่ระบบหลักเพื่อแก้ไข';
     badge.className = 'pill pill-neutral';
+    if(logoutBtn) logoutBtn.style.display = 'none';
   }
 }
 function doLogin(){ populateLogin(); }
+/* ออกจากระบบได้จากทุกระบบย่อย ไม่ต้องย้อนกลับไปที่ระบบหลักเสมอไป — ล้าง session ที่ใช้ร่วมกันแล้วรีเฟรชสิทธิ์/หน้าจอทันที */
+function doLogout(){
+  localStorage.removeItem('saraban_shared_session');
+  const panel = document.getElementById('user-menu-panel');
+  if(panel) panel.classList.add('hidden');
+  populateLogin();
+  __renderAvatar();
+  renderAll();
+}
+function __toggleUserMenu(e){
+  if(e) e.stopPropagation();
+  document.getElementById('user-menu-panel').classList.toggle('hidden');
+}
+document.addEventListener('click', function(e){
+  const panel = document.getElementById('user-menu-panel');
+  const wrap = document.querySelector('.user-menu-wrap');
+  if(panel && !panel.classList.contains('hidden') && wrap && !wrap.contains(e.target)){
+    panel.classList.add('hidden');
+  }
+});
 window.addEventListener('storage', function(e){
   if(e.key==='saraban_shared_session'){ populateLogin(); renderAll(); __renderAvatar(); }
   if(e.key===__PROFILE_KEY){ __renderAvatar(); }
@@ -1253,12 +1308,12 @@ function __renderAvatar(){
       el.textContent = __initials(s.name);
     }
     el.style.cursor='pointer';
-    el.title = s.name + ' — คลิกเพื่อเปลี่ยนรูปโปรไฟล์';
+    el.title = s.name + ' — คลิกเพื่อดูข้อมูล/ออกจากระบบ';
   } else {
     el.style.backgroundImage='none';
     el.textContent='จท';
-    el.style.cursor='default';
-    el.title='';
+    el.style.cursor='pointer';
+    el.title='ผู้เยี่ยมชม (ดูอย่างเดียว)';
   }
 }
 function __openAvatarUpload(){
@@ -1467,9 +1522,10 @@ function renderComplaintModal(data){
       </div>
       <div class="f-row"><label>เรื่อง</label><input class="edit-input" id="cp-subject" value="${data.subject||''}" placeholder="เช่น ถนนชำรุด เป็นหลุมบ่อ"></div>
       <div class="f-row"><label>หมายเหตุ</label><input class="edit-input" id="cp-remark" value="${data.remark||''}" placeholder="ไม่บังคับ"></div>
+      ${complaintModalMode==='edit'?`
       <div class="f-row"><label>สถานะความคืบหน้า</label><select class="edit-input" id="cp-status">
         ${COMPLAINT_STATUS_OPTIONS.map(s=>`<option value="${s}" ${data.status===s?'selected':''}>${s}</option>`).join('')}
-      </select></div>
+      </select></div>`:''}
     `;
     foot.style.justifyContent = 'flex-end';
     foot.innerHTML = `<button class="btn btn-ghost" id="cp-cancel-btn" onclick="cancelComplaintEdit()">ยกเลิก</button><button class="btn btn-primary" id="cp-save-btn" onclick="saveComplaint()">บันทึก</button>`;
@@ -1486,7 +1542,8 @@ async function saveComplaint(){
     km: document.getElementById('cp-km').value.trim(),
     subject: document.getElementById('cp-subject').value.trim(),
     remark: document.getElementById('cp-remark').value.trim(),
-    status: document.getElementById('cp-status').value
+    // ตอนเพิ่มคำร้องใหม่ไม่มีช่องเลือกสถานะ (บังคับเป็น "รอดำเนินการ" เสมอโดยอัตโนมัติ) — มีเฉพาะตอนแก้ไขรายการที่มีอยู่แล้ว
+    status: document.getElementById('cp-status')?.value || 'รอดำเนินการ'
   };
   if(!form.subject){ alert('กรุณากรอกเรื่องคำร้องทุกข์'); return; }
   // ป้องกันการกดซ้ำระหว่างรอผลจากเซิร์ฟเวอร์ (สาเหตุของแถวซ้ำที่เคยเกิดขึ้น) — ปิดปุ่มและแสดงสถานะกำลังบันทึกให้เห็นชัดเจน
@@ -1564,10 +1621,17 @@ function renderStaff(){
   const filter = document.querySelector('[data-stafftab].active')?.dataset.stafftab || 'all';
   const q = (document.getElementById('staff-search').value||'').toLowerCase();
   const body = document.getElementById('staff-body');
-  let html='';
+  let indices = [];
   staff.forEach((s,i)=>{
     if(filter!=='all' && s.ptype!==filter) return;
     if(q && !(s.name.toLowerCase().includes(q) || (s.nickname||'').toLowerCase().includes(q))) return;
+    indices.push(i);
+  });
+  // เจ้าหน้าที่สถานะ "ลาออก" ให้แสดงอยู่ล่างสุดของรายการเสมอ (sort เสถียร คงลำดับเดิมภายในกลุ่มเดียวกัน)
+  indices.sort((a,b)=> (staff[a].status==='resigned'?1:0) - (staff[b].status==='resigned'?1:0));
+  let html='';
+  indices.forEach(i=>{
+    const s = staff[i];
     html += `<tr style="cursor:pointer;" ondblclick="openStaffDetail(${i})" title="ดับเบิ้ลคลิกเพื่อดูรายละเอียด">
       <td><div class="person">${ptypeBadge(s.ptype)}<div><div class="p-name">${s.name}</div>${s.nickname?`<div class="p-sub">(${s.nickname})</div>`:''}</div></div></td>
       <td>${s.role||'<span style="color:var(--ink-400);font-size:12.5px">ยังไม่ระบุ</span>'}${s.duty?` <span class="pill pill-warn" style="font-size:10.5px;">ปฏิบัติหน้าที่${s.duty}</span>`:''}${(()=>{const el=__leaveEligibleDate(s); if(!el || TODAY.toISOString().slice(0,10)>=el) return ''; return ` <span class="pill pill-danger" style="font-size:10.5px;" title="ยังไม่มีสิทธิ์ลาถึง ${fmtDate(el)}">🔒 ทดลองงาน</span>`;})()}${(()=>{const ri=__retirementInfo(s); if(!ri || s.status!=='ok') return ''; return ri.status==='overdue' ? ` <span class="pill pill-danger" style="font-size:10.5px;" title="ครบกำหนดเกษียณอายุเมื่อ ${fmtDate(ri.date)}">⏳ ถึงกำหนดเกษียณ</span>` : ` <span class="pill pill-warn" style="font-size:10.5px;" title="ครบกำหนดเกษียณอายุ ${fmtDate(ri.date)}">⏳ ใกล้เกษียณอายุ</span>`;})()}</td>
@@ -2783,13 +2847,28 @@ function __toggleNote(id, btn){
 
 renderAll();
 (async function __initApiData(){
-  // เรียกทีละตาราง (ไม่ Promise.all พร้อมกัน) — ลดความเสี่ยงโดน Google จำกัดการเรียก
-  // Apps Script ชั่วคราวตอนมีหลายระบบเปิดพร้อมกัน (ได้ HTML error page แทน JSON)
-  await loadStaffFromApi();
-  await loadLeaveRequestsFromApi();
-  await loadPublicHolidaysFromApi();
-  await loadControlledRoutesCacheFromApi();
-  await loadComplaintsFromApi();
+  // โหลด 5 ตารางที่หน้านี้ต้องใช้ในคำขอเดียว (apiGetMultiple) แทนการยิงทีละตาราง
+  // 5 ครั้งเรียงลำดับกันแบบเดิม — แต่ละคำขอไปยัง Apps Script มี latency คงที่ของตัว
+  // แพลตฟอร์มเองอยู่แล้วไม่ว่าข้อมูลจะเยอะหรือน้อย ยิ่งยิงหลายครั้งยิ่งรวมเวลาโหลด
+  // หน้าเว็บนานขึ้นเรื่อยๆ (นี่คือสาเหตุหลักที่หน้าเว็บ "รู้สึกช้า" ตอนเปิดครั้งแรก)
+  try{
+    const tables = await apiGetMultiple(['staff','leave_requests','public_holidays','controlled_routes','complaints']);
+    staff = tables.staff;
+    leaveRequests = tables.leave_requests;
+    publicHolidays = tables.public_holidays;
+    __controlledRoutesCache = tables.controlled_routes.map(subsys2RouteFromApi);
+    complaints = tables.complaints;
+    populateRouteSelects();
+  }catch(err){
+    // เผื่อฝั่งเซิร์ฟเวอร์ยังไม่ได้ deploy โค้ดที่รองรับ ?tables= หรือคำขอรวมล้มเหลวด้วยเหตุอื่น
+    // — ถอยกลับไปโหลดทีละตารางแบบเดิม (ช้ากว่าแต่ยังใช้งานได้) แทนที่จะปล่อยให้หน้าเว็บพังทั้งหน้า
+    console.error('โหลดข้อมูลหลายตารางพร้อมกันไม่สำเร็จ ถอยกลับไปโหลดทีละตาราง', err);
+    await loadStaffFromApi();
+    await loadLeaveRequestsFromApi();
+    await loadPublicHolidaysFromApi();
+    await loadControlledRoutesCacheFromApi();
+    await loadComplaintsFromApi();
+  }
   __syncLeaveStatusFromShared();
   __saveSharedLeaveRequests();
   renderAll();
