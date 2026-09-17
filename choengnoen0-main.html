@@ -307,8 +307,9 @@
             <span id="login-badge" class="pill pill-neutral" style="text-align:center;display:none;"></span>
             <div id="login-box" style="display:flex;flex-direction:column;gap:8px;padding:4px 2px 2px;">
               <div class="f-row" style="margin:0;">
-                <input type="text" id="login-username" placeholder="ชื่อผู้ใช้" autocomplete="username" list="login-username-list" onkeydown="if(event.key==='Enter')doLogin()">
-                <datalist id="login-username-list"></datalist>
+                <select id="login-username" style="width:100%;padding:10px 13px;" onkeydown="if(event.key==='Enter')doLogin()">
+                  <option value="">-- เลือกชื่อผู้ใช้ --</option>
+                </select>
               </div>
               <div class="f-row" style="margin:0;position:relative;">
                 <input type="password" id="login-password" placeholder="รหัสผ่าน" autocomplete="current-password" style="padding-right:34px;" onkeydown="if(event.key==='Enter')doLogin()">
@@ -342,7 +343,7 @@
         <div id="overview-stats"></div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
           <div class="section">
-            <div class="section-head"><h2>งบประมาณคงเหลือรายหมวดหมู่ <span class="head-desc" style="margin-left:0;">ดึงจากระบบที่ 4</span></h2></div>
+            <div class="section-head"><h2>งบประมาณคงเหลือรายหมวดหมู่</h2></div>
             <div id="budget-mini"></div>
           </div>
           <div class="section">
@@ -350,27 +351,34 @@
             <div id="chart-budget-donut" style="padding:20px;display:flex;align-items:center;gap:20px;flex-wrap:wrap;justify-content:center;"></div>
           </div>
         </div>
-        <div style="display:grid;grid-template-columns:1.3fr 1fr;gap:16px;">
-          <div class="section">
-            <div class="section-head"><h2>สถิติ อุบัติเหตุรายเดือน&nbsp; <span class="head-desc" style="margin-left:0;">ดึงจากระบบที่ 2</span></h2></div>
-            <div id="chart-accident-bar" style="padding:20px;"></div>
-          </div>
-          <div class="section">
-            <div class="section-head"><h2>กำลังพลวันนี้ <span class="head-desc" style="margin-left:0;">ดึงจากระบบที่ 1</span></h2></div>
-            <div id="chart-staff-donut" style="padding:20px;display:flex;align-items:center;gap:20px;flex-wrap:wrap;justify-content:center;"></div>
-          </div>
-        </div>
         <div class="section">
           <div class="section-head">
             <h2><span class="section-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#f2a930" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 15l4-5 3 3 5-7"/></svg></span>
               พัสดุ / เครื่องจักร — วัสดุคงเหลือ
-              <span class="head-desc" style="margin-left:0;">ดึงจากระบบที่ 3</span>
             </h2>
           </div>
-          <div class="table-wrap"><table>
-            <thead><tr><th>รหัส</th><th>รายการ</th><th>คงเหลือ</th><th>จุดสั่งซื้อ</th><th>สถานะ</th></tr></thead>
-            <tbody id="material-body"></tbody>
-          </table></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;padding:16px 20px 4px;">
+            <div>
+              <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:8px;">
+                <h3 style="font-family:'Kanit';font-size:14px;margin:0;">วัสดุในบัญชี</h3>
+                <span class="foot-note" id="material-nai-stat" style="border-top:none;padding:0;"></span>
+              </div>
+              <div class="table-wrap"><table>
+                <thead><tr><th>รหัส</th><th>รายการ</th><th>คงเหลือ</th><th>จุดสั่งซื้อ</th><th>สถานะ</th></tr></thead>
+                <tbody id="material-body-nai"></tbody>
+              </table></div>
+            </div>
+            <div>
+              <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:8px;">
+                <h3 style="font-family:'Kanit';font-size:14px;margin:0;">วัสดุนอกบัญชี</h3>
+                <span class="foot-note" id="material-nok-stat" style="border-top:none;padding:0;"></span>
+              </div>
+              <div class="table-wrap"><table>
+                <thead><tr><th>รหัส</th><th>รายการ</th><th>คงเหลือ</th><th>จุดสั่งซื้อ</th><th>สถานะ</th></tr></thead>
+                <tbody id="material-body-nok"></tbody>
+              </table></div>
+            </div>
+          </div>
           <div class="legend-block" id="material-foot-block">
             <button type="button" class="legend-dot-btn no-print" id="material-foot-toggle" onclick="__toggleNote('material-foot',this)" aria-expanded="false" title="แสดง/ซ่อนหมายเหตุ">⋮</button>
             <div class="foot-note" id="material-foot" style="display:none;background:transparent;border-top:none;"></div>
@@ -386,6 +394,7 @@
               การอนุมัติเอกสาร
             </h2>
             <div class="toolbar">
+              <select id="approval-fy-filter" onchange="renderApprovals()"></select>
               <select id="approval-filter" onchange="renderApprovals()">
                 <option value="all">ทุกระบบ</option>
                 <option value="1">งานสารบรรณ (ระบบ 1)</option>
@@ -430,15 +439,29 @@
         <div class="section">
           <div class="section-head">
             <h2><span class="section-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#f2a930" stroke-width="2"><path d="M7 3h7l5 5v13H7z"/><path d="M14 3v5h5"/></svg></span>
-              รายงานภาพรวมประจำเดือน
+              รายงานสรุปรวมประจำเดือน
             </h2>
             <div class="toolbar">
+              <select id="report-fy" onchange="renderSummaryReport()"></select>
+              <select id="report-month" onchange="renderSummaryReport()"></select>
               <button class="btn btn-primary" onclick="printExecReport()">🖶 พิมพ์รายงานภาพรวม</button>
             </div>
           </div>
           <div style="padding:18px 20px;font-size:13px;color:var(--ink-600);line-height:1.7;">
-            รวบรวมข้อมูลสถิติอุบัติเหตุ กำลังพล งบประมาณ และวัสดุคงเหลือ ออกมาเป็นรายงานภาพรวมรายเดือน 1 หน้า สามารถใช้เป็นข้อมูลประกอบการจัดทำสไลด์นำเสนอหรือรูปเล่มสำหรับการประเมินหมวดทางหลวงดีเด่นได้ โดยไม่ต้องเสียเวลาไปรื้อค้นเอกสารจากแต่ละระบบใหม่
+            รวบรวมข้อมูลผลการปฏิบัติงาน แผน-ผลตามรหัสงาน และการเบิกจ่ายงานบำรุงปกติของเดือนที่เลือก ออกมาเป็นสรุปพร้อมใช้ทำสไลด์นำเสนอ โดยไม่ต้องเสียเวลาไปรื้อค้นเอกสารจากแต่ละระบบใหม่
           </div>
+        </div>
+        <div class="section">
+          <div class="section-head"><h2>1. การรายงานผลการปฏิบัติงาน</h2></div>
+          <div id="report-perf-body" style="padding:16px 20px;"></div>
+        </div>
+        <div class="section">
+          <div class="section-head"><h2>2. การรายงานแผน-ผล ตามรหัสงาน</h2></div>
+          <div id="report-planactual-body" style="padding:16px 20px;"></div>
+        </div>
+        <div class="section">
+          <div class="section-head"><h2>3. การรายงานการเบิกจ่ายงานบำรุงปกติ</h2></div>
+          <div id="report-summary-body" style="padding:16px 20px;"></div>
         </div>
       </div>
 
@@ -459,7 +482,7 @@
           </table></div>
           <div class="legend-block" id="user-foot-block">
             <button type="button" class="legend-dot-btn no-print" id="user-foot-toggle" onclick="__toggleNote('user-foot',this)" aria-expanded="false" title="แสดง/ซ่อนหมายเหตุ">⋮</button>
-            <div class="foot-note" id="user-foot" style="display:none;background:transparent;border-top:none;">ผู้ใช้งานที่เพิ่มในนี้ล็อกอินได้จากคอมพิวเตอร์เครื่องใดก็ได้ด้วยชื่อผู้ใช้+รหัสผ่านของตนเอง สิทธิ์ขึ้นอยู่กับบทบาทที่เลือก — "เจ้าของระบบ" แก้ไขได้ทุกระบบและจัดการผู้ใช้งานได้, "หมวด" เข้าดูได้ทุกระบบแต่แก้ไขไม่ได้, "เจ้าหน้าที่" แก้ไขได้เฉพาะระบบรอง 1-4 และมองไม่เห็นระบบหลักนี้เลย</div>
+            <div class="foot-note" id="user-foot" style="display:none;background:transparent;border-top:none;">ดำเนินการจัดการระบบโดย นางสาวนันท์นภัสธ์ รัตนเสถียร</div>
           </div>
         </div>
 
@@ -519,6 +542,19 @@
   </div>
 </div>
 
+<!-- ============ APPROVAL DETAIL MODAL ============ -->
+<div id="approval-detail-modal-overlay" class="modal-overlay hidden">
+  <div class="modal-box modal-box-sm">
+    <div class="modal-head">
+      <div class="modal-head-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg></div>
+      <h3>รายละเอียดคำขออนุมัติ</h3>
+      <button type="button" class="modal-close" onclick="closeApprovalDetail()">✕</button>
+    </div>
+    <div class="modal-body" id="approval-detail-body"></div>
+    <div class="modal-foot" id="approval-detail-foot"></div>
+  </div>
+</div>
+
 <!-- print-only executive report -->
 <div class="print-only" id="print-exec-report"></div>
 
@@ -568,8 +604,8 @@
           </div>
         </div>
         <div style="display:flex;gap:10px;margin-top:4px;">
-          <button class="btn btn-primary" onclick="saveUser()">บันทึกผู้ใช้งาน</button>
-          <button class="btn btn-ghost" onclick="toggleUserForm()">ยกเลิก</button>
+          <button id="uf-save-btn" class="btn btn-primary" onclick="saveUser()">บันทึกผู้ใช้งาน</button>
+          <button id="uf-cancel-btn" class="btn btn-ghost" onclick="toggleUserForm()">ยกเลิก</button>
         </div>
       </div>
     </div>
@@ -792,6 +828,12 @@ async function saveUser(){
   if(!editingId && !password){ alert('กรุณาตั้งรหัสผ่านสำหรับผู้ใช้งานใหม่'); return; }
   const payload = { displayName:name, position, username, role, status:'ใช้งาน', photo:__ufPhotoData };
   if(password) payload.password = password;
+  const saveBtn = document.getElementById('uf-save-btn');
+  const cancelBtn = document.getElementById('uf-cancel-btn');
+  const originalLabel = saveBtn.textContent;
+  /* ปิดปุ่ม+เปลี่ยนข้อความระหว่างรอ ไม่งั้นถ้า GAS ตอบช้า (ปกติของ deployment นี้ อาจหลายวินาที)
+     ผู้ใช้จะไม่รู้ว่ากำลังทำงานอยู่หรือไม่ อาจกดซ้ำจนยิง request ซ้อนกันโดยไม่ตั้งใจ */
+  saveBtn.disabled = true; cancelBtn.disabled = true; saveBtn.textContent = 'กำลังบันทึก...';
   try{
     if(editingId){
       payload.id = editingId;
@@ -800,9 +842,11 @@ async function saveUser(){
       await apiPost('add', 'users', payload);
     }
   }catch(err){
-    alert('บันทึกข้อมูลผู้ใช้งานไปยังฐานข้อมูลกลางไม่สำเร็จ: ' + err.message);
+    alert('บันทึกข้อมูลผู้ใช้งานไปยังฐานข้อมูลกลางไม่สำเร็จ: ' + err.message + '\nกรุณาตรวจสอบในตารางผู้ใช้งานก่อนว่าบันทึกไปแล้วหรือยัง ก่อนลองกดบันทึกซ้ำ');
+    saveBtn.disabled = false; cancelBtn.disabled = false; saveBtn.textContent = originalLabel;
     return;
   }
+  saveBtn.disabled = false; cancelBtn.disabled = false; saveBtn.textContent = originalLabel;
   await loadUsersFromApi();
   toggleUserForm();
   renderUsers();
@@ -923,6 +967,20 @@ async function apiGet(table){
 /* เพิ่มเข้ามาใหม่ (2569-09-17) — เดิมไฟล์นี้อ่านอย่างเดียว (apiGet) เพราะไม่เคยเขียนข้อมูลข้ามระบบมาก่อน
    แต่ตาราง "ผู้ใช้งานระบบ" (users) ของหน้านี้เองต้องเขียนได้ (เพิ่ม/แก้ไข/ลบบัญชี, login) จึงต้องมี apiPost
    ห้าม retry เหมือน apiGet เพราะคำขอที่ล้มเหลวฝั่ง client อาจสำเร็จจริงฝั่งเซิร์ฟเวอร์แล้ว */
+async function apiGetMultiple(tableNames){
+  const maxRetries = 2;
+  for(let attempt=0; attempt<=maxRetries; attempt++){
+    try{
+      const res = await fetch(GAS_URL + '?token=' + encodeURIComponent(APP_TOKEN) + '&tables=' + encodeURIComponent(tableNames.join(',')));
+      const json = await res.json();
+      if(!json.ok) throw new Error(json.error || 'โหลดข้อมูลจากฐานข้อมูลกลางไม่สำเร็จ');
+      return json.tables;
+    }catch(err){
+      if(attempt >= maxRetries) throw err;
+      await new Promise(r=>setTimeout(r, 700 * (attempt+1)));
+    }
+  }
+}
 async function apiPost(action, table, data, id){
   const body = { token: APP_TOKEN, username: apiCurrentUsername(), table, action, data };
   if(id!==undefined) body.id = id;
@@ -971,6 +1029,13 @@ async function loadUsersFromApi(){
 
 let __apiEncroachments = [];
 let __apiMaterials = [];
+let __apiDailyWorkOrders = [];
+let __apiBmmPlanActual = [];
+let __apiJobCodeReference = [];
+let __apiUnitCostRecords = [];
+let __apiBudgetAllocations4 = [];
+let __apiOtRequests4 = [];
+let __apiUtilityBills4 = [];
 // แปลง materials จาก column ของ Sheet (code/itemName/reorderPoint/openingStock) เป็นรูปแบบที่
 // matCurrentStock()/matStatus() ด้านบนใช้อยู่แล้ว (code/name/unit/reorder/currentStock) — currentStock
 // คำนวณจากยอดตั้งต้น + สุทธิรายการรับ/เบิกทั้งหมดจาก material_transactions (ไม่ได้ใช้ตรรกะปิดบัญชี
@@ -979,7 +1044,7 @@ function __materialFromApi(row, txByCode){
   const opening = Number(row.openingStock) || 0;
   const tx = txByCode[row.code] || [];
   const net = tx.reduce((s,t)=> s + (t.type==='receive' ? (Number(t.qty)||0) : -(Number(t.qty)||0)), 0);
-  return { code: row.code, name: row.itemName, unit: row.unit||'', reorder: Number(row.reorderPoint)||0, currentStock: opening + net };
+  return { code: row.code, name: row.itemName, unit: row.unit||'', reorder: Number(row.reorderPoint)||0, currentStock: opening + net, accountType: row.category==='นอกบัญชี' ? 'นอกบัญชี' : 'ในบัญชี' };
 }
 async function __loadCrossSystemApiData(){
   try{
@@ -992,7 +1057,32 @@ async function __loadCrossSystemApiData(){
     rawTx.forEach(t=>{ (txByCode[t.materialId] = txByCode[t.materialId] || []).push(t); });
     __apiMaterials = rawMaterials.map(m=>__materialFromApi(m, txByCode));
   }catch(err){ console.error('โหลดข้อมูลวัสดุจากระบบที่ 3 ไม่สำเร็จ', err); }
+  // สำหรับหน้า "รายงานสรุปรวม" — โหลด 7 ตารางจากระบบที่ 2/4 ในคำขอเดียว (apiGetMultiple)
+  // แทนที่จะยิงทีละตาราง เพราะแต่ละคำขอไปยัง Apps Script มี latency คงที่ของตัวแพลตฟอร์มเองอยู่แล้ว
+  try{
+    const t = await apiGetMultiple(['daily_work_orders','bmm_plan_actual','job_code_reference','unit_cost_records','budget_allocations','ot_requests','utility_bills']);
+    __apiDailyWorkOrders = t.daily_work_orders;
+    __apiBmmPlanActual = t.bmm_plan_actual;
+    __apiJobCodeReference = t.job_code_reference;
+    __apiUnitCostRecords = t.unit_cost_records;
+    __apiBudgetAllocations4 = t.budget_allocations;
+    __apiOtRequests4 = t.ot_requests;
+    __apiUtilityBills4 = t.utility_bills;
+  }catch(err){
+    // เผื่อฝั่งเซิร์ฟเวอร์ยังไม่รองรับ ?tables= หรือคำขอรวมล้มเหลวด้วยเหตุอื่น — ถอยกลับไปโหลดทีละตาราง
+    console.error('โหลดข้อมูลสำหรับรายงานสรุปรวมพร้อมกันไม่สำเร็จ ถอยกลับไปโหลดทีละตาราง', err);
+    try{ __apiDailyWorkOrders = await apiGet('daily_work_orders'); }catch(e){ console.error('โหลด daily_work_orders ไม่สำเร็จ', e); }
+    try{ __apiBmmPlanActual = await apiGet('bmm_plan_actual'); }catch(e){ console.error('โหลด bmm_plan_actual ไม่สำเร็จ', e); }
+    try{ __apiJobCodeReference = await apiGet('job_code_reference'); }catch(e){ console.error('โหลด job_code_reference ไม่สำเร็จ', e); }
+    try{ __apiUnitCostRecords = await apiGet('unit_cost_records'); }catch(e){ console.error('โหลด unit_cost_records ไม่สำเร็จ', e); }
+    try{ __apiBudgetAllocations4 = await apiGet('budget_allocations'); }catch(e){ console.error('โหลด budget_allocations ไม่สำเร็จ', e); }
+    try{ __apiOtRequests4 = await apiGet('ot_requests'); }catch(e){ console.error('โหลด ot_requests ไม่สำเร็จ', e); }
+    try{ __apiUtilityBills4 = await apiGet('utility_bills'); }catch(e){ console.error('โหลด utility_bills ไม่สำเร็จ', e); }
+  }
   renderAll();
+  // ถ้ากำลังเปิดแท็บ "รายงานสรุปรวม" ค้างไว้ตอนที่ข้อมูลเพิ่งโหลดเสร็จ ให้รีเฟรชให้ด้วยเลย
+  // ไม่งั้นข้อมูลจะยังว่างจนกว่าจะสลับแท็บไปมาหรือเปลี่ยนตัวกรอง
+  if(document.getElementById('panel-reports')?.classList.contains('active')) renderSummaryReport();
 }
 function __todayISO(){
   const d = TODAY;
@@ -1099,9 +1189,11 @@ function __toggleLoginPwVisibility(){
     : '<path d="M17.94 17.94A10.94 10.94 0 0 1 12 19c-7 0-11-7-11-7a21.6 21.6 0 0 1 5.06-5.94M9.9 4.24A10.4 10.4 0 0 1 12 5c7 0 11 7 11 7a21.6 21.6 0 0 1-2.16 3.19M14.12 14.12a3 3 0 1 1-4.24-4.24"/><path d="M1 1l22 22"/>';
 }
 function __populateUsernameSuggestions(){
-  const dl = document.getElementById('login-username-list');
-  if(!dl) return;
-  dl.innerHTML = users.map(u=>`<option value="${u.username}">`).join('');
+  const sel = document.getElementById('login-username');
+  if(!sel) return;
+  const current = sel.value;
+  sel.innerHTML = '<option value="">-- เลือกชื่อผู้ใช้ --</option>' + users.map(u=>`<option value="${u.username}">${u.username}</option>`).join('');
+  if(current && users.some(u=>u.username===current)) sel.value = current;
 }
 let currentUserName = '';
 const __SHARED_SESSION_KEY = 'saraban_shared_session';
@@ -1195,6 +1287,7 @@ document.querySelectorAll('.sec-tab').forEach(t=>t.addEventListener('click',()=>
   document.querySelectorAll('.panel').forEach(x=>x.classList.remove('active'));
   t.classList.add('active');
   document.getElementById('panel-'+t.dataset.sec).classList.add('active');
+  if(t.dataset.sec==='reports') renderSummaryReport();
 }));
 
 /* ============================================================
@@ -1213,7 +1306,6 @@ function renderOverviewStats(){
         <div class="ov-card-head">
           <span class="ov-icon" style="background:var(--navy-900);"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/></svg></span>
           <h3>งบประมาณ</h3>
-          <span class="ov-note">ระบบที่ 4</span>
         </div>
         <div class="ov-metrics">
           <div class="ov-metric ${remainPct<20?'warn':''}"><div class="ov-metric-val">${remainPct}%</div><div class="ov-metric-label">คงเหลือ ${fmtMoney(totalAlloc-totalSpent)} จาก ${fmtMoney(totalAlloc)} บาท</div></div>
@@ -1223,7 +1315,6 @@ function renderOverviewStats(){
         <div class="ov-card-head">
           <span class="ov-icon" style="background:var(--orange-600);"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><circle cx="9" cy="8" r="4"/><path d="M2 21v-1a6 6 0 0 1 6-6h2a6 6 0 0 1 6 6v1"/><path d="M17 11a4 4 0 0 0 0-8"/><path d="M22 21v-1a5.5 5.5 0 0 0-4-5.3"/></svg></span>
           <h3>กำลังพล</h3>
-          <span class="ov-note">ระบบที่ 1</span>
         </div>
         <div class="ov-metrics">
           <div class="ov-metric"><div class="ov-metric-val">${staffToday.ปฏิบัติงาน}</div><div class="ov-metric-label">ปฏิบัติงานวันนี้</div></div>
@@ -1235,7 +1326,6 @@ function renderOverviewStats(){
         <div class="ov-card-head">
           <span class="ov-icon" style="background:var(--amber-400);"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4a2 2 0 0 0 1-1.73Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg></span>
           <h3>พัสดุ / เครื่องจักร</h3>
-          <span class="ov-note">ระบบที่ 3</span>
         </div>
         <div class="ov-metrics">
           <div class="ov-metric ${lowMat>0?'warn':''}"><div class="ov-metric-val">${lowMat}</div><div class="ov-metric-label">ต่ำกว่าจุดสั่งซื้อ จาก ${materials.length} รายการ</div></div>
@@ -1257,11 +1347,12 @@ function renderOverviewStats(){
 function renderBudgetMini(){
   document.getElementById('budget-mini').innerHTML = budgetCategories.map(cat=>{
     const alloc=budgetAllocation[cat], spent=budgetSpent[cat];
-    const remainPct = alloc>0 ? Math.round((alloc-spent)/alloc*100) : 0;
-    const pct = Math.min(100, Math.round(spent/alloc*100));
+    const hasAlloc = alloc>0;
+    const remainPct = hasAlloc ? Math.min(100, Math.max(0, Math.round((alloc-spent)/alloc*100))) : 0;
+    const pct = hasAlloc ? Math.min(100, Math.max(0, Math.round(spent/alloc*100))) : 0;
     const cls = remainPct<20 ? 'danger' : (remainPct<35 ? 'warn' : '');
     return `<div class="budget-row">
-      <div class="budget-top"><span class="name">${cat}</span><span class="nums">${fmtMoney(spent)} / ${fmtMoney(alloc)} บาท (เหลือ ${remainPct}%)</span></div>
+      <div class="budget-top"><span class="name">${cat}</span><span class="nums">${fmtMoney(spent)} / ${fmtMoney(alloc)} บาท ${hasAlloc?`(เหลือ ${remainPct}%)`:'(ยังไม่มีข้อมูล)'}</span></div>
       <div class="budget-track"><div class="budget-fill ${cls}" style="width:${pct}%;"></div></div>
     </div>`;
   }).join('') + `<div class="foot-note">หมวดที่งบประมาณเหลือน้อยกว่า 20% จะแสดงเป็นแถบสีแดงเพื่อเตือนล่วงหน้า</div>`;
@@ -1270,69 +1361,50 @@ function renderBudgetMini(){
 function renderBudgetDonut(){
   const colors = ['#0a2540','#1c4b73','#f2a930','#e0620f'];
   const data = budgetCategories.map(c=>budgetSpent[c]);
-  const total = budgetCategories.reduce((s,c)=>s+budgetAllocation[c],0) || 1;
+  const totalAlloc = budgetCategories.reduce((s,c)=>s+budgetAllocation[c],0);
   const spentTotal = data.reduce((a,b)=>a+b,0);
+  const hasData = totalAlloc>0;
+  const total = hasData ? totalAlloc : 1;
   const r=54, cx=64, cy=64, circ=2*Math.PI*r;
   let offset=0, segs='';
-  budgetCategories.forEach((c,i)=>{
-    const v = budgetSpent[c];
-    const len = circ*(v/total);
-    segs += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${colors[i]}" stroke-width="20" stroke-dasharray="${len} ${circ-len}" stroke-dashoffset="${-offset}" transform="rotate(-90 ${cx} ${cy})"/>`;
-    offset += len;
-  });
-  const legend = budgetCategories.map((c,i)=>`<div style="display:flex;align-items:center;gap:7px;font-size:12.5px;margin-bottom:6px;"><span style="width:10px;height:10px;border-radius:3px;background:${colors[i]};display:inline-block;"></span>${c} — <b>${fmtMoney(budgetSpent[c])}</b> บาท</div>`).join('');
+  if(hasData){
+    budgetCategories.forEach((c,i)=>{
+      const v = budgetSpent[c];
+      const len = circ*(v/total);
+      segs += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${colors[i]}" stroke-width="20" stroke-dasharray="${len} ${circ-len}" stroke-dashoffset="${-offset}" transform="rotate(-90 ${cx} ${cy})"/>`;
+      offset += len;
+    });
+  } else {
+    segs = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="var(--paper-100)" stroke-width="20"/>`;
+  }
+  const centerPct = hasData ? Math.min(100, Math.max(0, Math.round(spentTotal/total*100))) : null;
+  const legend = budgetCategories.map((c,i)=>{
+    const catPct = hasData ? Math.round(budgetAllocation[c]/total*100) : 0;
+    return `<div style="display:flex;align-items:center;gap:7px;font-size:12.5px;margin-bottom:6px;"><span style="width:10px;height:10px;border-radius:3px;background:${colors[i]};display:inline-block;"></span>${c} — <b>${fmtMoney(budgetSpent[c])}</b> บาท${hasData?` (${catPct}% ของงบทั้งหมด)`:''}</div>`;
+  }).join('') + `<div class="foot-note" style="border-top:none;padding:6px 0 0;">งบประมาณรวมทั้งหมด <b>${fmtMoney(totalAlloc)}</b> บาท</div>`;
   document.getElementById('chart-budget-donut').innerHTML = `
     <svg width="128" height="128" viewBox="0 0 128 128">${segs}
-      <text x="64" y="60" text-anchor="middle" font-family="Kanit" font-size="15" font-weight="600" fill="var(--navy-900)">${Math.round(spentTotal/total*100)}%</text>
-      <text x="64" y="76" text-anchor="middle" font-family="Sarabun" font-size="10.5" fill="var(--ink-400)">เบิกจ่ายแล้ว</text>
-    </svg>
-    <div>${legend}</div>`;
-}
-
-function renderAccidentBar(){
-  const months = Object.keys(accidentMonthly);
-  const vals = Object.values(accidentMonthly);
-  const max = Math.max(...vals,1);
-  const bars = months.map((m,i)=>{
-    const h = Math.round((vals[i]/max)*90);
-    return `<div style="display:flex;flex-direction:column;align-items:center;gap:4px;flex:1;min-width:0;">
-      <div style="font-size:11px;color:var(--ink-600);">${vals[i]}</div>
-      <div style="width:100%;max-width:26px;height:${Math.max(h,4)}px;background:var(--orange-600);border-radius:4px 4px 0 0;"></div>
-      <div style="font-size:10.5px;color:var(--ink-400);">${m}</div>
-    </div>`;
-  }).join('');
-  document.getElementById('chart-accident-bar').innerHTML = `<div style="display:flex;align-items:flex-end;gap:6px;height:150px;">${bars}</div>
-    <div class="foot-note" style="border-top:none;padding:10px 0 0;">รวมอุบัติเหตุสะสมปีงบประมาณ 2569: <b>${vals.reduce((a,b)=>a+b,0)}</b> ครั้ง · รุกล้ำเขตทางที่ยังไม่รื้อถอน <b>${encroachActive}</b>/${encroachTotal} ราย · โจรกรรมที่ยังไม่แจ้งความ <b>${theftPending}</b>/${theftTotal} เหตุการณ์</div>`;
-}
-
-function renderStaffDonut(){
-  const types = Object.keys(staffTotals);
-  const colors = ['#0a2540','#1c4b73','#f2a930','#e0620f'];
-  const data = types.map(t=>staffTotals[t]);
-  const total = data.reduce((a,b)=>a+b,0) || 1;
-  const r=54, cx=64, cy=64, circ=2*Math.PI*r;
-  let offset=0, segs='';
-  data.forEach((v,i)=>{
-    const len = circ*(v/total);
-    segs += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${colors[i]}" stroke-width="20" stroke-dasharray="${len} ${circ-len}" stroke-dashoffset="${-offset}" transform="rotate(-90 ${cx} ${cy})"/>`;
-    offset += len;
-  });
-  const legend = types.map((t,i)=>`<div style="display:flex;align-items:center;gap:7px;font-size:12.5px;margin-bottom:6px;"><span style="width:10px;height:10px;border-radius:3px;background:${colors[i]};display:inline-block;"></span>${t} — <b>${data[i]}</b> คน</div>`).join('');
-  document.getElementById('chart-staff-donut').innerHTML = `
-    <svg width="128" height="128" viewBox="0 0 128 128">${segs}
-      <text x="64" y="60" text-anchor="middle" font-family="Kanit" font-size="22" font-weight="600" fill="var(--navy-900)">${total}</text>
-      <text x="64" y="76" text-anchor="middle" font-family="Sarabun" font-size="11" fill="var(--ink-400)">ทั้งหมด</text>
+      <text x="64" y="60" text-anchor="middle" font-family="Kanit" font-size="15" font-weight="600" fill="var(--navy-900)">${centerPct===null?'—':centerPct+'%'}</text>
+      <text x="64" y="76" text-anchor="middle" font-family="Sarabun" font-size="10.5" fill="var(--ink-400)">${centerPct===null?'ยังไม่มีข้อมูล':'เบิกจ่ายแล้ว'}</text>
     </svg>
     <div>${legend}</div>`;
 }
 
 function renderMaterials(){
-  document.getElementById('material-body').innerHTML = materials.map(m=>{
+  const rowHtml = m=>{
     const st = matStatus(m);
     const pill = st==='low' ? '<span class="pill pill-danger">ต่ำกว่าจุดสั่งซื้อ</span>' : (st==='watch' ? '<span class="pill pill-warn">ใกล้ถึงจุดสั่งซื้อ</span>' : '<span class="pill pill-ok">ปกติ</span>');
     return `<tr><td style="font-family:'Kanit';font-size:12px;color:var(--navy-900);">${m.code}</td><td>${m.name}</td><td>${matCurrentStock(m).toLocaleString('th-TH')} ${m.unit}</td><td>${m.reorder.toLocaleString('th-TH')} ${m.unit}</td><td>${pill}</td></tr>`;
-  }).join('');
-  const low = materials.filter(m=>matStatus(m)==='low').length;
+  };
+  const nai = materials.filter(m=>(m.accountType||'ในบัญชี')==='ในบัญชี');
+  const nok = materials.filter(m=>m.accountType==='นอกบัญชี');
+  document.getElementById('material-body-nai').innerHTML = nai.map(rowHtml).join('');
+  document.getElementById('material-body-nok').innerHTML = nok.map(rowHtml).join('');
+  const lowNai = nai.filter(m=>matStatus(m)==='low').length;
+  const lowNok = nok.filter(m=>matStatus(m)==='low').length;
+  document.getElementById('material-nai-stat').textContent = `ทั้งหมด ${nai.length} รายการ · ต่ำกว่าจุดสั่งซื้อ ${lowNai} รายการ`;
+  document.getElementById('material-nok-stat').textContent = `ทั้งหมด ${nok.length} รายการ · ต่ำกว่าจุดสั่งซื้อ ${lowNok} รายการ`;
+  const low = lowNai + lowNok;
   document.getElementById('material-foot').textContent = `${low} รายการต่ำกว่าจุดสั่งซื้อ จากทั้งหมด ${materials.length} รายการที่ติดตามบนแดชบอร์ดนี้ — ดูรายการทั้งหมดที่ระบบที่ 3`;
 }
 
@@ -1363,11 +1435,166 @@ function __leaveRowsForApproval(){
     sys:1, sysName:'งานสารบรรณ',
     type:'คำขอลา'+(r.type?(' ('+r.type+')'):''),
     who:r.name,
-    detail:`ลา${r.type} ตั้งแต่ ${fmtDate(r.from)} ถึง ${fmtDate(r.to)}${r.reason?(' — เหตุผล: '+r.reason):''}`,
+    detail:`ลา${r.type} ตั้งแต่ ${fmtDate(r.from)} ถึง ${fmtDate(r.to)}`,
+    reason:r.reason||'',
     date:r.createdAt||r.from,
     status:r.status,
     rejectReason:r.rejectReason
   }));
+}
+function fiscalYearOf(dateStr){
+  if(!dateStr) return null;
+  const d = new Date(dateStr+'T00:00:00');
+  if(isNaN(d)) return null;
+  return d.getFullYear()+543+(d.getMonth()+1>=10 ? 1 : 0);
+}
+function currentFiscalYear(){
+  return fiscalYearOf(TODAY.toISOString().slice(0,10));
+}
+/* ============================================================
+   สรุปรวม (SUMMARY REPORT) — รวมข้อมูลผลการปฏิบัติงาน/แผน-ผล/การเบิกจ่าย
+   จาก daily_work_orders, bmm_plan_actual, job_code_reference (ระบบที่ 2)
+   ============================================================ */
+// เดือนในปีงบประมาณนับ ต.ค.=1 ... ก.ย.=12 (ต่างจากเดือนปฏิทินปกติ)
+function currentFiscalMonthIndex(){
+  const m = TODAY.getMonth()+1;
+  return m>=10 ? m-9 : m+3;
+}
+function __fiscalMonthToCalendar(fiscalIdx, fy){
+  if(fiscalIdx<=3) return { year: fy-543-1, month: fiscalIdx+9 };
+  return { year: fy-543, month: fiscalIdx-3 };
+}
+const __FISCAL_MONTH_LABELS = ['ต.ค.','พ.ย.','ธ.ค.','ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.'];
+function __populateReportFilters(){
+  const fySel = document.getElementById('report-fy');
+  const moSel = document.getElementById('report-month');
+  if(fySel && !fySel.dataset.populated){
+    const cfy = currentFiscalYear();
+    const opts = [cfy, cfy-1, cfy-2];
+    fySel.innerHTML = opts.map(fy=>`<option value="${fy}">ปีงบประมาณ ${fy}</option>`).join('');
+    fySel.value = String(cfy);
+    fySel.dataset.populated = '1';
+  }
+  if(moSel && !moSel.dataset.populated){
+    moSel.innerHTML = __FISCAL_MONTH_LABELS.map((lb,i)=>`<option value="${i+1}">${lb}</option>`).join('');
+    moSel.value = String(currentFiscalMonthIndex());
+    moSel.dataset.populated = '1';
+  }
+}
+// ไล่ parent ขึ้นไปจนถึงรหัสงานหลัก (รหัสที่ parent ของตัวเองคือ '21000' หรือไม่มี parent เลย)
+// ใช้ตรรกะเดียวกับ bmmMainCodeOf() ในระบบที่ 2 (choengnoen2-statistics.html) ไม่ได้คิดใหม่แยกกัน
+function __mainCodeOf(code, jcByCode){
+  let cur = code, guard = 0;
+  while(guard++ < 10){
+    const row = jcByCode[cur];
+    if(!row || !row.parent || row.parent==='21000') return cur;
+    cur = row.parent;
+  }
+  return cur;
+}
+function __section1Data(fy, fiscalIdx){
+  const {year, month} = __fiscalMonthToCalendar(fiscalIdx, fy);
+  const prefix = year+'-'+String(month).padStart(2,'0');
+  const rows = __apiDailyWorkOrders.filter(r=>(r.date||'').startsWith(prefix));
+  const byCode = {};
+  rows.forEach(r=>{
+    const code = r.jobCode || 'ไม่ระบุ';
+    if(!byCode[code]) byCode[code] = { code, routes:{}, qty:0, material:0, labor:0, rent:0, fuel:0, total:0, staffDays:0, days:new Set(), unit: r.unit||'' };
+    const g = byCode[code];
+    const routeKey = (r.routeLabel || r.routeValue || 'ไม่ระบุสายทาง') + (r.kmStart || r.kmEnd ? ` (กม.${r.kmStart||''}-${r.kmEnd||''})` : '');
+    g.routes[routeKey] = (g.routes[routeKey]||0) + (Number(r.workQuantity)||0);
+    g.qty += Number(r.workQuantity)||0;
+    g.material += Number(r.materialCost)||0;
+    g.labor += Number(r.laborCost)||0;
+    g.rent += Number(r.rentCost)||0;
+    g.fuel += Number(r.fuelCost)||0;
+    g.total += Number(r.totalCost)||0;
+    g.days.add(r.date);
+    try{ const s = JSON.parse(r.staffJson||'[]'); g.staffDays += Array.isArray(s)?s.length:0; }catch(e){}
+  });
+  return Object.values(byCode).map(g=>({
+    code: g.code, unit: g.unit, routes: g.routes, qty: g.qty,
+    material: g.material, labor: g.labor, rent: g.rent, fuel: g.fuel, total: g.total,
+    dayCount: g.days.size,
+    unitCost: g.qty>0 ? g.total/g.qty : 0,
+    perDay: g.dayCount>0 ? g.qty/g.dayCount : 0,
+    perPersonDay: g.staffDays>0 ? g.qty/g.staffDays : 0
+  }));
+}
+function __section2Data(fy, uptoFiscalIdx){
+  const jcByCode = {};
+  __apiJobCodeReference.forEach(r=>{ jcByCode[r.jobCode] = r; });
+  const mainRows = __apiJobCodeReference.filter(r=>r.level==='main');
+  const totals = {};
+  mainRows.forEach(m=>{ totals[m.jobCode] = { code:m.jobCode, name:m.jobName, plan:0, actual:0 }; });
+  __apiBmmPlanActual.forEach(row=>{
+    if(Number(row.fiscalYear)!==fy || row.baseline) return;
+    const mo = Number(row.month);
+    const fiscalIdx = mo>=10 ? mo-9 : mo+3;
+    if(fiscalIdx>uptoFiscalIdx) return;
+    const main = __mainCodeOf(row.jobCode, jcByCode);
+    if(!totals[main]) return;
+    totals[main].plan += Number(row.planQty)||0;
+    totals[main].actual += Number(row.actualQty)||0;
+  });
+  const list = Object.values(totals);
+  const totalPlan = list.reduce((s,x)=>s+x.plan,0);
+  return list.map(x=>({...x,
+    pctPlan: totalPlan>0 ? Math.round(x.plan/totalPlan*100) : 0,
+    pctActual: totalPlan>0 ? Math.round(x.actual/totalPlan*100) : 0
+  }));
+}
+function __section3Summary(section2List){
+  const totalPlan = section2List.reduce((s,x)=>s+x.plan,0);
+  const totalActual = section2List.reduce((s,x)=>s+x.actual,0);
+  if(totalPlan<=0) return { totalPlan, totalActual, pct:0, direction:'none' };
+  const pct = Math.round(Math.abs(totalActual-totalPlan)/totalPlan*100);
+  const direction = totalActual>totalPlan ? 'over' : (totalActual<totalPlan ? 'under' : 'equal');
+  return { totalPlan, totalActual, pct, direction };
+}
+function renderSummaryReport(){
+  __populateReportFilters();
+  const fy = Number(document.getElementById('report-fy').value);
+  const fiscalIdx = Number(document.getElementById('report-month').value);
+  const monthLabel = __FISCAL_MONTH_LABELS[fiscalIdx-1];
+
+  // 1. ผลการปฏิบัติงาน
+  const s1 = __section1Data(fy, fiscalIdx);
+  const s1Html = s1.length ? s1.map(g=>{
+    const routeRows = Object.entries(g.routes).map(([r,q])=>`<div style="font-size:12.5px;color:var(--ink-600);">• ${r} — ${q.toLocaleString('th-TH')} ${g.unit}</div>`).join('');
+    const pct = c => g.total>0 ? Math.round(c/g.total*100) : 0;
+    return `<div style="border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin-bottom:12px;">
+      <div style="font-family:'Kanit';font-weight:600;margin-bottom:6px;">รหัสงาน ${g.code} — รวม ${g.qty.toLocaleString('th-TH')} ${g.unit}</div>
+      ${routeRows}
+      <div style="margin-top:8px;font-size:12.5px;color:var(--ink-600);line-height:1.8;">
+        ค่าวัสดุ ${fmtMoney(g.material)} บาท (${pct(g.material)}%) · ค่าแรงงาน ${fmtMoney(g.labor)} บาท (${pct(g.labor)}%) ·
+        ค่าเช่าเครื่องจักร ${fmtMoney(g.rent)} บาท (${pct(g.rent)}%) · ค่าน้ำมันเชื้อเพลิง ${fmtMoney(g.fuel)} บาท (${pct(g.fuel)}%)<br>
+        รวมค่าใช้จ่าย <b>${fmtMoney(g.total)}</b> บาท · unit cost เฉลี่ย <b>${fmtMoney(g.unitCost)}</b> บาท/${g.unit||'หน่วย'} ·
+        ผลงานเฉลี่ย <b>${g.perDay.toLocaleString('th-TH',{maximumFractionDigits:2})}</b> ${g.unit||'หน่วย'}/วัน ·
+        ผลงานต่อคน <b>${g.perPersonDay.toLocaleString('th-TH',{maximumFractionDigits:2})}</b> ${g.unit||'หน่วย'}/คน/วัน
+      </div>
+    </div>`;
+  }).join('') : '<div style="color:var(--ink-400);padding:12px 0;">ไม่มีข้อมูลใบสั่งการรายวันในเดือนนี้</div>';
+  document.getElementById('report-perf-body').innerHTML = s1Html;
+
+  // 2. แผน-ผล ตามรหัสงาน (สะสมถึงเดือนที่เลือก)
+  const s2 = __section2Data(fy, fiscalIdx);
+  const s2Html = s2.length ? `<div class="table-wrap"><table>
+    <thead><tr><th>รหัสงาน</th><th>ชื่องาน</th><th>แผน (บาท)</th><th>% ของแผนรวม</th><th>ผล (บาท)</th><th>% ของแผนรวม</th></tr></thead>
+    <tbody>${s2.map(x=>`<tr><td>${x.code}</td><td style="text-align:left;">${x.name||''}</td><td>${fmtMoney(x.plan)}</td><td>${x.pctPlan}%</td><td>${fmtMoney(x.actual)}</td><td>${x.pctActual}%</td></tr>`).join('')}</tbody>
+  </table></div>` : '<div style="color:var(--ink-400);padding:12px 0;">ยังไม่มีข้อมูลรหัสงานหลักในระบบ (job_code_reference)</div>';
+  document.getElementById('report-planactual-body').innerHTML = s2Html + `<div class="foot-note" style="border-top:none;padding:8px 0 0;">สะสมตั้งแต่ต้นปีงบประมาณ ${fy} ถึงเดือน${monthLabel}</div>`;
+
+  // 3. สรุปการเบิกจ่ายงานบำรุงปกติ (สรุปจากตัวเลขเดียวกับข้อ 2)
+  const s3 = __section3Summary(s2);
+  let s3Html;
+  if(s3.totalPlan<=0){
+    s3Html = '<div style="color:var(--ink-400);padding:12px 0;">ยังไม่มีข้อมูลแผนงานเพื่อสรุปเปรียบเทียบ</div>';
+  } else {
+    const dirText = s3.direction==='over' ? `ผลการเบิกจ่ายสูงกว่าแผน ${s3.pct}%` : (s3.direction==='under' ? `ผลการเบิกจ่ายต่ำกว่าแผน ${s3.pct}%` : 'ผลการเบิกจ่ายเท่ากับแผนพอดี');
+    s3Html = `<div style="font-size:14px;line-height:1.8;">แผนรวม <b>${fmtMoney(s3.totalPlan)}</b> บาท · ผลรวม <b>${fmtMoney(s3.totalActual)}</b> บาท<br><b>${dirText}</b></div>`;
+  }
+  document.getElementById('report-summary-body').innerHTML = s3Html;
 }
 /* ============================================================
    APPROVAL HUB
@@ -1380,23 +1607,43 @@ function setApprovalStatusFilter(status){
   });
   renderApprovals();
 }
+let __approvalRowsByKey = {};
+function __populateApprovalFyFilter(allRows){
+  const sel = document.getElementById('approval-fy-filter');
+  if(!sel) return;
+  const cfy = currentFiscalYear();
+  const fys = new Set([cfy]);
+  allRows.forEach(a=>{ const fy = fiscalYearOf(a.date); if(fy) fys.add(fy); });
+  const sorted = Array.from(fys).sort((a,b)=>b-a);
+  const hadSelection = sel.value;
+  const isFirstPopulate = !sel.dataset.populated;
+  sel.innerHTML = sorted.map(fy=>`<option value="${fy}">ปีงบประมาณ ${fy}</option>`).join('');
+  if(!isFirstPopulate && hadSelection && sorted.includes(Number(hadSelection))) sel.value = hadSelection;
+  else sel.value = String(cfy);
+  sel.dataset.populated = '1';
+}
 function renderApprovals(){
   const filter = document.getElementById('approval-filter').value;
   const nativeRows = approvals.map((a,i)=>Object.assign({},a,{__src:'native',__idx:i}));
   const allRows = nativeRows.concat(__leaveRowsForApproval());
+  __populateApprovalFyFilter(allRows);
+  const fyFilter = document.getElementById('approval-fy-filter').value;
   const rows = allRows
     .filter(a => filter==='all' || String(a.sys)===filter)
-    .filter(a => approvalStatusFilter==='all' || a.status===approvalStatusFilter);
+    .filter(a => approvalStatusFilter==='all' || a.status===approvalStatusFilter)
+    .filter(a => String(fiscalYearOf(a.date))===fyFilter);
+  __approvalRowsByKey = {};
   const dis = isAdmin() ? '' : 'disabled';
   document.getElementById('approval-body').innerHTML = rows.map(a=>{
     const key = a.__src==='native' ? ('n'+a.__idx) : ('l'+a.__id);
-    let statusCell = `<button class="pill pill-warn" style="cursor:pointer;border:none;font:inherit;" ${dis} onclick="setApprovalRow('${key}','approved')">รออนุมัติ</button>`;
+    __approvalRowsByKey[key] = a;
+    let statusCell = `<button class="pill pill-warn" style="cursor:pointer;border:none;font:inherit;" ${dis} onclick="event.stopPropagation();setApprovalRow('${key}','approved')">รออนุมัติ</button>`;
     if(a.status==='approved') statusCell = '<span class="approved-tag">✓ อนุมัติแล้ว</span>';
     if(a.status==='rejected') statusCell = '<span class="rejected-tag">✕ ตีกลับแล้ว</span>';
     const actions = a.status==='pending'
-      ? `<button class="btn btn-danger btn-sm" ${dis} onclick="rejectApprovalRow('${key}')">ตีกลับ</button>`
+      ? `<button class="btn btn-danger btn-sm" ${dis} onclick="event.stopPropagation();rejectApprovalRow('${key}')">ตีกลับ</button>`
       : '';
-    return `<tr>
+    return `<tr ondblclick="openApprovalDetail('${key}')" style="cursor:pointer;" title="ดับเบิลคลิกเพื่อดูรายละเอียด">
       <td><span class="src-badge src-${a.sys}">${a.sysName}</span></td>
       <td>${a.type}</td>
       <td style="white-space:nowrap;">${a.who}</td>
@@ -1405,6 +1652,34 @@ function renderApprovals(){
       <td><div style="display:flex;align-items:center;gap:8px;flex-wrap:nowrap;white-space:nowrap;">${statusCell}${actions}</div></td>
     </tr>`;
   }).join('') || '<tr><td colspan="6" style="text-align:center;color:var(--ink-400);padding:20px;">ไม่มีรายการในหมวดนี้</td></tr>';
+}
+function __approvalDetailRow(label, value){
+  if(!value) return '';
+  return `<div style="margin-bottom:12px;"><div style="font-size:12px;color:var(--ink-400);margin-bottom:2px;">${label}</div><div style="font-size:14px;color:var(--ink-900);white-space:pre-wrap;">${value}</div></div>`;
+}
+function openApprovalDetail(key){
+  const a = __approvalRowsByKey[key];
+  if(!a) return;
+  let statusText = a.status==='approved' ? '✓ อนุมัติแล้ว' : (a.status==='rejected' ? '✕ ตีกลับแล้ว' : 'รออนุมัติ');
+  document.getElementById('approval-detail-body').innerHTML =
+    __approvalDetailRow('ระบบต้นทาง', a.sysName) +
+    __approvalDetailRow('ประเภทคำขอ', a.type) +
+    __approvalDetailRow('ผู้ยื่นคำขอ', a.who) +
+    __approvalDetailRow('รายละเอียด', a.detail) +
+    __approvalDetailRow('เหตุผล', a.reason) +
+    __approvalDetailRow('วันที่ยื่น', fmtDate(a.date)) +
+    __approvalDetailRow('สถานะ', statusText) +
+    __approvalDetailRow('เหตุผลที่ตีกลับ', a.rejectReason);
+  const dis = isAdmin() ? '' : 'disabled';
+  const footBtns = a.status==='pending'
+    ? `<button type="button" class="btn btn-danger" ${dis} onclick="rejectApprovalRow('${key}')">ตีกลับ</button>
+       <button type="button" class="btn btn-primary" ${dis} onclick="setApprovalRow('${key}','approved');closeApprovalDetail();">อนุมัติ</button>`
+    : '';
+  document.getElementById('approval-detail-foot').innerHTML = `<button type="button" class="btn btn-ghost" onclick="closeApprovalDetail()">ปิด</button>${footBtns}`;
+  document.getElementById('approval-detail-modal-overlay').classList.remove('hidden');
+}
+function closeApprovalDetail(){
+  document.getElementById('approval-detail-modal-overlay').classList.add('hidden');
 }
 function setApprovalRow(key,status){
   if(!isAdmin()) return;
@@ -1435,6 +1710,7 @@ function confirmRejectModal(){
   else { __updateSharedLeaveStatus(key.slice(1), 'rejected', reason); }
   renderApprovals(); renderOverviewStats();
   closeRejectModal();
+  closeApprovalDetail();
 }
 
 /* ============================================================
@@ -1652,8 +1928,6 @@ function renderAll(){
   renderOverviewStats();
   renderBudgetMini();
   renderBudgetDonut();
-  renderAccidentBar();
-  renderStaffDonut();
   renderMaterials();
   renderApprovals();
   renderAlerts();
