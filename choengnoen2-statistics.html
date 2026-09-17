@@ -27,7 +27,7 @@
   /* Sidebar */
   .sidebar{width:264px;flex-shrink:0;background:linear-gradient(185deg,var(--navy-950),var(--navy-900) 60%);color:#dfe7f0;display:flex;flex-direction:column;position:sticky;top:0;height:100vh;}
   .brand{padding:22px 20px 18px;display:flex;align-items:center;gap:12px;border-bottom:1px solid rgba(255,255,255,0.08);}
-  .brand-mark{width:62px;height:62px;flex-shrink:0;}
+  .brand-mark{width:46px;height:46px;flex-shrink:0;}
   .brand-text .t1{font-family:'Kanit';font-size:15px;font-weight:600;color:#fff;line-height:1.25;}
   .brand-text .t2{font-size:11.5px;color:#a9bdd0;letter-spacing:.02em;}
   .nav-group-label{font-size:10.5px;letter-spacing:.12em;color:#7a90a6;padding:18px 20px 6px;text-transform:uppercase;font-family:'Kanit';}
@@ -56,6 +56,9 @@
   .user-menu-item{display:flex;align-items:center;gap:8px;padding:9px 10px;border:none;background:transparent;border-radius:9px;font-family:'Sarabun';font-size:13px;text-align:left;cursor:pointer;color:var(--ink-900);width:100%;}
   .user-menu-item:hover{background:var(--paper-50);}
   .user-menu-item.danger{color:var(--danger);}
+  /* ชื่อ/ตำแหน่งผู้ใช้ในเมนูลอย แสดง 2 บรรทัด (ชื่อ / ตำแหน่ง) แทนการยัดรวมบรรทัดเดียวแบบ pill ทั่วไป */
+  .user-menu-panel #login-badge{display:block;white-space:normal;text-align:center;line-height:1.5;padding:8px 10px;margin-bottom:2px;}
+  .user-menu-panel #login-badge .um-position{display:block;font-weight:500;opacity:.85;}
 
   .content{padding:26px 30px 60px;max-width:none;}
   .page-head{margin-bottom:16px;}
@@ -504,9 +507,9 @@
         <div class="t2">Choeng Noen Highway Maintenance Section</div>
       </div>
     </div>
-    <div class="nav-group-label">ระบบหลัก</div>
-    <a class="nav-item" href="choengnoen0-main.html"><span class="num">•</span><span>งานบริหารหมวด</span></a>
-    <div class="nav-group-label">ระบบรอง</div>
+    <div class="nav-group-label" id="nav-group-main">ระบบหลัก</div>
+    <a class="nav-item" id="nav-main-link" href="choengnoen0-main.html"><span class="num">•</span><span>งานบริหารหมวด</span></a>
+    <div class="nav-group-label" id="nav-group-sub">ระบบรอง</div>
     <a class="nav-item" href="choengnoen1-saraban.html"><span class="num">1</span><span>งานสารบรรณและบุคลากร</span></a>
     <a class="nav-item active" id="nav-stat"><span class="num">2</span><span>งานสถิติและบริการประชาชน</span></a>
     <a class="nav-item" href="choengnoen3-supplies.html"><span class="num">3</span><span>งานพัสดุและเครื่องจักร</span></a>
@@ -522,7 +525,6 @@
           <div class="avatar" id="user-avatar" onclick="__toggleUserMenu(event)">จท</div>
           <div class="user-menu-panel hidden" id="user-menu-panel">
             <span id="login-badge" class="pill pill-neutral" style="text-align:center;" title="เข้าสู่ระบบที่หน้าระบบหลัก (งานบริหารหมวด) เพื่อรับสิทธิ์แก้ไข">กำลังตรวจสอบสิทธิ์…</span>
-            <button class="user-menu-item" onclick="__openAvatarUpload()">🖼️ เปลี่ยนรูปโปรไฟล์</button>
             <button id="logout-btn" class="user-menu-item danger" onclick="doLogout()" style="display:none;">🚪 ออกจากระบบ</button>
           </div>
         </div>
@@ -2154,10 +2156,11 @@ async function deleteRoute(id){
 /* ADMIN_NAMES/SYSTEM_USERS/pinCodes/currentUser/adminVerified ของเดิมถูกลบออก (โค้ดตาย
    จากระบบ PIN-login รุ่นก่อนที่ยังไม่ได้ย้ายมาใช้ shared session ร่วมกับระบบรองที่ 1 —
    ไม่มีจุดใดอ้างถึงอีกต่อไป) */
+/* บทบาท 3 ระดับ (ตั้งค่าที่ระบบหลักเท่านั้น): 'owner'/'staff' แก้ไขได้ที่นี่, 'section' เข้าดูได้แต่แก้ไขไม่ได้ */
 function isAdmin(){
   try{
     const s = JSON.parse(localStorage.getItem('saraban_shared_session')||'null');
-    return !!(s && s.role==='admin');
+    return !!(s && (s.role==='owner' || s.role==='staff'));
   }catch(e){ return false; }
 }
 function populateLogin(){
@@ -2165,15 +2168,26 @@ function populateLogin(){
   if(!badge) return;
   const logoutBtn = document.getElementById('logout-btn');
   const s = __getSharedSession();
-  if(isAdmin() && s){
-    badge.textContent = s.name + (s.position ? ' ตำแหน่ง '+s.position : '');
-    badge.className = 'pill pill-ok';
+  if(s && s.name){
+    badge.innerHTML = s.name + (s.position ? '<span class="um-position">ตำแหน่ง '+s.position+'</span>' : '');
+    badge.className = 'pill ' + (isAdmin() ? 'pill-ok' : 'pill-warn');
     if(logoutBtn) logoutBtn.style.display = 'flex';
   } else {
     badge.textContent = 'ดูอย่างเดียว — เข้าสู่ระบบที่ระบบหลักเพื่อแก้ไข';
     badge.className = 'pill pill-neutral';
     if(logoutBtn) logoutBtn.style.display = 'none';
   }
+  __applyRoleSidebar();
+}
+/* บทบาท "เจ้าหน้าที่" (staff) มองไม่เห็นระบบหลัก (งานบริหารหมวด) เลย — ซ่อนทั้งลิงก์และหัวข้อกลุ่ม
+   "ระบบหลัก"/"ระบบรอง" ในแถบด้านข้าง เหลือแค่รายการ 4 ระบบรองเปล่าๆ ไม่มีหัวข้อกลุ่ม */
+function __applyRoleSidebar(){
+  const s = __getSharedSession();
+  const isStaff = !!(s && s.role==='staff');
+  ['nav-group-main','nav-main-link','nav-group-sub'].forEach(id=>{
+    const el = document.getElementById(id);
+    if(el) el.style.display = isStaff ? 'none' : '';
+  });
 }
 function doLogin(){ populateLogin(); }
 /* ออกจากระบบได้จากทุกระบบย่อย ไม่ต้องย้อนกลับไปที่ระบบหลักเสมอไป — ล้าง session ที่ใช้ร่วมกันแล้วรีเฟรชสิทธิ์/หน้าจอทันที */
@@ -2241,26 +2255,6 @@ function __renderAvatar(){
     el.style.cursor='pointer';
     el.title='ผู้เยี่ยมชม (ดูอย่างเดียว)';
   }
-}
-function __openAvatarUpload(){
-  const s = __getSharedSession();
-  if(!s || s.role!=='admin') return;
-  const input = document.createElement('input');
-  input.type='file'; input.accept='image/*';
-  input.onchange = function(e){
-    const file = e.target.files[0];
-    if(!file) return;
-    const reader = new FileReader();
-    reader.onload = function(ev){
-      const dataUrl = ev.target.result;
-      __saveProfilePhoto(s.name, dataUrl);
-      s.photo = dataUrl;
-      localStorage.setItem('saraban_shared_session', JSON.stringify(s));
-      __renderAvatar();
-    };
-    reader.readAsDataURL(file);
-  };
-  input.click();
 }
 __renderAvatar();
 

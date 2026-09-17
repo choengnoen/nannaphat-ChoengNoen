@@ -24,7 +24,7 @@
   /* Sidebar */
   .sidebar{width:264px;flex-shrink:0;background:linear-gradient(185deg,var(--navy-950),var(--navy-900) 60%);color:#dfe7f0;display:flex;flex-direction:column;position:sticky;top:0;height:100vh;}
   .brand{padding:22px 20px 18px;display:flex;align-items:center;gap:12px;border-bottom:1px solid rgba(255,255,255,0.08);}
-  .brand-mark{width:62px;height:62px;flex-shrink:0;}
+  .brand-mark{width:46px;height:46px;flex-shrink:0;}
   .brand-text .t1{font-family:'Kanit';font-size:15px;font-weight:600;color:#fff;line-height:1.25;}
   .brand-text .t2{font-size:11.5px;color:#a9bdd0;letter-spacing:.02em;}
   .nav-group-label{font-size:10.5px;letter-spacing:.12em;color:#7a90a6;padding:18px 20px 6px;text-transform:uppercase;font-family:'Kanit';}
@@ -53,6 +53,9 @@
   .user-menu-item{display:flex;align-items:center;gap:8px;padding:9px 10px;border:none;background:transparent;border-radius:9px;font-family:'Sarabun';font-size:13px;text-align:left;cursor:pointer;color:var(--ink-900);width:100%;}
   .user-menu-item:hover{background:var(--paper-50);}
   .user-menu-item.danger{color:var(--danger);}
+  /* ชื่อ/ตำแหน่งผู้ใช้ในเมนูลอย แสดง 2 บรรทัด (ชื่อ / ตำแหน่ง) แทนการยัดรวมบรรทัดเดียวแบบ pill ทั่วไป */
+  .user-menu-panel #login-badge{display:block;white-space:normal;text-align:center;line-height:1.5;padding:8px 10px;margin-bottom:2px;}
+  .user-menu-panel #login-badge .um-position{display:block;font-weight:500;opacity:.85;}
 
   .content{padding:26px 30px 60px;max-width:none;}
   .page-head{margin-bottom:16px;}
@@ -289,15 +292,15 @@
     <header class="topbar">
       <div class="crumb" id="crumb">ระบบหลัก · <b>งานบริหารหมวด</b></div>
       <div class="topbar-right no-print">
-        <div class="search-box" id="login-box" style="min-width:230px; gap:6px;">
-          👤 <input type="password" id="login-password" placeholder="รหัสผ่าน" style="border:none;outline:none;background:transparent;width:110px;" onkeydown="if(event.key==='Enter')doLogin()">
+        <div class="search-box" id="login-box" style="min-width:280px; gap:6px;">
+          👤 <input type="text" id="login-username" placeholder="ชื่อผู้ใช้" autocomplete="username" style="border:none;outline:none;background:transparent;width:80px;" onkeydown="if(event.key==='Enter')doLogin()">
+          <input type="password" id="login-password" placeholder="รหัสผ่าน" autocomplete="current-password" style="border:none;outline:none;background:transparent;width:90px;" onkeydown="if(event.key==='Enter')doLogin()">
           <button class="btn btn-ghost btn-sm" onclick="doLogin()" style="cursor:pointer;">เข้าสู่ระบบ</button>
         </div>
         <div class="user-menu-wrap">
           <div class="avatar" id="user-avatar" onclick="__toggleUserMenu(event)">จท</div>
           <div class="user-menu-panel hidden" id="user-menu-panel">
             <span id="login-badge" class="pill pill-neutral" style="text-align:center;">ผู้เยี่ยมชม (ดูอย่างเดียว)</span>
-            <button class="user-menu-item" onclick="__openAvatarUpload()">🖼️ เปลี่ยนรูปโปรไฟล์</button>
             <button id="logout-btn" class="user-menu-item danger" onclick="doLogout()" style="display:none;">🚪 ออกจากระบบ</button>
           </div>
         </div>
@@ -434,12 +437,12 @@
             </div>
           </div>
           <div class="table-wrap"><table>
-            <thead><tr><th></th><th>ชื่อ-สกุล</th><th>ตำแหน่ง</th><th>รหัสผ่าน</th><th></th></tr></thead>
+            <thead><tr><th></th><th>ชื่อ-สกุล</th><th>ตำแหน่ง</th><th>บทบาท</th><th>รหัสผ่าน</th><th></th></tr></thead>
             <tbody id="user-body"></tbody>
           </table></div>
           <div class="legend-block" id="user-foot-block">
             <button type="button" class="legend-dot-btn no-print" id="user-foot-toggle" onclick="__toggleNote('user-foot',this)" aria-expanded="false" title="แสดง/ซ่อนหมายเหตุ">⋮</button>
-            <div class="foot-note" id="user-foot" style="display:none;background:transparent;border-top:none;">ผู้ใช้งานที่เพิ่มในนี้จะสามารถเข้าสู่ระบบที่หน้านี้ด้วยรหัสผ่านของตนเอง และได้สิทธิ์แก้ไขข้อมูลในทุกระบบย่อยทันที</div>
+            <div class="foot-note" id="user-foot" style="display:none;background:transparent;border-top:none;">ผู้ใช้งานที่เพิ่มในนี้ล็อกอินได้จากคอมพิวเตอร์เครื่องใดก็ได้ด้วยชื่อผู้ใช้+รหัสผ่านของตนเอง สิทธิ์ขึ้นอยู่กับบทบาทที่เลือก — "เจ้าของระบบ" แก้ไขได้ทุกระบบและจัดการผู้ใช้งานได้, "หมวด" เข้าดูได้ทุกระบบแต่แก้ไขไม่ได้, "เจ้าหน้าที่" แก้ไขได้เฉพาะระบบรอง 1-4 และมองไม่เห็นระบบหลักนี้เลย</div>
           </div>
         </div>
       </div>
@@ -488,7 +491,15 @@
           <div class="f-row"><label>ชื่อ-สกุล</label><input id="uf-name"></div>
           <div class="f-row"><label>ตำแหน่ง</label><input id="uf-position"></div>
         </div>
-        <div class="f-row"><label>รหัสผ่าน</label><input id="uf-password" type="text"></div>
+        <div class="two-col">
+          <div class="f-row"><label>ชื่อผู้ใช้ (username)</label><input id="uf-username" autocomplete="off"></div>
+          <div class="f-row"><label>บทบาท</label><select id="uf-role">
+            <option value="owner">เจ้าของระบบ (สิทธิ์เต็ม + จัดการผู้ใช้งาน)</option>
+            <option value="section">หมวด (ดูได้ทุกระบบ แก้ไขไม่ได้)</option>
+            <option value="staff" selected>เจ้าหน้าที่ (แก้ไขได้เฉพาะระบบ 1-4)</option>
+          </select></div>
+        </div>
+        <div class="f-row"><label id="uf-password-label">รหัสผ่าน</label><input id="uf-password" type="text" placeholder="ระบุเมื่อต้องการตั้ง/เปลี่ยนรหัสผ่าน"></div>
         <div class="f-row">
           <label>รูปโปรไฟล์ (ไม่บังคับ)</label>
           <div style="display:flex;align-items:center;gap:14px;">
@@ -523,6 +534,14 @@
 <div class="toast-wrap" id="toast-wrap"></div>
 
 <script>
+/* บทบาท "เจ้าหน้าที่" (staff) มองไม่เห็นระบบหลัก (งานบริหารหมวด) เลย — ตรวจสอบและเปลี่ยนหน้าออกไป
+   ทันทีเป็นบรรทัดแรกสุดของสคริปต์ ก่อนโค้ดอื่นใดจะเริ่มวาดหน้าจอ กันไม่ให้เห็นเนื้อหาแวบขึ้นมาก่อนเด้งออก */
+(function __blockStaffFromMainSystem(){
+  try{
+    const s = JSON.parse(localStorage.getItem('saraban_shared_session')||'null');
+    if(s && s.role==='staff'){ window.location.replace('choengnoen1-saraban.html'); }
+  }catch(e){ /* ไม่มี session ที่บันทึกไว้ */ }
+})();
 /* ============================================================
    REFERENCE DATE — เทียบเท่ากับ TODAY ที่ใช้ในระบบรองอื่น ๆ
    ============================================================ */
@@ -531,10 +550,6 @@ function fmtDate(iso){ if(!iso) return '—'; const d=new Date(iso+'T00:00:00');
 function fmtDateFull(iso){ if(!iso) return '—'; const d=new Date(iso+'T00:00:00'); const months=['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม']; return d.getDate()+' '+months[d.getMonth()]+' พ.ศ. '+(d.getFullYear()+543); }
 function fmtMoney(n){ return Math.round(n).toLocaleString('th-TH'); }
 
-/* รายชื่อผู้ใช้งานเริ่มต้น (จะถูกย้ายเข้า `users` ที่แก้ไขได้ในหน้า "จัดการผู้ใช้งาน" โดยอัตโนมัติ) */
-const DEFAULT_USERS = [
-  { id:1, name:"นางสาวนันท์นภัสธ์  รัตนเสถียร", position:"", password:"111273", photo:null }
-];
 let users = [];
 let __ufPhotoData = null; /* รูปที่เลือกไว้ชั่วคราวในฟอร์มเพิ่ม/แก้ไขผู้ใช้ */
 
@@ -681,7 +696,10 @@ function toggleUserForm(){
     document.getElementById('uf-editing-id').value='';
     document.getElementById('uf-name').value='';
     document.getElementById('uf-position').value='';
+    document.getElementById('uf-username').value='';
+    document.getElementById('uf-role').value='staff';
     document.getElementById('uf-password').value='';
+    document.getElementById('uf-password-label').textContent = 'รหัสผ่าน';
     document.getElementById('uf-photo-input').value='';
     __ufPhotoData = null;
     const prev = document.getElementById('uf-photo-preview');
@@ -697,7 +715,10 @@ function editUser(id){
   document.getElementById('uf-editing-id').value = u.id;
   document.getElementById('uf-name').value = u.name;
   document.getElementById('uf-position').value = u.position || '';
-  document.getElementById('uf-password').value = u.password;
+  document.getElementById('uf-username').value = u.username || '';
+  document.getElementById('uf-role').value = u.role || 'staff';
+  document.getElementById('uf-password').value = '';
+  document.getElementById('uf-password-label').textContent = 'รหัสผ่าน (เว้นว่างไว้ถ้าไม่ต้องการเปลี่ยน)';
   __ufPhotoData = u.photo || null;
   const prev = document.getElementById('uf-photo-preview');
   if(u.photo){ prev.style.backgroundImage = `url('${u.photo}')`; prev.style.backgroundSize='cover'; prev.style.backgroundPosition='center'; prev.textContent=''; }
@@ -714,53 +735,74 @@ function showToast(msg){
   wrap.appendChild(el);
   setTimeout(()=>{ el.remove(); }, 2600);
 }
-function saveUser(){
+async function saveUser(){
   const name = document.getElementById('uf-name').value.trim();
   const position = document.getElementById('uf-position').value.trim();
+  const username = document.getElementById('uf-username').value.trim();
+  const role = document.getElementById('uf-role').value;
   const password = document.getElementById('uf-password').value.trim();
   const editingId = document.getElementById('uf-editing-id').value;
-  if(!name || !password){ alert('กรุณากรอกชื่อและรหัสผ่านให้ครบ'); return; }
-  if(editingId){
-    const u = users.find(x=>x.id===Number(editingId));
-    if(u){ u.name=name; u.position=position; u.password=password; u.photo=__ufPhotoData; }
-  } else {
-    const newId = users.length ? Math.max(...users.map(u=>u.id))+1 : 1;
-    users.push({id:newId, name, position, password, photo:__ufPhotoData});
+  if(!name || !username){ alert('กรุณากรอกชื่อและชื่อผู้ใช้ (username) ให้ครบ'); return; }
+  if(!editingId && !password){ alert('กรุณาตั้งรหัสผ่านสำหรับผู้ใช้งานใหม่'); return; }
+  const payload = { displayName:name, position, username, role, status:'ใช้งาน', photo:__ufPhotoData };
+  if(password) payload.password = password;
+  try{
+    if(editingId){
+      payload.id = editingId;
+      await apiPost('update', 'users', payload);
+    } else {
+      await apiPost('add', 'users', payload);
+    }
+  }catch(err){
+    alert('บันทึกข้อมูลผู้ใช้งานไปยังฐานข้อมูลกลางไม่สำเร็จ: ' + err.message);
+    return;
   }
+  await loadUsersFromApi();
   toggleUserForm();
   renderUsers();
-  /* ถ้าบัญชีที่แก้ไข/เพิ่ม ตรงกับคนที่ล็อกอินอยู่ตอนนี้ ให้อัปเดตรูป avatar และลิงก์ทันที
-     (ไม่งั้นรูปจะอัปเดตแค่ในตารางผู้ใช้ ไม่ติดไปกับ avatar จนกว่าจะออกจากระบบแล้วล็อกอินใหม่) */
+  /* ถ้าบัญชีที่แก้ไข ตรงกับคนที่ล็อกอินอยู่ตอนนี้ ให้อัปเดตรูป/ตำแหน่ง/บทบาทของ session ทันที
+     (ไม่งั้นจะอัปเดตแค่ในตารางผู้ใช้ ไม่ติดไปกับ session จนกว่าจะออกจากระบบแล้วล็อกอินใหม่) */
   const s = __getSharedSession();
-  if(s && s.role==='admin' && s.name===name){
-    const u2 = users.find(x=>x.name===name);
+  if(s && s.username===username){
+    const u2 = users.find(x=>x.username===username);
     s.photo = u2 ? u2.photo : null;
     s.position = u2 ? (u2.position||'') : '';
+    s.role = u2 ? u2.role : s.role;
+    s.name = u2 ? u2.name : s.name;
     localStorage.setItem(__SHARED_SESSION_KEY, JSON.stringify(s));
+    localStorage_role = s.role;
     const badge = document.getElementById('login-badge');
-    if(badge && badge.className.indexOf('pill-ok')!==-1){ badge.textContent = s.name + (s.position ? ' ตำแหน่ง '+s.position : ''); }
+    if(badge){ badge.innerHTML = __badgeHtml(s.name, s.position); badge.className = 'pill ' + (isAdmin() ? 'pill-ok' : 'pill-warn'); }
     __renderAvatar();
   }
   __updateNavLinks();
   showToast('บันทึกข้อมูลผู้ใช้งานเรียบร้อยแล้ว');
 }
-function deleteUser(id){
+async function deleteUser(id){
   if(users.length<=1){ alert('ต้องมีผู้ใช้งานอย่างน้อย 1 คนเสมอ'); return; }
   if(!confirm('ยืนยันการลบผู้ใช้งานนี้?')) return;
+  try{
+    await apiPost('delete', 'users', null, id);
+  }catch(err){
+    alert('ลบผู้ใช้งานในฐานข้อมูลกลางไม่สำเร็จ: ' + err.message);
+    return;
+  }
   users = users.filter(u=>u.id!==id);
   renderUsers();
   __updateNavLinks();
 }
+const __ROLE_LABEL = {owner:'เจ้าของระบบ', section:'หมวด', staff:'เจ้าหน้าที่'};
 function renderUsers(){
   const tbody = document.getElementById('user-body');
   if(!tbody) return;
   tbody.innerHTML = users.map(u=>`
     <tr>
       <td><div style="width:34px;height:34px;border-radius:50%;background:${u.photo?'none':'var(--orange-600)'};background-image:${u.photo?`url('${u.photo}')`:'none'};background-size:cover;background-position:center;color:#fff;display:flex;align-items:center;justify-content:center;font-family:'Kanit';font-weight:600;font-size:12px;">${u.photo?'':__initialsForList(u.name)}</div></td>
-      <td>${u.name}</td>
+      <td>${u.name}<div style="font-size:11px;color:var(--ink-400);">@${u.username||'—'}</div></td>
       <td>${u.position || '—'}</td>
-      <td>${'•'.repeat(Math.min(u.password.length,10))}</td>
-      <td style="white-space:nowrap;"><button class="btn btn-ghost btn-sm" onclick="editUser(${u.id})">แก้ไข</button> <button class="btn btn-ghost btn-sm" onclick="deleteUser(${u.id})">ลบ</button></td>
+      <td><span class="pill pill-neutral">${__ROLE_LABEL[u.role]||u.role}</span></td>
+      <td>••••••••</td>
+      <td style="white-space:nowrap;"><button class="btn btn-ghost btn-sm" onclick="editUser('${u.id}')">แก้ไข</button> <button class="btn btn-ghost btn-sm" onclick="deleteUser('${u.id}')">ลบ</button></td>
     </tr>`).join('');
 }
 function __initialsForList(name){
@@ -830,6 +872,36 @@ async function apiGet(table){
       if(attempt >= maxRetries) throw err;
       await new Promise(r=>setTimeout(r, 700 * (attempt+1)));
     }
+  }
+}
+/* เพิ่มเข้ามาใหม่ (2569-09-17) — เดิมไฟล์นี้อ่านอย่างเดียว (apiGet) เพราะไม่เคยเขียนข้อมูลข้ามระบบมาก่อน
+   แต่ตาราง "ผู้ใช้งานระบบ" (users) ของหน้านี้เองต้องเขียนได้ (เพิ่ม/แก้ไข/ลบบัญชี, login) จึงต้องมี apiPost
+   ห้าม retry เหมือน apiGet เพราะคำขอที่ล้มเหลวฝั่ง client อาจสำเร็จจริงฝั่งเซิร์ฟเวอร์แล้ว */
+async function apiPost(action, table, data, id){
+  const body = { token: APP_TOKEN, username: apiCurrentUsername(), table, action, data };
+  if(id!==undefined) body.id = id;
+  const res = await fetch(GAS_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify(body)
+  });
+  const json = await res.json();
+  if(!json.ok) throw new Error(json.error || 'บันทึกข้อมูลไปยังฐานข้อมูลกลางไม่สำเร็จ');
+  return json.result;
+}
+function apiCurrentUsername(){
+  const s = __getSharedSession();
+  return (s && s.name) || 'ไม่ระบุผู้ใช้';
+}
+/* โหลดรายชื่อผู้ใช้งานจากฐานข้อมูลกลาง (แทน localStorage เดิมที่อยู่เฉพาะเบราว์เซอร์เครื่องเดียว)
+   แปลงชื่อฟิลด์จาก backend (displayName) เป็นชื่อที่โค้ดหน้านี้ใช้อยู่แล้ว (name) ไม่ต้องแก้จุดอื่นทั้งไฟล์ */
+async function loadUsersFromApi(){
+  try{
+    const raw = await apiGet('users');
+    users = raw.map(u=>({ id:u.id, username:u.username, name:u.displayName, position:u.position||'', role:u.role||'staff', status:u.status||'ใช้งาน', photo:u.photo||null }));
+  }catch(err){
+    console.error('โหลดข้อมูลผู้ใช้งานระบบจากฐานข้อมูลกลางล้มเหลว', err);
+    alert('โหลดข้อมูลผู้ใช้งานระบบจากฐานข้อมูลกลางไม่สำเร็จ: ' + err.message + '\nกรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ตแล้วรีเฟรชหน้าใหม่');
   }
 }
 
@@ -942,56 +1014,74 @@ function __loadLiveData(){
 /* ============================================================
    NAV / CLOCK / LOGIN
    ============================================================ */
-function isAdmin(){ return localStorage_role==='admin'; }
+/* บทบาท 3 ระดับ: 'owner' (เจ้าของระบบ สิทธิ์เต็ม+จัดการผู้ใช้งาน), 'section' (หมวด ดูได้ทุกระบบแต่แก้ไขไม่ได้),
+   'staff' (เจ้าหน้าที่ แก้ไขได้แต่มองไม่เห็นระบบหลักเลย — บล็อกไว้ตั้งแต่บรรทัดแรกสุดของสคริปต์แล้ว) */
+function isAdmin(){ return localStorage_role==='owner' || localStorage_role==='staff'; }
+function isOwner(){ return localStorage_role==='owner'; }
 let localStorage_role = 'guest';
+/* แสดงชื่อผู้ใช้และตำแหน่งคนละบรรทัดในเมนูลอย (ชื่อบรรทัดแรก ตำแหน่งบรรทัดที่ 2) แทนการยัดรวมบรรทัดเดียว */
+function __badgeHtml(name, position){
+  return name + (position ? '<span class="um-position">ตำแหน่ง '+position+'</span>' : '');
+}
 let currentUserName = '';
 const __SHARED_SESSION_KEY = 'saraban_shared_session';
-function initLogin(){
+async function initLogin(){
+  await loadUsersFromApi();
   /* กู้คืนสถานะล็อกอินจาก session ที่แชร์ไว้ (ถ้ายังไม่หมดอายุ / ยังไม่ได้ logout) */
   try{
     const s = JSON.parse(localStorage.getItem(__SHARED_SESSION_KEY)||'null');
-    if(s && s.role==='admin' && s.name){
-      localStorage_role='admin'; currentUserName = s.name;
+    if(s && s.role && s.name){
+      localStorage_role = s.role; currentUserName = s.name;
       const badge = document.getElementById('login-badge');
       const logoutBtn = document.getElementById('logout-btn');
       const loginBox = document.getElementById('login-box');
-      badge.textContent = s.name + (s.position ? ' ตำแหน่ง '+s.position : ''); badge.className='pill pill-ok';
-      loginBox.style.display='none'; logoutBtn.style.display='inline-flex';
+      badge.innerHTML = __badgeHtml(s.name, s.position); badge.className = 'pill ' + (isAdmin() ? 'pill-ok' : 'pill-warn');
+      loginBox.style.display='none'; logoutBtn.style.display='flex';
     }
   }catch(e){ /* ไม่มี session ที่บันทึกไว้ */ }
-  document.getElementById('sec-tab-users').style.display = isAdmin() ? '' : 'none';
+  document.getElementById('sec-tab-users').style.display = isOwner() ? '' : 'none';
   renderUsers();
   __renderAvatar();
   __updateNavLinks();
+  renderApprovals();
 }
-function doLogin(){
+async function doLogin(){
+  const userInput = document.getElementById('login-username');
   const pwInput = document.getElementById('login-password');
+  const username = userInput.value.trim();
   const pw = pwInput.value;
+  if(!username || !pw){ alert('กรุณากรอกชื่อผู้ใช้และรหัสผ่าน'); return; }
   const badge = document.getElementById('login-badge');
   const logoutBtn = document.getElementById('logout-btn');
   const loginBox = document.getElementById('login-box');
-  const match = users.find(u => u.password === pw);
-  if(match){
-    localStorage_role='admin'; currentUserName = match.name;
-    badge.textContent = match.name + (match.position ? ' ตำแหน่ง '+match.position : ''); badge.className='pill pill-ok';
-    loginBox.style.display='none'; logoutBtn.style.display='inline-flex';
-    /* แชร์สถานะเข้าสู่ระบบไปยังอีก 4 ระบบย่อย เพื่อไม่ต้องล็อกอินซ้ำ */
-    localStorage.setItem(__SHARED_SESSION_KEY, JSON.stringify({role:'admin', name:match.name, position:match.position||'', photo:match.photo||null, ts:Date.now()}));
-    document.getElementById('sec-tab-users').style.display = '';
-    __renderAvatar();
-    __updateNavLinks();
-  } else {
-    alert('รหัสผ่านไม่ถูกต้อง');
+  let match;
+  try{
+    match = await apiPost('login', 'users', {username, password: pw});
+  }catch(err){
+    alert(err.message || 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง');
     pwInput.value=''; pwInput.focus();
     return;
   }
+  const role = match.role || 'staff';
+  localStorage_role = role; currentUserName = match.displayName;
+  badge.innerHTML = __badgeHtml(match.displayName, match.position); badge.className = 'pill ' + (isAdmin() ? 'pill-ok' : 'pill-warn');
+  loginBox.style.display='none'; logoutBtn.style.display='flex';
+  /* แชร์สถานะเข้าสู่ระบบไปยังอีก 4 ระบบย่อย เพื่อไม่ต้องล็อกอินซ้ำ */
+  localStorage.setItem(__SHARED_SESSION_KEY, JSON.stringify({role, name:match.displayName, position:match.position||'', photo:match.photo||null, username:match.username, ts:Date.now()}));
+  document.getElementById('sec-tab-users').style.display = isOwner() ? '' : 'none';
+  await loadUsersFromApi();
+  renderUsers();
+  __renderAvatar();
+  __updateNavLinks();
   renderApprovals();
+  if(role==='staff'){ window.location.replace('choengnoen1-saraban.html'); }
 }
 function doLogout(){
   localStorage_role='guest'; currentUserName='';
   const badge = document.getElementById('login-badge');
   badge.textContent='ผู้เยี่ยมชม (ดูอย่างเดียว)'; badge.className='pill pill-neutral';
   document.getElementById('login-box').style.display='flex';
+  document.getElementById('login-username').value='';
   document.getElementById('login-password').value='';
   document.getElementById('logout-btn').style.display='none';
   document.getElementById('user-menu-panel').classList.add('hidden');
@@ -1485,11 +1575,12 @@ const __STORAGE_KEY = 'saraban_mainportal_v2';
 function __collectState(){
   // หมายเหตุ: ตัดฟิลด์ materials ออกจากที่นี่แล้ว เพราะหน้านี้ไม่มี UI แก้ไขวัสดุเอง
   // (ค่าที่เห็นในแดชบอร์ดดึงสดจาก "ระบบที่ 3" ผ่าน __loadLiveData() แทน — ดูด้านล่าง)
-  return { approvals, users, alertState: __alertState };
+  // users ตัดออกจาก localStorage แล้ว (2569-09-17) — ย้ายไปอยู่ฐานข้อมูลกลางแท็บ "users" แทน
+  // เพื่อให้บัญชีที่เพิ่มใช้ล็อกอินได้จากทุกเครื่อง ดูฟังก์ชัน loadUsersFromApi()
+  return { approvals, alertState: __alertState };
 }
 function __applyState(saved){
   if(saved.approvals){ approvals.length=0; approvals.push(...saved.approvals); }
-  if(saved.users){ users.length=0; users.push(...saved.users); }
   if(saved.alertState){ __alertState = saved.alertState; }
 }
 function __loadPersistedState(){
@@ -1497,7 +1588,6 @@ function __loadPersistedState(){
     const raw = localStorage.getItem(__STORAGE_KEY);
     if(raw) __applyState(JSON.parse(raw));
   }catch(e){ console.error('โหลดข้อมูลที่บันทึกไว้ล้มเหลว', e); }
-  if(!users.length){ users.push(...DEFAULT_USERS.map(u=>({...u}))); }
 }
 let __lastSavedJSON = '';
 function __saveState(){
@@ -1685,29 +1775,6 @@ document.addEventListener('click', function(e){
     panel.classList.add('hidden');
   }
 });
-function __openAvatarUpload(){
-  const s = __getSharedSession();
-  if(!s || s.role!=='admin'){
-    alert('กรุณาเข้าสู่ระบบด้วยรหัสผ่านก่อน จึงจะเปลี่ยนรูปโปรไฟล์ได้');
-    return;
-  }
-  const input = document.createElement('input');
-  input.type='file'; input.accept='image/*';
-  input.onchange = function(e){
-    const file = e.target.files[0];
-    if(!file) return;
-    __resizeImageToThumb(file, function(dataUrl){
-      const u = users.find(x=>x.name===s.name);
-      if(u) u.photo = dataUrl;
-      s.photo = dataUrl;
-      localStorage.setItem('saraban_shared_session', JSON.stringify(s));
-      renderUsers();
-      __renderAvatar();
-      __updateNavLinks();
-    });
-  };
-  input.click();
-}
 /* ============================================================
    ส่ง session ผ่าน URL ไปยังอีก 4 ระบบ (จำเป็นเมื่อเปิดไฟล์แบบ file://
    เพราะเบราว์เซอร์แยก localStorage ของแต่ละไฟล์ออกจากกัน ไม่แชร์กัน)
