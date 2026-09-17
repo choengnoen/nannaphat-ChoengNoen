@@ -478,7 +478,6 @@
                 <span class="fy-picker-label">ปีงบประมาณ</span>
                 <select id="util-fy-select" onchange="onUtilFyChange(this.value)"></select>
               </div>
-              <button class="btn btn-danger hidden no-print" id="migrate-legacy-btn" onclick="migrateLegacyDataToServer()" title="นำเข้าบิลค่าสาธารณูปโภค/เลขมิเตอร์น้ำย้อนหลังที่เคยกรอกไว้ก่อนหน้านี้ขึ้นฐานข้อมูลกลาง — กดครั้งเดียวเท่านั้น">⬆ ซิงก์ข้อมูลเดิมขึ้นฐานข้อมูลกลาง</button>
               <button class="btn btn-primary" onclick="toggleUtilForm(true)">➕ บันทึกบิลใหม่</button>
             </div>
           </div>
@@ -947,10 +946,6 @@ const UTILITY_HISTORICAL_SEED = [
   {type:'ค่าโทรศัพท์', cycle:'2026-06', amount:104.70, due:'2026-06-24', status:'จ่ายแล้ว'},
   {type:'ค่าน้ำประปา', cycle:'2026-07', amount:699.12, due:'2026-07-24', status:'จ่ายแล้ว'},
 ];
-/* ชุดข้อมูลตั้งต้น (บิลค่าสาธารณูปโภคจริงย้อนหลัง ต.ค.2568-ก.ค.2569) ใช้เป็นแหล่งข้อมูล
-   สำหรับปุ่ม "ซิงก์ข้อมูลเดิมขึ้นฐานข้อมูลกลาง" ครั้งเดียวเท่านั้น ตัวแปร utilityBills ที่ใช้
-   งานจริงโหลดจาก apiGet('utility_bills') แทน */
-const UTILITY_BILLS_SEED_FOR_MIGRATION = UTILITY_HISTORICAL_SEED.map(b=>({...b}));
 /* แปลง utility_bills ระหว่างรูปแบบภายใน (type/amount/due) กับคอลัมน์ Sheet
    (billType/billAmount/dueDate) — utilityBills ใช้ array index (i) เป็น key ภายในโค้ดหน้านี้
    อยู่แล้วหลายจุด (editUtility(i)/deleteUtility(i)/toggleUtilPaid(i)) จึงเก็บ __backendId
@@ -1618,8 +1613,6 @@ async function toggleUtilPaid(i){
 }
 function setUtilFilter(f){ utilFilter = f; renderUtility(); }
 function renderUtility(){
-  const migrateBtn = document.getElementById('migrate-legacy-btn');
-  if(migrateBtn) migrateBtn.classList.toggle('hidden', !isAdmin() || utilityBills.length>0);
   populateUtilFYSelect();
   // จำกัดขอบเขตทั้งตารางและตัวนับตามปีงบประมาณที่เลือกไว้ (selectedUtilFY) ก่อน แล้วค่อยกรองซ้ำด้วยสถานะจ่าย/ไม่จ่าย
   const billsInFY = utilityBills.map((b,i)=>({b,i})).filter(({b})=>cycleFiscalYearBE(b.cycle)===selectedUtilFY);
@@ -1802,24 +1795,6 @@ function toggleWaterForm(forceNew){
    ============================================================ */
 // ปรับข้อมูลชุดนี้แล้ว (ปรับครั้งเดียวตอนย้ายไปใช้การคำนวณแบบ backward-diff): subA/subB ของแต่ละแถวตอนนี้คือเลขมิเตอร์ที่อ่าน/ถ่ายรูปจริง "ในเดือนของแถวนั้นเอง"
 // (เดิมเก็บเป็นเลขเริ่มของเดือนถัดไป) ตัวเลขจึงเลื่อนขึ้นมา 1 แถวจากชุดข้อมูลเดิม ส่วน mainReading/billAmount/วันที่ชำระ/หมายเหตุ อยู่รอบเดิมไม่เปลี่ยน
-/* ชุดข้อมูลตั้งต้น (เลขมิเตอร์น้ำจริงย้อนหลัง ก.ย.2568-ส.ค.2569) — เดิมมีปุ่ม importWaterSeed()
-   ให้กดนำเข้า แต่ไม่มีปุ่มในหน้าเว็บเรียกใช้จริง (โค้ดตายเข้าไม่ถึง) ใช้เป็นแหล่งข้อมูลสำหรับ
-   ปุ่ม "ซิงก์ข้อมูลเดิมขึ้นฐานข้อมูลกลาง" ครั้งเดียวแทน ตัวแปร waterMeterLog ที่ใช้งานจริง
-   โหลดจาก apiGet('water_meter_log') แทน */
-const WATER_METER_LOG_SEED_FOR_MIGRATION = [
-  {cycle:'2025-09', subA:4507,    subB:2697, mainReading:2828, billAmount:null,    subAPaid:null,          subBPaid:null,          note:'แถวฐาน — เลขมิเตอร์เริ่มต้นปีงบประมาณ 2569 (อ่านค่า 1 ก.ย.2568) ใช้คำนวณหน่วยใช้ของเดือน ต.ค.2568 เป็นเดือนแรก'},
-  {cycle:'2025-10', subA:4524,    subB:2698, mainReading:2888, billAmount:1369.60, subAPaid:'2025-10-24', subBPaid:'2025-10-02', note:''},
-  {cycle:'2025-11', subA:4541,    subB:2702, mainReading:2938, billAmount:1123.50, subAPaid:'2025-11-27', subBPaid:'2025-11-27', note:''},
-  {cycle:'2025-12', subA:4561,    subB:2708, mainReading:2990, billAmount:1172.72, subAPaid:'2025-12-23', subBPaid:'2025-12-23', note:''},
-  {cycle:'2026-01', subA:4581,    subB:2717, mainReading:3061, billAmount:1640.31, subAPaid:'2026-02-12', subBPaid:'2026-03-04', note:''},
-  {cycle:'2026-02', subA:52.097,  subB:2727, mainReading:3124, billAmount:1443.43, subAPaid:'2026-03-26', subBPaid:'2026-03-04', subAUsageOverride:21, note:'เปลี่ยนมิเตอร์ T23787 ช่วงนี้ (เลขมิเตอร์เดือนนี้ไม่ต่อเนื่องกับเดือนก่อน) กรอกหน่วยใช้น้ำ 21 หน่วยเองตามข้อมูลจริงจากไฟล์อ้างอิง'},
-  {cycle:'2026-03', subA:64.559,  subB:2731, mainReading:3187, billAmount:1443.43, subAPaid:'2026-03-26', subBPaid:'2026-05-06', note:''},
-  {cycle:'2026-04', subA:104.078, subB:2737, mainReading:3255, billAmount:1566.48, subAPaid:'2026-05-06', subBPaid:'2026-05-06', note:''},
-  {cycle:'2026-05', subA:137.708, subB:2747, mainReading:3319, billAmount:1468.04, subAPaid:'2026-06-23', subBPaid:'2026-06-23', note:''},
-  {cycle:'2026-06', subA:159.819, subB:2757, mainReading:3371, billAmount:1172.72, subAPaid:'2026-06-23', subBPaid:'2026-07-02', note:''},
-  {cycle:'2026-07', subA:177.444, subB:2761, mainReading:3423, billAmount:1172.72, subAPaid:null,          subBPaid:null,          note:''},
-  {cycle:'2026-08', subA:null,    subB:null, mainReading:null, billAmount:null,    subAPaid:null,          subBPaid:null,          note:''},
-];
 function editWater(cycle){
   if(!isAdmin()) return;
   const r = waterMeterLog.find(w=>w.cycle===cycle);
@@ -2146,50 +2121,6 @@ function __ensureHistoricalDistrictReportSeed(){
 __loadPersistedState();
 __ensureHistoricalDistrictReportSeed();
 /* ============ จบส่วนบันทึกข้อมูล ============ */
-
-/* ============================================================
-   ซิงก์ข้อมูลเดิมขึ้นฐานข้อมูลกลาง — ใช้ครั้งเดียวเท่านั้น (ดูปุ่ม migrate-legacy-btn)
-   นำ *_SEED_FOR_MIGRATION ที่ยังฝังอยู่ในไฟล์ขึ้น Google Sheets ผ่าน backend จริง หลังกด
-   สำเร็จและตรวจสอบใน Sheets แล้ว ให้ลบฟังก์ชันนี้ ปุ่ม migrate-legacy-btn และค่าคงที่
-   *_SEED_FOR_MIGRATION ทั้งหมดทิ้งได้ (ไม่ต้องใช้อีก) — ot_requests/budget_allocations
-   ไม่มีข้อมูลตั้งต้นฝังไว้ (เริ่มจากว่างเปล่าอยู่แล้ว) จึงไม่ต้องซิงก์
-   ============================================================ */
-async function migrateLegacyDataToServer(){
-  if(!isAdmin()) return;
-  const total = UTILITY_BILLS_SEED_FOR_MIGRATION.length + WATER_METER_LOG_SEED_FOR_MIGRATION.length;
-  const ok = confirm(`จะนำเข้าข้อมูลเดิมทั้งหมด ${total} รายการขึ้นฐานข้อมูลกลาง `
-    + `(บิลค่าสาธารณูปโภค ${UTILITY_BILLS_SEED_FOR_MIGRATION.length}, เลขมิเตอร์น้ำ ${WATER_METER_LOG_SEED_FOR_MIGRATION.length})\n\n`
-    + `อาจใช้เวลาสักครู่ ห้ามปิด/รีเฟรชหน้านี้ระหว่างทำงาน และกดครั้งเดียวเท่านั้น ดำเนินการต่อหรือไม่?`);
-  if(!ok) return;
-  const btn = document.getElementById('migrate-legacy-btn');
-  let done = 0;
-  function setProgress(label){ if(btn) btn.textContent = `⏳ กำลังซิงก์${label} (${done}/${total})`; }
-  try{
-    for(const b of UTILITY_BILLS_SEED_FOR_MIGRATION){
-      if(!utilityBills.some(x=>x.type===b.type && x.cycle===b.cycle)){
-        const saved = await apiPost('add', 'utility_bills', utilToApi(b));
-        utilityBills.push(utilFromApi(saved));
-      }
-      done++; setProgress('บิลค่าสาธารณูปโภค');
-    }
-    for(const w of WATER_METER_LOG_SEED_FOR_MIGRATION){
-      if(!waterMeterLog.some(x=>x.cycle===w.cycle)){
-        const saved = await apiPost('add', 'water_meter_log', waterToApi(w));
-        waterMeterLog.push(waterFromApi(saved));
-      }
-      done++; setProgress('เลขมิเตอร์น้ำ');
-    }
-  }catch(err){
-    alert(`ซิงก์ข้อมูลเดิมไม่สำเร็จที่รายการที่ ${done+1} จากทั้งหมด ${total} (สำเร็จไปแล้ว ${done} รายการก่อนหน้า): ${err.message}\n`
-      + `กรุณาตรวจสอบการเชื่อมต่อแล้วกดปุ่มนี้ใหม่อีกครั้ง — รายการที่ซิงก์ไปแล้วจะไม่ซ้ำ (เช็ครอบบิลซ้ำให้อัตโนมัติ)`);
-    if(btn) btn.textContent = '⬆ ซิงก์ข้อมูลเดิมขึ้นฐานข้อมูลกลาง';
-    renderAll();
-    return;
-  }
-  if(btn) btn.classList.add('hidden');
-  alert(`ซิงก์ข้อมูลเดิมขึ้นฐานข้อมูลกลางเรียบร้อยแล้ว ${total} รายการ — ตรวจสอบจำนวนแถวใน Google Sheets ให้ครบถ้วนแล้วลบฟังก์ชัน migrateLegacyDataToServer, ปุ่มนี้ และค่าคงที่ *_SEED_FOR_MIGRATION ทั้งหมดออกจากโค้ดทิ้งได้`);
-  renderAll();
-}
 
 renderAll();
 (async function __initApiData(){
