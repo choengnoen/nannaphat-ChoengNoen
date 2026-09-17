@@ -4230,13 +4230,19 @@ function __toggleNote(id, btn){
    ============================================================ */
 async function migrateLegacyDataToServer(){
   if(!isAdmin()) return;
+  // RESUME PATCH (2026-09-17): ก่อนหน้านี้ migrate ค้างกลางทางจาก GAS rate-limit —
+  // material_transactions migrate ครบ 4/4 แล้ว (ยืนยันจาก Sheets จริง) จึงตัด loop นั้นออก
+  // เพื่อไม่ให้ซ้ำ (ไม่มีการกันซ้ำเหมือนพัสดุ/ทะเบียนรถ) และ fuel_transactions เหลือ resume
+  // จากรายการที่ 52 (51 รายการแรกยืนยันแล้วว่าเข้า Sheets สำเร็จ) — เมื่อ migrate ครบแล้ว
+  // ให้ลบ patch นี้แล้วคืนโค้ดเดิม หรือลบทั้งฟังก์ชันตามคอมเมนต์ด้านบนได้เลย
+  const REMAINING_FUEL = FUEL_TRANSACTIONS_SEED_FOR_MIGRATION.slice(51);
   const total = MATERIALS_SEED_FOR_MIGRATION.length + VEHICLES_SEED_FOR_MIGRATION.length
-    + MATERIAL_TRANSACTIONS_SEED_FOR_MIGRATION.length + FUEL_TRANSACTIONS_SEED_FOR_MIGRATION.length;
-  const ok = confirm(`จะนำเข้าข้อมูลเดิมทั้งหมด ${total} รายการขึ้นฐานข้อมูลกลาง `
-    + `(พัสดุ ${MATERIALS_SEED_FOR_MIGRATION.length}, ทะเบียนรถ ${VEHICLES_SEED_FOR_MIGRATION.length}, `
-    + `รายการเบิกพัสดุ ${MATERIAL_TRANSACTIONS_SEED_FOR_MIGRATION.length}, รายการน้ำมัน ${FUEL_TRANSACTIONS_SEED_FOR_MIGRATION.length})\n\n`
-    + `อาจใช้เวลาหลายนาที ห้ามปิด/รีเฟรชหน้านี้ระหว่างทำงาน และกดครั้งเดียวเท่านั้น — `
-    + `ถ้าเคยกดค้างไว้กลางทางแล้วมากดซ้ำ รายการเบิกพัสดุ/รายการน้ำมันที่ซิงก์ไปแล้วก่อนหน้าจะถูกนำเข้าซ้ำอีกรอบ (พัสดุ/ทะเบียนรถไม่ซ้ำเพราะเช็ครหัส/ชื่อซ้ำให้อัตโนมัติ)\n\n`
+    + REMAINING_FUEL.length;
+  const ok = confirm(`[RESUME] จะนำเข้าข้อมูลเดิมที่เหลือขึ้นฐานข้อมูลกลาง `
+    + `(พัสดุ ${MATERIALS_SEED_FOR_MIGRATION.length} [ซ้ำได้ไม่เป็นไร], ทะเบียนรถ ${VEHICLES_SEED_FOR_MIGRATION.length} [ซ้ำได้ไม่เป็นไร], `
+    + `รายการเบิกพัสดุ 0 [ข้าม เสร็จแล้ว], รายการน้ำมันที่เหลือ ${REMAINING_FUEL.length})\n\n`
+    + `อาจใช้เวลาหลายนาที ห้ามปิด/รีเฟรชหน้านี้ระหว่างทำงาน — `
+    + `ถ้าสะดุดอีกกลางทาง อย่ากดซ้ำทันที ให้ตรวจสอบจำนวนแถวใน Google Sheets ก่อน\n\n`
     + `ดำเนินการต่อหรือไม่?`);
   if(!ok) return;
   const btn = document.getElementById('migrate-legacy-btn');
@@ -4257,12 +4263,7 @@ async function migrateLegacyDataToServer(){
       }
       done++; setProgress('ทะเบียนรถ');
     }
-    for(const t of MATERIAL_TRANSACTIONS_SEED_FOR_MIGRATION){
-      const saved = await apiPost('add', 'material_transactions', matTxToApi(Object.assign({}, t, {id:undefined})));
-      materialTransactions.push(matTxFromApi(saved));
-      done++; setProgress('รายการเบิกพัสดุ');
-    }
-    for(const t of FUEL_TRANSACTIONS_SEED_FOR_MIGRATION){
+    for(const t of REMAINING_FUEL){
       const saved = await apiPost('add', 'fuel_transactions', fuelTxToApi(Object.assign({}, t, {id:undefined})));
       fuelTransactions.push(fuelTxFromApi(saved));
       done++; setProgress('รายการน้ำมัน');
