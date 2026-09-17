@@ -316,7 +316,7 @@
                   <svg id="login-pw-eye-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"/><circle cx="12" cy="12" r="3"/></svg>
                 </button>
               </div>
-              <button class="btn btn-primary btn-sm" onclick="doLogin()" style="cursor:pointer;width:100%;justify-content:center;">เข้าสู่ระบบ</button>
+              <button id="login-submit-btn" class="btn btn-primary btn-sm" onclick="doLogin()" style="cursor:pointer;width:100%;justify-content:center;">เข้าสู่ระบบ</button>
             </div>
             <button id="logout-btn" class="user-menu-item danger" onclick="doLogout()" style="display:none;">🚪 ออกจากระบบ</button>
           </div>
@@ -1111,12 +1111,18 @@ async function initLogin(){
 async function doLogin(){
   const userInput = document.getElementById('login-username');
   const pwInput = document.getElementById('login-password');
+  const loginBtn = document.getElementById('login-submit-btn');
   const username = userInput.value.trim();
   const pw = pwInput.value;
   if(!username || !pw){ alert('กรุณากรอกชื่อผู้ใช้และรหัสผ่าน'); return; }
   const badge = document.getElementById('login-badge');
   const logoutBtn = document.getElementById('logout-btn');
   const loginBox = document.getElementById('login-box');
+  /* ป้องกันคลิกซ้ำตอนรอ GAS ตอบกลับ (อาจช้าได้ตามภาระงานเขียนของทั้งระบบ) —
+     คลิกซ้ำระหว่างรอ ไม่ได้ทำให้เร็วขึ้น มีแต่จะยิง request ซ้อนกันโดยเปล่าประโยชน์ */
+  loginBtn.disabled = true; userInput.disabled = true; pwInput.disabled = true;
+  const originalLabel = loginBtn.textContent;
+  loginBtn.textContent = 'กำลังตรวจสอบ...';
   let match;
   try{
     match = await apiPost('login', 'users', {username, password: pw});
@@ -1124,6 +1130,9 @@ async function doLogin(){
     alert(err.message || 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง');
     pwInput.value=''; pwInput.focus();
     return;
+  }finally{
+    loginBtn.disabled = false; userInput.disabled = false; pwInput.disabled = false;
+    loginBtn.textContent = originalLabel;
   }
   const role = match.role || 'staff';
   localStorage_role = role; currentUserName = match.displayName;
@@ -1132,12 +1141,16 @@ async function doLogin(){
   /* แชร์สถานะเข้าสู่ระบบไปยังอีก 4 ระบบย่อย เพื่อไม่ต้องล็อกอินซ้ำ */
   localStorage.setItem(__SHARED_SESSION_KEY, JSON.stringify({role, name:match.displayName, position:match.position||'', photo:match.photo||null, username:match.username, ts:Date.now()}));
   document.getElementById('sec-tab-users').style.display = isOwner() ? '' : 'none';
-  await loadUsersFromApi();
-  renderUsers();
   __renderAvatar();
   __updateNavLinks();
   renderApprovals();
-  if(role==='staff'){ window.location.replace('choengnoen1-saraban.html'); }
+  if(role==='staff'){ window.location.replace('choengnoen1-saraban.html'); return; }
+  /* ตาราง "จัดการผู้ใช้งาน" เห็นได้เฉพาะ owner เท่านั้น — โหลดรายชื่อผู้ใช้ใหม่อีกรอบ (round trip ที่ 2)
+     เฉพาะตอนจำเป็นจริงๆ แทนที่จะโหลดทุกครั้งไม่ว่า role ไหน ลดเวลารอของบัญชี "หมวด"/"เจ้าหน้าที่" ที่ไม่เห็นตารางนี้อยู่แล้ว */
+  if(role==='owner'){
+    await loadUsersFromApi();
+    renderUsers();
+  }
 }
 function doLogout(){
   localStorage_role='guest'; currentUserName='';
