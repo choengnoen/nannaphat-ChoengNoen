@@ -935,6 +935,23 @@ async function apiPost(action, table, data, id){
   if(!json.ok) throw new Error(json.error || 'บันทึกข้อมูลไปยังฐานข้อมูลกลางไม่สำเร็จ');
   return json.result;
 }
+/* login ปกติ apiPost ห้าม retry (กลัวเขียนซ้ำ) แต่ login ปลอดภัยกว่า: ถ้ารหัสผ่านผิดจริงจะได้ error
+   ข้อความชัดเจนกลับมาเสมอ (ไม่ retry ซ้ำให้เสียเวลา) ส่วนกรณี error อื่น (เช่น GAS ตอบ HTML แทน JSON
+   ชั่วคราว, หมดเวลาเชื่อมต่อ) ปลอดภัยที่จะลองใหม่ เพราะฝั่งเซิร์ฟเวอร์บันทึกแค่ lastLogin แบบเขียนทับ
+   ตรงเซลล์เดียว (writeLastLoginNoLock_) ต่อให้ครั้งก่อนหน้าสำเร็จจริงแล้ว retry ซ้ำก็ไม่ทำให้ข้อมูลพัง */
+async function apiPostLogin(username, password){
+  const maxRetries = 2;
+  for(let attempt=0; attempt<=maxRetries; attempt++){
+    try{
+      return await apiPost('login', 'users', {username, password});
+    }catch(err){
+      const msg = err.message || '';
+      const isRealRejection = msg.includes('ไม่ถูกต้อง') || msg.includes('ระงับ') || msg.includes('กรุณาระบุ');
+      if(isRealRejection || attempt >= maxRetries) throw err;
+      await new Promise(r=>setTimeout(r, 800 * (attempt+1)));
+    }
+  }
+}
 function apiCurrentUsername(){
   const s = __getSharedSession();
   return (s && s.name) || 'ไม่ระบุผู้ใช้';
@@ -1125,7 +1142,7 @@ async function doLogin(){
   loginBtn.textContent = 'กำลังตรวจสอบ...';
   let match;
   try{
-    match = await apiPost('login', 'users', {username, password: pw});
+    match = await apiPostLogin(username, pw);
   }catch(err){
     alert(err.message || 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง');
     pwInput.value=''; pwInput.focus();
