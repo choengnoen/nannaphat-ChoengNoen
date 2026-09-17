@@ -4241,12 +4241,12 @@ function __toggleNote(id, btn){
    ============================================================ */
 async function migrateLegacyDataToServer(){
   if(!isAdmin()) return;
-  // RESUME PATCH v2 (2026-09-17): materials(67) และ machinery(29) migrate ครบและยืนยัน
+  // RESUME PATCH v3 (2026-09-17): materials(67) และ machinery(29) migrate ครบและยืนยัน
   // ถูกต้องแล้วจาก Sheets จริง (หลังลบ 1 รายการซ้ำที่เกิดจาก race condition ตอนกดปุ่มก่อน
   // ข้อมูลโหลดเสร็จ) — ตัด loop ทั้งสองออกกันไม่ให้ซ้ำอีก เหลือ fuel_transactions resume
-  // จากรายการที่ 104 (103 รายการแรกยืนยันแล้วว่าเข้า Sheets สำเร็จ) — เมื่อ migrate ครบแล้ว
+  // จากรายการที่ 116 (115 รายการแรกยืนยันแล้วว่าเข้า Sheets สำเร็จ) — เมื่อ migrate ครบแล้ว
   // ให้ลบ patch นี้แล้วคืนโค้ดเดิม หรือลบทั้งฟังก์ชันตามคอมเมนต์ด้านบนได้เลย
-  const REMAINING_FUEL = FUEL_TRANSACTIONS_SEED_FOR_MIGRATION.slice(103);
+  const REMAINING_FUEL = FUEL_TRANSACTIONS_SEED_FOR_MIGRATION.slice(115);
   const total = REMAINING_FUEL.length;
   const ok = confirm(`[RESUME v2] จะนำเข้ารายการน้ำมันที่เหลือขึ้นฐานข้อมูลกลาง `
     + `(พัสดุ/ทะเบียนรถ/รายการเบิกพัสดุ เสร็จหมดแล้ว ข้าม — รายการน้ำมันที่เหลือ ${REMAINING_FUEL.length})\n\n`
