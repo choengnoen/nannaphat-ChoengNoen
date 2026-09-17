@@ -795,6 +795,56 @@ let __alertState = {}; /* เช็คลิสต์ทำแล้ว/ผู�
 function __readSubsystem(name){
   try{ return JSON.parse(localStorage.getItem(__ALL_SUB_KEYS[name]) || '{}') || {}; }catch(e){ return {}; }
 }
+
+/* ============================================================
+   เชื่อมต่อฐานข้อมูลกลาง (Google Apps Script) — อ่านอย่างเดียว
+   หน้านี้ไม่มี UI แก้ไขข้อมูลของระบบอื่น จึงมีแค่ apiGet ไม่มี apiPost
+   ใช้แก้ 2 จุดที่ localStorage cross-read เดิมพังไปหลัง Phase B/C ของระบบ 2/3
+   (encroachments/materials เลิกเขียนลง localStorage แล้ว ย้ายไป Sheets แทน)
+   ============================================================ */
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbwFxTEynojnNy4bHIS5ZQ9N7aBrsAFDT7a3Vcxugy7KGodhLZ18DNdj-v4MYPOGtBtL/exec';
+const APP_TOKEN = '5UWqjtNRWO59wZlnoN1Ysn0FxdTOGm';
+async function apiGet(table){
+  // GET ไม่มีผลข้างเคียง ลองใหม่ได้ปลอดภัยเสมอถ้าเจอ error ชั่วคราวจาก GAS quota (ตอบ HTML แทน JSON)
+  const maxRetries = 2;
+  for(let attempt=0; attempt<=maxRetries; attempt++){
+    try{
+      const res = await fetch(GAS_URL + '?token=' + encodeURIComponent(APP_TOKEN) + '&table=' + encodeURIComponent(table));
+      const json = await res.json();
+      if(!json.ok) throw new Error(json.error || 'โหลดข้อมูลจากฐานข้อมูลกลางไม่สำเร็จ');
+      return json.data;
+    }catch(err){
+      if(attempt >= maxRetries) throw err;
+      await new Promise(r=>setTimeout(r, 700 * (attempt+1)));
+    }
+  }
+}
+
+let __apiEncroachments = [];
+let __apiMaterials = [];
+// แปลง materials จาก column ของ Sheet (code/itemName/reorderPoint/openingStock) เป็นรูปแบบที่
+// matCurrentStock()/matStatus() ด้านบนใช้อยู่แล้ว (code/name/unit/reorder/currentStock) — currentStock
+// คำนวณจากยอดตั้งต้น + สุทธิรายการรับ/เบิกทั้งหมดจาก material_transactions (ไม่ได้ใช้ตรรกะปิดบัญชี
+// รายเดือนแบบเดียวกับระบบที่ 3 ทุกกระเบียดนิ้ว แต่เป็นยอดคงเหลือสุทธิถึงปัจจุบันที่ถูกต้องเทียบเท่ากัน)
+function __materialFromApi(row, txByCode){
+  const opening = Number(row.openingStock) || 0;
+  const tx = txByCode[row.code] || [];
+  const net = tx.reduce((s,t)=> s + (t.type==='receive' ? (Number(t.qty)||0) : -(Number(t.qty)||0)), 0);
+  return { code: row.code, name: row.itemName, unit: row.unit||'', reorder: Number(row.reorderPoint)||0, currentStock: opening + net };
+}
+async function __loadCrossSystemApiData(){
+  try{
+    __apiEncroachments = await apiGet('encroachments');
+  }catch(err){ console.error('โหลดข้อมูลการบุกรุกจากระบบที่ 2 ไม่สำเร็จ', err); }
+  try{
+    const rawMaterials = await apiGet('materials');
+    const rawTx = await apiGet('material_transactions');
+    const txByCode = {};
+    rawTx.forEach(t=>{ (txByCode[t.materialId] = txByCode[t.materialId] || []).push(t); });
+    __apiMaterials = rawMaterials.map(m=>__materialFromApi(m, txByCode));
+  }catch(err){ console.error('โหลดข้อมูลวัสดุจากระบบที่ 3 ไม่สำเร็จ', err); }
+  renderAll();
+}
 function __todayISO(){
   const d = TODAY;
   return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
@@ -842,15 +892,18 @@ function __loadLiveData(){
     const m = __MONTH_SHORT_TH[dt.getMonth()];
     if(m in accidentMonthly) accidentMonthly[m]++;
   });
-  const enc = sub2.encroachments || [];
+  // encroachments ย้ายไปฐานข้อมูลกลางแล้วตั้งแต่ระบบ 2 wired Phase C (เลิกเขียน localStorage)
+  // โหลดผ่าน __loadCrossSystemApiData() แทน — ดูด้านล่าง
+  const enc = __apiEncroachments;
   const thf = sub2.thefts || [];
   encroachTotal = enc.length;
   encroachActive = enc.filter(e=>e.stage < 4).length;
   theftTotal = thf.length;
   theftPending = thf.filter(t=>!t.policeReport).length;
 
-  // --- วัสดุคงเหลือ (ระบบที่ 3) — แหล่งข้อมูลจริงหนึ่งเดียว ไม่มีสำเนาซ้ำในหน้านี้ ---
-  materials = sub3.materials || [];
+  // --- วัสดุคงเหลือ (ระบบที่ 3) — ย้ายไปฐานข้อมูลกลางแล้วตั้งแต่ระบบ 3 wired Phase B
+  // (เลิกเขียน localStorage) โหลดผ่าน __loadCrossSystemApiData() แทน — ดูด้านล่าง
+  materials = __apiMaterials;
 
   // --- งบประมาณ (ระบบที่ 4) ---
   const cyc = __currentCycleKey();
@@ -1698,6 +1751,8 @@ __loadPersistedState();
 /* ============ จบส่วนบันทึกข้อมูล ============ */
 initLogin();
 renderAll();
+__loadCrossSystemApiData(); // โหลด encroachments/materials จากฐานข้อมูลกลาง (เรียก renderAll() ซ้ำเมื่อโหลดเสร็จ)
+setInterval(__loadCrossSystemApiData, 60000); // รีเฟรชทุก 60 วิ ให้ตัวเลขไม่ค้าง (ไม่ถี่เกินไปกัน GAS quota)
 
 </script>
 </body>
