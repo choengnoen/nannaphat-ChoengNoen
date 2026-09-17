@@ -452,7 +452,19 @@
               <div class="f-row"><label>อัตราค่าจ้าง/วัน (บาท)</label><input type="number" class="edit-input" id="as-rate" placeholder="0.00"></div>
               <div class="f-row"><label>ไซส์เสื้อ</label><input class="edit-input" id="as-shirt" placeholder="เช่น L, XL"></div>
             </div>
-            <div class="f-row"><label>ข้อมูลการรักษาพยาบาล</label><input class="edit-input" id="as-med" placeholder="สิทธิ/สถานพยาบาล"></div>
+            <div class="two-col">
+              <div class="f-row"><label>ข้อมูลการรักษาพยาบาล</label><input class="edit-input" id="as-med" placeholder="สิทธิ/สถานพยาบาล"></div>
+              <div class="f-row"><label>กรุ๊ปเลือด</label><input class="edit-input" id="as-blood" placeholder="เช่น O, A, B, AB"></div>
+            </div>
+            <div class="two-col">
+              <div class="f-row"><label>เบอร์โทรศัพท์</label><input class="edit-input" id="as-phone" placeholder="เช่น 08x-xxx-xxxx"></div>
+              <div class="f-row"><label>วุฒิการศึกษา</label><input class="edit-input" id="as-education"></div>
+            </div>
+            <div class="f-row"><label>ที่อยู่ปัจจุบัน</label><input class="edit-input" id="as-address"></div>
+            <div class="two-col">
+              <div class="f-row"><label>ผู้ติดต่อฉุกเฉิน</label><input class="edit-input" id="as-emergency-contact" placeholder="ชื่อ-สกุล / ความสัมพันธ์"></div>
+              <div class="f-row"><label>เบอร์โทรผู้ติดต่อฉุกเฉิน</label><input class="edit-input" id="as-emergency-phone"></div>
+            </div>
           </div>
           <div class="modal-foot">
             <button class="btn btn-ghost" id="as-cancel-btn" onclick="closeAddStaff()">ยกเลิก</button>
@@ -554,7 +566,10 @@
             <div>
               <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:6px;">
                 <h3 style="font-size:14px;color:var(--navy-900);margin:0;">คำขอลาที่อนุมัติแล้ว</h3>
-                <div class="search-box" style="min-width:170px;">🔍 <input id="lr-approved-search" placeholder="ค้นหาชื่อผู้ลา" oninput="renderLeaveRequestList()"></div>
+                <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                  <select id="lr-approved-fy" onchange="renderLeaveRequestList()"></select>
+                  <div class="search-box" style="min-width:170px;">🔍 <input id="lr-approved-search" placeholder="ค้นหาชื่อผู้ลา" oninput="renderLeaveRequestList()"></div>
+                </div>
               </div>
               <div class="table-wrap table-wrap-scroll" style="max-height:50vh;"><table class="lr-tbl">
                 <colgroup><col class="c-name"><col class="c-type"><col class="c-range"><col class="c-status"><col class="c-actions"></colgroup>
@@ -618,8 +633,8 @@
             </div>
           </div>
           <div class="modal-foot">
-            <button class="btn btn-ghost" onclick="closeLeaveModal()">ยกเลิก</button>
-            <button class="btn btn-primary" onclick="submitLeaveRequest()">บันทึกคำขอลา</button>
+            <button id="lr-cancel-btn" class="btn btn-ghost" onclick="closeLeaveModal()">ยกเลิก</button>
+            <button id="lr-save-btn" class="btn btn-primary" onclick="submitLeaveRequest()">บันทึกคำขอลา</button>
           </div>
         </div>
       </div>
@@ -654,8 +669,8 @@
             </div>
           </div>
           <div class="modal-foot">
-            <button class="btn btn-ghost" onclick="closeEditLeave()">ยกเลิก</button>
-            <button class="btn btn-primary" onclick="saveEditLeave()">บันทึกการแก้ไข</button>
+            <button id="el-cancel-btn" class="btn btn-ghost" onclick="closeEditLeave()">ยกเลิก</button>
+            <button id="el-save-btn" class="btn btn-primary" onclick="saveEditLeave()">บันทึกการแก้ไข</button>
           </div>
         </div>
       </div>
@@ -886,6 +901,14 @@ function formatRouteDisplay(route){
   if(/^ทล\./.test(text)) return text;
   if(/^\d/.test(text)) return 'ทล.'+text;
   return text;
+}
+// ต่อท้ายชื่อสายทาง (เช่น " — สาย บ้านค่าย-เขาไผ่") โดยอ้างอิงจากฐานข้อมูล "ทางหลวงควบคุม" ของระบบที่ 2
+// (__controlledRoutesCache) — คืนค่าว่างถ้าไม่พบสายทางที่ตรงกัน (เช่น พิมพ์เลขทางหลวงผิด หรือยังไม่มีในฐานข้อมูล)
+function complaintRouteNameSuffix(route){
+  const digits = String(route||'').trim().replace(/^ทล\.?\s*/,'').trim();
+  if(!digits) return '';
+  const r = findRoute(digits);
+  return (r && r.section) ? ' — สาย '+r.section : '';
 }
 /* จัดรูปแบบข้อความ "กม." ให้แสดงผลพร้อม "กม." นำหน้าเมื่อขึ้นต้นด้วยเลข กม. (เช่น 13+020) หรือใส่ "บริเวณ" นำหน้าเมื่อเป็นคำอธิบายสถานที่ล้วน */
 function formatKmDisplay(km){
@@ -1133,6 +1156,17 @@ function __retirementInfo(s){
 function fmtDate(iso){ if(!iso) return '—'; const d=new Date(iso+'T00:00:00'); const months=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.']; return d.getDate()+' '+months[d.getMonth()]+' '+(d.getFullYear()+543-2500).toString().padStart(2,'0'); }
 const THAI_MONTH_ABBR = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
 const THAI_MONTH_FULL = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+// วันที่แบบเต็ม ไม่ย่อ เช่น "27 มีนาคม 2535" — ใช้เฉพาะจุดที่ต้องการความเป็นทางการ (เช่น วันเกิดในโมดัลบุคลากร)
+// ไม่ใช้แทน fmtDate() ทั่วทั้งไฟล์ เพราะจุดอื่นๆ (วันที่ลา, วันหยุด ฯลฯ) ใช้รูปแบบย่ออยู่แล้วและไม่ได้ขอให้เปลี่ยน
+function fmtDateFull(iso){
+  if(!iso) return '—';
+  const d = new Date(iso+'T00:00:00');
+  return d.getDate()+' '+THAI_MONTH_FULL[d.getMonth()]+' '+(d.getFullYear()+543);
+}
+// วันที่วันนี้แยกเป็น {day, monthFull, yearBE} — ใช้กรอกบรรทัด "วันที่เขียน" ในแบบฟอร์มพิมพ์ ที่เดิมปล่อยว่างไว้
+function todayFullParts(){
+  return { day: TODAY.getDate(), monthFull: THAI_MONTH_FULL[TODAY.getMonth()], yearBE: TODAY.getFullYear()+543 };
+}
 function docMonthKey(d){
   // คืนค่า 'YYYY-MM' (ปี ค.ศ.) สำหรับใช้กรองรายเดือน — ใช้ dateISO ถ้ามี ไม่งั้นแกะจากข้อความวันที่ไทยที่บันทึกไว้ (รองรับข้อมูลเก่า)
   if(d.dateISO) return d.dateISO.slice(0,7);
@@ -1438,18 +1472,51 @@ function complaintUpdatesOf(c){
   try{ const arr = JSON.parse(c.updatesJson||'[]'); return Array.isArray(arr) ? arr : []; }
   catch(e){ return []; }
 }
+// ไทม์ไลน์แบบเรียงเวลา (รับเรื่อง → แต่ละความคืบหน้า → ปัจจุบัน ถ้ายังไม่ปิดเรื่อง) พร้อมจำนวนวันที่ใช้ในแต่ละขั้น
+// (ระยะห่างจากโหนดก่อนหน้าถึงโหนดนี้) แทนแบบเดิมที่แสดงแค่ log การอัปเดตเรียงใหม่ไปเก่า ไม่มีจุดเริ่มต้น/สรุปวัน
 function complaintTimelineHtml(c){
-  const updates = complaintUpdatesOf(c).slice().reverse();
-  if(!updates.length) return '<div style="color:var(--ink-400);font-size:12.5px;padding:6px 0;">ยังไม่มีการบันทึกความคืบหน้า</div>';
-  return updates.map(u=>`
-    <div style="padding:8px 0;border-top:1px solid var(--line);">
-      <div style="font-size:11.5px;color:var(--ink-400);display:flex;justify-content:space-between;gap:8px;">
-        <span>${u.date?fmtDate(u.date):'—'} · ${u.by||'ไม่ระบุผู้บันทึก'}</span>
-        ${u.statusAfter?complaintStatusPill(u.statusAfter):''}
+  const updates = complaintUpdatesOf(c);
+  const nodes = [{
+    date: c.date,
+    label: 'รับเรื่อง' + (c.receiveNo ? (' (เลขรับแขวง ' + c.receiveNo + ')') : ''),
+    note: c.subject || '',
+    statusAfter: null,
+    dotColor: 'var(--navy-900)'
+  }];
+  updates.forEach(u=>nodes.push({
+    date: u.date,
+    label: u.by ? ('บันทึกโดย ' + u.by) : 'บันทึกความคืบหน้า',
+    note: u.note || '',
+    statusAfter: u.statusAfter || null,
+    dotColor: 'var(--line)'
+  }));
+  const isOpen = c.status !== 'ดำเนินการแล้วเสร็จ';
+  if(nodes.length) nodes[nodes.length-1].dotColor = isOpen ? 'var(--line)' : 'var(--orange-600)';
+  const rows = nodes.map((n,i)=>{
+    const nextDate = nodes[i+1] ? nodes[i+1].date : (isOpen ? TODAY.toISOString().slice(0,10) : null);
+    let daysLabel = '';
+    if(n.date && nextDate){
+      const d = Math.floor((new Date(nextDate+'T00:00:00') - new Date(n.date+'T00:00:00'))/86400000);
+      if(d>=0) daysLabel = `ใช้เวลาในขั้นนี้ ${d} วัน`;
+    }
+    return `<div style="position:relative;padding:0 0 16px 22px;">
+      <div style="position:absolute;left:0;top:2px;width:12px;height:12px;border-radius:50%;background:${n.dotColor};border:2px solid #fff;box-shadow:0 0 0 1px var(--line);"></div>
+      <div style="font-size:11.5px;color:var(--ink-400);display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;">
+        <span>${n.date?fmtDate(n.date):'—'} · ${n.label}</span>
+        ${n.statusAfter?complaintStatusPill(n.statusAfter):''}
       </div>
-      <div style="font-size:13.5px;color:var(--ink-900);margin-top:2px;">${u.note||''}</div>
-    </div>
-  `).join('');
+      <div style="font-size:13.5px;color:var(--ink-900);margin-top:2px;">${n.note||''}</div>
+      ${daysLabel?`<div style="font-size:11px;color:var(--ink-400);margin-top:2px;">${daysLabel}</div>`:''}
+    </div>`;
+  }).join('');
+  const nowRow = isOpen ? `<div style="position:relative;padding-left:22px;">
+    <div style="position:absolute;left:0;top:2px;width:12px;height:12px;border-radius:50%;background:var(--paper-100);border:2px dashed var(--ink-400);"></div>
+    <div style="font-size:11.5px;color:var(--ink-400);">ปัจจุบัน — ${fmtDate(TODAY.toISOString().slice(0,10))}</div>
+  </div>` : '';
+  return `<div style="position:relative;">
+    <div style="position:absolute;left:5px;top:8px;bottom:${isOpen?'20px':'8px'};width:2px;background:var(--line);"></div>
+    ${rows}${nowRow}
+  </div>`;
 }
 async function addComplaintUpdate(){
   if(!isAdmin() || complaintModalIndex===null) return;
@@ -1485,7 +1552,7 @@ function renderComplaintModal(data){
       <div class="detail-grid" style="grid-template-columns:repeat(2,1fr);">
         <div><div class="d-label">วันที่</div><div class="d-val">${data.date?fmtDate(data.date):'—'}</div></div>
         <div><div class="d-label">เลขรับแขวง</div><div class="d-val">${data.receiveNo||'—'}</div></div>
-        <div><div class="d-label">สายทาง</div><div class="d-val">${formatRouteDisplay(data.route)||'—'}</div></div>
+        <div><div class="d-label">สายทาง</div><div class="d-val">${formatRouteDisplay(data.route)?formatRouteDisplay(data.route)+complaintRouteNameSuffix(data.route):'—'}</div></div>
         <div><div class="d-label">กม.</div><div class="d-val">${formatKmDisplay(data.km)||'—'}</div></div>
         <div style="grid-column:1/-1;"><div class="d-label">เรื่อง</div><div class="d-val">${data.subject||'—'}</div></div>
         <div style="grid-column:1/-1;"><div class="d-label">หมายเหตุ</div><div class="d-val">${data.remark||'—'}</div></div>
@@ -1620,6 +1687,12 @@ function renderStaffTabCounts(){
     t.textContent = `${label} (${count})`;
   });
 }
+const PTYPE_ORDER = ['ข้าราชการ','ลูกจ้างประจำ','พนักงานราชการ','ลูกจ้างชั่วคราว'];
+function staffSortTier(s){
+  if(s.status==='resigned') return PTYPE_ORDER.length; // ลาออก อยู่ล่างสุดเสมอ ไม่ว่าประเภทเดิมคืออะไร
+  const idx = PTYPE_ORDER.indexOf(s.ptype);
+  return idx===-1 ? PTYPE_ORDER.length-1 : idx;
+}
 function renderStaff(){
   renderStaffTabCounts();
   const filter = document.querySelector('[data-stafftab].active')?.dataset.stafftab || 'all';
@@ -1631,8 +1704,9 @@ function renderStaff(){
     if(q && !(s.name.toLowerCase().includes(q) || (s.nickname||'').toLowerCase().includes(q))) return;
     indices.push(i);
   });
-  // เจ้าหน้าที่สถานะ "ลาออก" ให้แสดงอยู่ล่างสุดของรายการเสมอ (sort เสถียร คงลำดับเดิมภายในกลุ่มเดียวกัน)
-  indices.sort((a,b)=> (staff[a].status==='resigned'?1:0) - (staff[b].status==='resigned'?1:0));
+  // เรียงตามลำดับ ข้าราชการ > ลูกจ้างประจำ > พนักงานราชการ > ลูกจ้างชั่วคราว > พนักงานที่ลาออก (ล่างสุดเสมอ ไม่ว่าประเภทใด)
+  // sort เสถียร คงลำดับเดิมภายในกลุ่มเดียวกัน — ใช้ค่าเดียวกันนี้กับทุกแท็บ แท็บที่กรองประเภทเดียวอยู่แล้วจะได้แค่ผลลัพธ์ resigned-ล่างสุดเหมือนเดิม
+  indices.sort((a,b)=> staffSortTier(staff[a]) - staffSortTier(staff[b]));
   let html='';
   indices.forEach(i=>{
     const s = staff[i];
@@ -1701,7 +1775,19 @@ function renderStaffDetailModal(){
         <div class="f-row"><label>อัตราค่าจ้าง/วัน (บาท)</label><input type="number" class="edit-input" id="sd-rate" value="${s.rate??''}"></div>
         <div class="f-row"><label>ไซส์เสื้อ</label><input class="edit-input" id="sd-shirt" value="${s.shirt||''}"></div>
       </div>
-      <div class="f-row"><label>ข้อมูลการรักษาพยาบาล</label><input class="edit-input" id="sd-med" value="${s.med||''}"></div>
+      <div class="two-col">
+        <div class="f-row"><label>ข้อมูลการรักษาพยาบาล</label><input class="edit-input" id="sd-med" value="${s.med||''}"></div>
+        <div class="f-row"><label>กรุ๊ปเลือด</label><input class="edit-input" id="sd-blood" value="${s.bloodType||''}" placeholder="เช่น O, A, B, AB"></div>
+      </div>
+      <div class="two-col">
+        <div class="f-row"><label>เบอร์โทรศัพท์</label><input class="edit-input" id="sd-phone" value="${s.phone||''}"></div>
+        <div class="f-row"><label>วุฒิการศึกษา</label><input class="edit-input" id="sd-education" value="${s.education||''}"></div>
+      </div>
+      <div class="f-row"><label>ที่อยู่ปัจจุบัน</label><input class="edit-input" id="sd-address" value="${s.address||''}"></div>
+      <div class="two-col">
+        <div class="f-row"><label>ผู้ติดต่อฉุกเฉิน</label><input class="edit-input" id="sd-emergency-contact" value="${s.emergencyContact||''}" placeholder="ชื่อ-สกุล / ความสัมพันธ์"></div>
+        <div class="f-row"><label>เบอร์โทรผู้ติดต่อฉุกเฉิน</label><input class="edit-input" id="sd-emergency-phone" value="${s.emergencyPhone||''}"></div>
+      </div>
     `;
     foot.style.justifyContent = 'flex-end';
     foot.innerHTML = `
@@ -1717,11 +1803,17 @@ function renderStaffDetailModal(){
         <div><div class="d-label">ตำแหน่งทางราชการ</div><div class="d-val">${s.role||'—'}${s.duty?` <span class="pill pill-warn">ปฏิบัติหน้าที่${s.duty}</span>`:''}${(()=>{const ri=__retirementInfo(s); if(!ri || s.status!=='ok') return ''; return ri.status==='overdue' ? ` <span class="pill pill-danger" title="ครบกำหนดเกษียณอายุเมื่อ ${fmtDate(ri.date)}">⏳ ถึงกำหนดเกษียณ (${fmtDate(ri.date)})</span>` : ` <span class="pill pill-warn" title="ครบกำหนดเกษียณอายุ ${fmtDate(ri.date)}">⏳ ใกล้เกษียณอายุ (${fmtDate(ri.date)})</span>`;})()}</div></div>
         <div><div class="d-label">ประเภทบุคลากร</div><div class="d-val">${s.ptype}</div></div>
         <div><div class="d-label">สถานะ</div><div class="d-val">${s.status==='resigned'?'<span class="pill pill-danger">● ลาออก</span>':'<span class="pill pill-ok">● ปฏิบัติงาน</span>'}</div></div>
-        <div><div class="d-label">วันเกิด / อายุ</div><div class="d-val">${s.birth?fmtDate(s.birth)+' ('+age+' ปี)':'—'}</div></div>
+        <div><div class="d-label">วันเกิด / อายุ</div><div class="d-val">${s.birth?fmtDateFull(s.birth)+' ('+age+' ปี)':'—'}</div></div>
         <div><div class="d-label">วันที่เริ่มงาน</div><div class="d-val">${s.startDate?fmtDate(s.startDate):'—'}${(()=>{const el=__leaveEligibleDate(s); if(!el) return ''; const restricted = TODAY.toISOString().slice(0,10) < el; return restricted ? ` <span class="pill pill-warn">ยังไม่มีสิทธิ์ลา (ถึง ${fmtDate(el)})</span>` : ` <span class="pill pill-ok">มีสิทธิ์ลาแล้ว</span>`;})()}</div></div>
         <div><div class="d-label">อัตราค่าจ้าง/วัน</div><div class="d-val">${s.rate?fmtMoney(s.rate)+' บาท':'—'}</div></div>
         <div><div class="d-label">ไซส์เสื้อ</div><div class="d-val">${s.shirt||'—'}</div></div>
-        <div style="grid-column:1/-1;"><div class="d-label">ข้อมูลการรักษาพยาบาล</div><div class="d-val">${s.med||'—'}</div></div>
+        <div><div class="d-label">ข้อมูลการรักษาพยาบาล</div><div class="d-val">${s.med||'—'}</div></div>
+        <div><div class="d-label">กรุ๊ปเลือด</div><div class="d-val">${s.bloodType||'—'}</div></div>
+        <div><div class="d-label">เบอร์โทรศัพท์</div><div class="d-val">${s.phone||'—'}</div></div>
+        <div><div class="d-label">วุฒิการศึกษา</div><div class="d-val">${s.education||'—'}</div></div>
+        <div style="grid-column:1/-1;"><div class="d-label">ที่อยู่ปัจจุบัน</div><div class="d-val">${s.address||'—'}</div></div>
+        <div><div class="d-label">ผู้ติดต่อฉุกเฉิน</div><div class="d-val">${s.emergencyContact||'—'}</div></div>
+        <div><div class="d-label">เบอร์โทรผู้ติดต่อฉุกเฉิน</div><div class="d-val">${s.emergencyPhone||'—'}</div></div>
       </div>
     `;
     foot.style.justifyContent = isAdmin() ? 'space-between' : 'flex-end';
@@ -1772,6 +1864,12 @@ async function saveStaffDetail(){
   s.rate = rateVal ? Number(rateVal) : null;
   s.shirt = document.getElementById('sd-shirt').value.trim() || null;
   s.med = document.getElementById('sd-med').value.trim() || null;
+  s.bloodType = document.getElementById('sd-blood').value.trim() || null;
+  s.phone = document.getElementById('sd-phone').value.trim() || null;
+  s.education = document.getElementById('sd-education').value.trim() || null;
+  s.address = document.getElementById('sd-address').value.trim() || null;
+  s.emergencyContact = document.getElementById('sd-emergency-contact').value.trim() || null;
+  s.emergencyPhone = document.getElementById('sd-emergency-phone').value.trim() || null;
   // ป้องกันการกดซ้ำระหว่างรอผลจากเซิร์ฟเวอร์ (ปุ่มถูกสร้างใหม่ทุกครั้งที่ renderStaffDetailModal ทำงาน จึงกลับมาใช้ได้เองทั้งกรณีสำเร็จและผิดพลาด)
   const saveBtn = document.getElementById('sd-save-btn'), cancelBtn = document.getElementById('sd-cancel-btn');
   if(saveBtn){ saveBtn.disabled = true; saveBtn.textContent = 'กำลังบันทึก...'; }
@@ -1793,7 +1891,7 @@ async function saveStaffDetail(){
 /* ---------- Add staff modal ---------- */
 function openAddStaff(){
   if(!isAdmin()){ alert('ต้องเข้าสู่ระบบด้วยสิทธิ์แก้ไข (หัวหน้าหมวด/ผู้ช่วยหัวหน้าหมวด) จึงจะเพิ่มข้อมูลได้'); return; }
-  ['as-name','as-nickname','as-role','as-duty','as-rate','as-shirt','as-med','as-birth','as-startdate'].forEach(id=>{ document.getElementById(id).value=''; });
+  ['as-name','as-nickname','as-role','as-duty','as-rate','as-shirt','as-med','as-birth','as-startdate','as-blood','as-phone','as-education','as-address','as-emergency-contact','as-emergency-phone'].forEach(id=>{ document.getElementById(id).value=''; });
   document.getElementById('as-ptype').value = 'ลูกจ้างชั่วคราว';
   document.getElementById('as-status').value = 'ok';
   const saveBtn = document.getElementById('as-save-btn');
@@ -1817,6 +1915,12 @@ async function submitAddStaff(){
     rate: rateVal ? Number(rateVal) : null,
     shirt: document.getElementById('as-shirt').value.trim() || null,
     med: document.getElementById('as-med').value.trim() || null,
+    bloodType: document.getElementById('as-blood').value.trim() || null,
+    phone: document.getElementById('as-phone').value.trim() || null,
+    education: document.getElementById('as-education').value.trim() || null,
+    address: document.getElementById('as-address').value.trim() || null,
+    emergencyContact: document.getElementById('as-emergency-contact').value.trim() || null,
+    emergencyPhone: document.getElementById('as-emergency-phone').value.trim() || null,
     status: document.getElementById('as-status').value,
     startDate: document.getElementById('as-startdate').value || null
   };
@@ -2026,23 +2130,70 @@ function renderHolidayModalBody(){
   const rows = sorted.map(h=>{
     const idx = publicHolidays.indexOf(h);
     return `<tr>
-      <td>${fmtDate(h.date)}</td>
+      <td style="white-space:nowrap;">${fmtDate(h.date)}</td>
       <td>${h.name||'—'}</td>
       <td>${isAdmin() ? `<button class="btn btn-ghost btn-sm" onclick="removeHoliday(${idx})">🗑</button>` : ''}</td>
     </tr>`;
   }).join('') || `<tr><td colspan="3" style="text-align:center;color:var(--ink-400);padding:16px;">ยังไม่มีข้อมูลวันหยุดในระบบ</td></tr>`;
   body.innerHTML = `
-    <div class="foot-note" style="margin:0 0 10px;">รายการนี้ใช้คำนวณจำนวนวันลาแบบต่อเนื่องหลายวันทั้งระบบ — วันที่อยู่ในรายการ (รวมวันเสาร์-อาทิตย์) จะไม่ถูกนับเป็นวันลา</div>
     ${isAdmin() ? `
     <div class="two-col">
       <div class="f-row"><label>วันที่</label><input type="date" id="hd-date"></div>
       <div class="f-row"><label>ชื่อวันหยุด</label><input id="hd-name" placeholder="เช่น วันปิยมหาราช"></div>
     </div>
-    <button class="btn btn-primary btn-sm" style="margin:8px 0 12px;" onclick="addHoliday()">+ เพิ่มวันหยุด</button>` : ''}
-    <div class="table-wrap table-wrap-scroll" style="max-height:44vh;"><table>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin:8px 0 12px;">
+      <button id="hd-add-btn" class="btn btn-primary btn-sm" onclick="addHoliday()">+ เพิ่มวันหยุด</button>
+      <button id="hd-seed-btn" class="btn btn-ghost btn-sm" onclick="seedFixedHolidaysForFY(fiscalYearOf(TODAY.toISOString().slice(0,10)))">📅 เพิ่มวันหยุดราชการมาตรฐานของปีงบประมาณนี้</button>
+    </div>
+    <div class="foot-note" style="margin:0 0 10px;">ปุ่มด้านบนเพิ่มเฉพาะวันหยุดราชการที่วันที่ตายตัวทุกปี — วันหยุดทางศาสนาที่เลื่อนตามปฏิทินจันทรคติ (มาฆบูชา วิสาขบูชา อาสาฬหบูชา วันเข้าพรรษา) และวันหยุดตามมติ ครม. เพิ่มเติม ต้องเพิ่มเองด้วยฟอร์มด้านบน</div>` : ''}
+    <div class="table-wrap table-wrap-scroll" style="max-height:44vh;"><table style="table-layout:fixed;">
+      <colgroup><col style="width:30%"><col style="width:55%"><col style="width:15%"></colgroup>
       <thead><tr><th>วันที่</th><th>ชื่อวันหยุด</th><th></th></tr></thead>
       <tbody>${rows}</tbody>
     </table></div>`;
+}
+// วันหยุดราชการที่วันที่ตายตัวทุกปี (ปฏิทินสุริยคติ) — ไม่รวมวันหยุดทางศาสนาที่เลื่อนตามปฏิทินจันทรคติ
+// (มาฆบูชา/วิสาขบูชา/อาสาฬหบูชา/เข้าพรรษา) เพราะคำนวณให้แม่นยำจากตรงนี้ไม่ได้ ต้องให้เจ้าหน้าที่เพิ่มเองตามประกาศแต่ละปี
+const __FIXED_HOLIDAYS_BY_MONTH_DAY = [
+  {md:'01-01', name:'วันขึ้นปีใหม่'},
+  {md:'04-06', name:'วันจักรี'},
+  {md:'04-13', name:'วันสงกรานต์'},
+  {md:'04-14', name:'วันสงกรานต์'},
+  {md:'04-15', name:'วันสงกรานต์'},
+  {md:'05-04', name:'วันฉัตรมงคล'},
+  {md:'06-03', name:'วันเฉลิมพระชนมพรรษาสมเด็จพระนางเจ้าฯ พระบรมราชินี'},
+  {md:'07-28', name:'วันเฉลิมพระชนมพรรษาพระบาทสมเด็จพระเจ้าอยู่หัว'},
+  {md:'08-12', name:'วันแม่แห่งชาติ'},
+  {md:'10-13', name:'วันคล้ายวันสวรรคตพระบาทสมเด็จพระบรมชนกาธิเบศร มหาภูมิพลอดุลยเดชมหาราช บรมนาถบพิตร'},
+  {md:'10-23', name:'วันปิยมหาราช'},
+  {md:'12-05', name:'วันพ่อแห่งชาติ'},
+  {md:'12-10', name:'วันรัฐธรรมนูญ'},
+  {md:'12-31', name:'วันสิ้นปี'}
+];
+async function seedFixedHolidaysForFY(fy){
+  if(!isAdmin()) return;
+  const ceStart = fy - 543 - 1; // ปีปฏิทินของเดือน ต.ค.-ธ.ค. ในปีงบประมาณนี้
+  const ceEnd = fy - 543;       // ปีปฏิทินของเดือน ม.ค.-ก.ย. ในปีงบประมาณนี้
+  const candidates = __FIXED_HOLIDAYS_BY_MONTH_DAY.map(h=>{
+    const month = parseInt(h.md.slice(0,2),10);
+    const ce = month>=10 ? ceStart : ceEnd;
+    return { date: ce+'-'+h.md, name: h.name };
+  });
+  const toAdd = candidates.filter(c=>!publicHolidays.some(h=>h.date===c.date));
+  if(!toAdd.length){ alert('มีวันหยุดราชการมาตรฐานของปีงบประมาณ '+fy+' อยู่ในระบบครบแล้ว'); return; }
+  if(!confirm(`เพิ่มวันหยุดราชการมาตรฐาน ${toAdd.length} วัน สำหรับปีงบประมาณ ${fy}?\nไม่รวมวันหยุดทางศาสนาที่เลื่อนตามปฏิทินจันทรคติ (มาฆบูชา/วิสาขบูชา/อาสาฬหบูชา/เข้าพรรษา) — ต้องเพิ่มเอง`)) return;
+  const seedBtn = document.getElementById('hd-seed-btn');
+  if(seedBtn){ seedBtn.disabled = true; seedBtn.textContent = 'กำลังเพิ่ม...'; }
+  for(const c of toAdd){
+    try{
+      const saved = await apiPost('add', 'public_holidays', c);
+      publicHolidays.push(saved);
+    }catch(err){
+      alert('เพิ่มวันหยุด "'+c.name+'" ไม่สำเร็จ: '+err.message);
+    }
+  }
+  renderHolidayModalBody();
+  renderAll();
 }
 async function addHoliday(){
   if(!isAdmin()) return;
@@ -2050,11 +2201,15 @@ async function addHoliday(){
   const date = dateEl.value, name = nameEl.value.trim();
   if(!date){ alert('กรุณาระบุวันที่'); return; }
   if(publicHolidays.some(h=>h.date===date)){ alert('มีวันที่นี้ในรายการวันหยุดอยู่แล้ว'); return; }
+  const addBtn = document.getElementById('hd-add-btn');
+  const originalLabel = addBtn ? addBtn.textContent : '';
+  if(addBtn){ addBtn.disabled = true; addBtn.textContent = 'กำลังบันทึก...'; }
   try{
     const saved = await apiPost('add', 'public_holidays', {date, name});
     publicHolidays.push(saved);
   }catch(err){
     alert('บันทึกวันหยุดนักขัตฤกษ์ไปยังฐานข้อมูลกลางไม่สำเร็จ: ' + err.message);
+    if(addBtn){ addBtn.disabled = false; addBtn.textContent = originalLabel; }
     return;
   }
   renderHolidayModalBody();
@@ -2114,13 +2269,22 @@ async function submitLeaveRequest(){
     recordedDate: TODAY.toISOString().slice(0,10),
     advanceDays
   };
+  const saveBtn = document.getElementById('lr-save-btn');
+  const cancelBtn = document.getElementById('lr-cancel-btn');
+  const originalLabel = saveBtn ? saveBtn.textContent : '';
+  if(saveBtn){ saveBtn.disabled = true; saveBtn.textContent = 'กำลังบันทึก...'; }
+  if(cancelBtn) cancelBtn.disabled = true;
   try{
     const saved = await apiPost('add', 'leave_requests', newLeave);
     leaveRequests.unshift(saved);
   }catch(err){
-    alert('บันทึกคำขอลาไปยังฐานข้อมูลกลางไม่สำเร็จ: ' + err.message);
+    alert('บันทึกคำขอลาไปยังฐานข้อมูลกลางไม่สำเร็จ: ' + err.message + '\nกรุณาตรวจสอบในรายการคำขอลาก่อนว่าบันทึกไปแล้วหรือยัง ก่อนลองบันทึกซ้ำ');
+    if(saveBtn){ saveBtn.disabled = false; saveBtn.textContent = originalLabel; }
+    if(cancelBtn) cancelBtn.disabled = false;
     return;
   }
+  if(saveBtn){ saveBtn.disabled = false; saveBtn.textContent = originalLabel; }
+  if(cancelBtn) cancelBtn.disabled = false;
   __saveSharedLeaveRequests();
   renderAll();
   __resetLeaveForm();
@@ -2167,16 +2331,32 @@ function __leaveRowHTML(r,i){
       </td>
     </tr>`;
 }
+function __populateLrApprovedFyFilter(){
+  const sel = document.getElementById('lr-approved-fy');
+  if(!sel) return;
+  const cfy = fiscalYearOf(TODAY.toISOString().slice(0,10));
+  const fys = new Set([cfy]);
+  leaveRequests.forEach(r=>{ if(r.status==='approved' && r.from){ const fy = fiscalYearOf(r.from); if(fy) fys.add(fy); } });
+  const sorted = Array.from(fys).sort((a,b)=>b-a);
+  const hadSelection = sel.value;
+  const isFirstPopulate = !sel.dataset.populated;
+  sel.innerHTML = sorted.map(fy=>`<option value="${fy}">ปีงบประมาณ ${fy}</option>`).join('');
+  if(!isFirstPopulate && hadSelection && sorted.includes(Number(hadSelection))) sel.value = hadSelection;
+  else sel.value = String(cfy);
+  sel.dataset.populated = '1';
+}
 function renderLeaveRequestList(){
   const pendingRows = leaveRequests.map((r,i)=>({r,i})).filter(({r})=>r.status!=='approved');
+  __populateLrApprovedFyFilter();
+  const fyFilter = document.getElementById('lr-approved-fy').value;
   const searchEl = document.getElementById('lr-approved-search');
   const q = searchEl ? searchEl.value.trim().toLowerCase() : '';
-  const approvedRows = leaveRequests.map((r,i)=>({r,i})).filter(({r})=>r.status==='approved' && (!q || r.name.toLowerCase().includes(q)))
+  const approvedRows = leaveRequests.map((r,i)=>({r,i})).filter(({r})=>r.status==='approved' && (!q || r.name.toLowerCase().includes(q)) && String(fiscalYearOf(r.from))===fyFilter)
     .sort((a,b)=> (b.r.from||'').localeCompare(a.r.from||'') || (b.r.to||'').localeCompare(a.r.to||''));
   document.getElementById('lr-list-body-pending').innerHTML = pendingRows.map(({r,i})=>__leaveRowHTML(r,i)).join('')
     || `<tr><td colspan="5" style="text-align:center;color:var(--ink-400);padding:16px;">ไม่มีคำขอลาที่รอการอนุมัติ</td></tr>`;
   document.getElementById('lr-list-body-approved').innerHTML = approvedRows.map(({r,i})=>__leaveRowHTML(r,i)).join('')
-    || `<tr><td colspan="5" style="text-align:center;color:var(--ink-400);padding:16px;">${q ? 'ไม่พบรายการที่ตรงกับคำค้นหา' : 'ยังไม่มีคำขอลาที่อนุมัติแล้ว'}</td></tr>`;
+    || `<tr><td colspan="5" style="text-align:center;color:var(--ink-400);padding:16px;">${q ? 'ไม่พบรายการที่ตรงกับคำค้นหา' : 'ยังไม่มีคำขอลาที่อนุมัติแล้วในปีงบประมาณนี้'}</td></tr>`;
   __renderLrLastUpdated();
 }
 // แสดงสถานะว่ามีการบันทึก/อัปเดตข้อมูลการลาล่าสุดเมื่อวันที่เท่าไร (ดูจาก recordedDate ของทุกคำขอลา)
@@ -2294,14 +2474,23 @@ async function saveEditLeave(){
   r.reason = document.getElementById('el-reason').value;
   r.cover = document.getElementById('el-cover').value;
   r.contact = document.getElementById('el-contact').value;
+  const saveBtn = document.getElementById('el-save-btn');
+  const cancelBtn = document.getElementById('el-cancel-btn');
+  const originalLabel = saveBtn ? saveBtn.textContent : '';
+  if(saveBtn){ saveBtn.disabled = true; saveBtn.textContent = 'กำลังบันทึก...'; }
+  if(cancelBtn) cancelBtn.disabled = true;
   try{
     const saved = await apiPost('update', 'leave_requests', r);
     Object.assign(r, saved);
   }catch(err){
     Object.assign(r, before);
-    alert('บันทึกคำขอลาไปยังฐานข้อมูลกลางไม่สำเร็จ: ' + err.message);
+    alert('บันทึกคำขอลาไปยังฐานข้อมูลกลางไม่สำเร็จ: ' + err.message + '\nกรุณาตรวจสอบในรายการคำขอลาก่อนว่าบันทึกไปแล้วหรือยัง ก่อนลองบันทึกซ้ำ');
+    if(saveBtn){ saveBtn.disabled = false; saveBtn.textContent = originalLabel; }
+    if(cancelBtn) cancelBtn.disabled = false;
     return;
   }
+  if(saveBtn){ saveBtn.disabled = false; saveBtn.textContent = originalLabel; }
+  if(cancelBtn) cancelBtn.disabled = false;
   __saveSharedLeaveRequests();
   renderAll();
   closeEditLeave();
@@ -2350,30 +2539,35 @@ function checkbox(label, checked){ return `${checked?'☑':'☐'} ${label}`; }
 function buildForm306(name, s, from, to, days, cover, contact, stats, fy){
   const carried = 0; // วันลาพักผ่อนสะสมยกมา — ยังไม่มีข้อมูลสะสมในระบบ กรอกเพิ่มเติมได้ตอนพิมพ์
   const rightYear = carried + 10;
+  const td = todayFullParts();
   document.getElementById('print-leave-form').innerHTML = `
   <div class="official-form">
     <div class="form-header">
       <div class="form-org-block">กรมทางหลวง<br>จ.๓-๐๖</div>
       <div class="form-title">แบบใบลาพักผ่อน</div>
     </div>
-    <div class="writeline">(เขียนที่) หมวดทางหลวงเชิงเนิน<br>วันที่ .......... เดือน .............................. พ.ศ. ...................</div>
+    <div class="writeline">(เขียนที่) หมวดทางหลวงเชิงเนิน<br>วันที่ ${td.day} เดือน ${td.monthFull} พ.ศ. ${td.yearBE}</div>
     <p>เรื่อง &nbsp;ขอลาพักผ่อน</p>
-    <p>เรียน &nbsp;หัวหน้าหมวดทางหลวงเชิงเนิน</p>
+    <p>เรียน &nbsp;ผอ.ขท.ระยอง</p>
     <p>ข้าพเจ้า <span class="dotted">${name}</span> ตำแหน่ง <span class="dotted">${s.role||'&nbsp;'}</span></p>
-    <p>สังกัด <span class="dotted">หมวดทางหลวงเชิงเนิน แขวงทางหลวงระยอง กรมทางหลวง</span></p>
+    <p>สังกัด <span class="dotted">แขวงทางหลวงระยอง หมวดทางหลวงเชิงเนิน</span></p>
     <p>มีวันลาพักผ่อนสะสม <span class="dotted">${carried}</span> วันทำการ มีสิทธิลาพักผ่อนประจำปีนี้อีก ๑๐ วันทำการ รวมเป็น <span class="dotted">${rightYear}</span> วันทำการ</p>
     <p>ขอลาพักผ่อนตั้งแต่วันที่ <span class="dotted">${fmtDate(from)}</span> ถึงวันที่ <span class="dotted">${fmtDate(to)}</span> มีกำหนด <span class="dotted">${days}</span> วันทำการ</p>
     <p>ในระหว่างลาขออนุมัติและสั่งการให้&nbsp; นาย&nbsp; นาง&nbsp; นางสาว <span class="dotted">${cover||'&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;'}</span></p>
-    <p>ตำแหน่ง <span class="dotted">${cover?(staff.find(x=>x.name===cover)?.role||''):''}</span> เป็นผู้ &nbsp;☑ รักษาราชการแทน &nbsp;☐ รักษาการในตำแหน่ง</p>
+    <p>ตำแหน่ง <span class="dotted">${cover?(staff.find(x=>x.name===cover)?.role||''):''}</span> เป็นผู้ &nbsp;${checkbox('รักษาราชการแทน', !!cover)} &nbsp;☐ รักษาการในตำแหน่ง</p>
     <p>ติดต่อข้าพเจ้าได้ที่ <span class="dotted">${contact||'&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;'}</span></p>
     <div class="sig-block">ขอแสดงความนับถือ<br><br><br>(ลงชื่อ) .......................................................<br>( ${name} )</div>
     <div class="two-box">
       <div>
-        <b>สถิติการลาในปีงบประมาณ ${fy}</b>
+        <b>สถิติการลาในปีงบประมาณ</b>
         <table class="of-table">
           <tr><th>ลามาแล้ว<br>(วันทำการ)</th><th>ลาครั้งนี้<br>(วันทำการ)</th><th>รวมเป็น<br>(วันทำการ)</th></tr>
           <tr><td>${stats.vac}</td><td>${days}</td><td>${stats.vac+parseInt(days||0)}</td></tr>
         </table>
+        <br>
+        (ลงชื่อ)....................................................ผู้ตรวจสอบ<br>
+        (ตำแหน่ง)..............................................<br>
+        วันที่ ........./........./.........
       </div>
       <div>
         <b>ความเห็นผู้บังคับบัญชา</b><br><br><br>
@@ -2385,8 +2579,8 @@ function buildForm306(name, s, from, to, days, cover, contact, stats, fy){
     </div>
     <div class="cmd-box">
       คำสั่ง &nbsp;☐ อนุญาต &nbsp;☐ ไม่อนุญาต<br><br>
-      ลงชื่อ....................................................ผู้ตรวจสอบ<br>
-      ( &nbsp; )&nbsp;&nbsp;(ตำแหน่ง)..............................................<br>
+      (ลงชื่อ)....................................................<br>
+      ( &nbsp; )&nbsp;&nbsp;ตำแหน่ง..............................................<br>
       วันที่ ........./........./.........
     </div>
   </div>`;
@@ -2394,46 +2588,54 @@ function buildForm306(name, s, from, to, days, cover, contact, stats, fy){
 
 function buildForm305(name, s, type, from, to, days, reason, cover, contact, stats, fy){
   const typeLabel = type==='คลอดบุตร'?'คลอดบุตร':type==='กิจ'?'กิจส่วนตัว':'ป่วย';
+  const td = todayFullParts();
   document.getElementById('print-leave-form').innerHTML = `
   <div class="official-form">
     <div class="form-header">
       <div class="form-org-block">กรมทางหลวง<br>จ.3-05</div>
       <div class="form-title">แบบใบลาป่วย ลาคลอดบุตร ลากิจส่วนตัว</div>
     </div>
-    <div class="writeline">(เขียนที่) หมวดทางหลวงเชิงเนิน<br>วันที่ .......... เดือน .............................. พ.ศ. ...................</div>
+    <div class="writeline">(เขียนที่) หมวดทางหลวงเชิงเนิน<br>วันที่ ${td.day} เดือน ${td.monthFull} พ.ศ. ${td.yearBE}</div>
     <p>เรื่อง &nbsp;ขอลา${typeLabel}</p>
-    <p>เรียน &nbsp;หัวหน้าหมวดทางหลวงเชิงเนิน</p>
+    <p>เรียน &nbsp;ผอ.ขท.ระยอง</p>
     <p>ข้าพเจ้า <span class="dotted">${name}</span> ตำแหน่ง <span class="dotted">${s.role||'&nbsp;'}</span></p>
-    <p>สังกัด <span class="dotted">หมวดทางหลวงเชิงเนิน แขวงทางหลวงระยอง กรมทางหลวง</span></p>
-    <p>ขอลา &nbsp;${checkbox('ป่วย',type==='ป่วย')} &nbsp;${checkbox('กิจส่วนตัว',type==='กิจ')} &nbsp;${checkbox('คลอดบุตร',type==='คลอดบุตร')} &nbsp;เนื่องจาก <span class="dotted">${reason||'&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;'}</span></p>
+    <p>สังกัด <span class="dotted">แขวงทางหลวงระยอง หมวดทางหลวงเชิงเนิน</span></p>
+    <p>ขอลา &nbsp;${checkbox('ป่วย',type==='ป่วย')}</p>
+    <p>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;${checkbox('กิจส่วนตัว',type==='กิจ')} &nbsp;เนื่องจาก <span class="dotted">${reason||'&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;'}</span></p>
+    <p>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;${checkbox('คลอดบุตร',type==='คลอดบุตร')}</p>
     <p>ตั้งแต่วันที่ <span class="dotted">${fmtDate(from)}</span> ถึงวันที่ <span class="dotted">${fmtDate(to)}</span> มีกำหนด <span class="dotted">${days}</span> วัน</p>
-    <p>ข้าพเจ้าได้ลา ${checkbox('ป่วย',false)} ${checkbox('กิจส่วนตัว',false)} ${checkbox('คลอดบุตร',false)} ครั้งสุดท้ายตั้งแต่วันที่ <span class="dotted">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span> ถึงวันที่ <span class="dotted">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span> มีกำหนด <span class="dotted">&nbsp;&nbsp;&nbsp;</span> วัน</p>
-    <p>ในระหว่างลาขออนุมัติและสั่งการให้&nbsp; นาย&nbsp; นาง&nbsp; นางสาว <span class="dotted">${cover||'&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;'}</span> ตำแหน่ง <span class="dotted">${cover?(staff.find(x=>x.name===cover)?.role||''):''}</span></p>
-    <p>เป็นผู้ &nbsp;☑ รักษาราชการแทน &nbsp;☐ รักษาการในตำแหน่ง</p>
+    <p>ข้าพเจ้าได้ลา ${checkbox('ป่วย',false)} ${checkbox('กิจส่วนตัว',false)} ${checkbox('คลอดบุตร',false)} ครั้งสุดท้ายตั้งแต่วันที่ <span class="dotted">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span> ถึงวันที่ <span class="dotted">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span> มีกำหนด <span class="dotted">&nbsp;&nbsp;&nbsp;</span> วัน ในระหว่างลาขออนุมัติและสั่งการให้</p>
+    <p>&nbsp;นาย&nbsp; นาง&nbsp; นางสาว <span class="dotted">${cover||'&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;'}</span></p>
+    <p>ตำแหน่ง <span class="dotted">${cover?(staff.find(x=>x.name===cover)?.role||''):''}</span> เป็นผู้ &nbsp;${checkbox('รักษาราชการแทน', !!cover)}</p>
+    <p>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;☐ รักษาการในตำแหน่ง</p>
     <p>และติดต่อข้าพเจ้าได้ที่ <span class="dotted">${contact||'&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;'}</span></p>
     <div class="sig-block">ขอแสดงความนับถือ<br><br><br>(ลงชื่อ) .......................................................<br>( ${name} )</div>
     <div class="two-box">
       <div>
-        <b>สถิติการลาในปีงบประมาณนี้ ${fy}</b>
+        <b>สถิติการลาในปีงบประมาณนี้</b>
         <table class="of-table">
           <tr><th>ประเภทลา</th><th>ลามาแล้ว<br>(วันทำการ)</th><th>ลาครั้งนี้<br>(วันทำการ)</th><th>รวมเป็น<br>(วันทำการ)</th></tr>
           <tr><td>ป่วย</td><td>${stats.sick}</td><td>${type==='ป่วย'?days:'-'}</td><td>${type==='ป่วย'?stats.sick+parseInt(days||0):stats.sick}</td></tr>
           <tr><td>กิจส่วนตัว</td><td>-</td><td>${type==='กิจ'?days:'-'}</td><td>${type==='กิจ'?days:'-'}</td></tr>
           <tr><td>คลอดบุตร</td><td>-</td><td>${type==='คลอดบุตร'?days:'-'}</td><td>${type==='คลอดบุตร'?days:'-'}</td></tr>
         </table>
+        <br>
+        (ลงชื่อ)....................................................ผู้ตรวจสอบ<br>
+        (ตำแหน่ง)..............................................<br>
+        วันที่ ........./........./.........
       </div>
       <div>
         <b>ความเห็นผู้บังคับบัญชา</b><br><br><br>
         ......................................................................<br>
         (ลงชื่อ)......................................................<br>
-        ( นายอิศรินทร์&nbsp;อรุณสวัสดิ์ )&nbsp;&nbsp;ตำแหน่ง หัวหน้าหมวดทางหลวงเชิงเนิน<br>
+        ( นายอิศรินทร์&nbsp;อรุณสวัสดิ์ )&nbsp;&nbsp;ตำแหน่ง ชม.ขท.เชิงเนิน<br>
         วันที่ ........./........./.........
       </div>
     </div>
     <div class="cmd-box">
       คำสั่ง &nbsp;☐ อนุญาต &nbsp;☐ ไม่อนุญาต<br><br>
-      ลงชื่อ....................................................ผู้ตรวจสอบ<br>
-      ( &nbsp; )&nbsp;&nbsp;(ตำแหน่ง)..............................................<br>
+      (ลงชื่อ)....................................................<br>
+      ( &nbsp; )&nbsp;&nbsp;ตำแหน่ง..............................................<br>
       วันที่ ........./........./.........
     </div>
   </div>`;
