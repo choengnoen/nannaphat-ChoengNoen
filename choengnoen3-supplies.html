@@ -871,10 +871,21 @@ function apiCurrentUsername(){
   return (s && s.name) || 'ไม่ระบุผู้ใช้';
 }
 async function apiGet(table){
-  const res = await fetch(GAS_URL + '?token=' + encodeURIComponent(APP_TOKEN) + '&table=' + encodeURIComponent(table));
-  const json = await res.json();
-  if(!json.ok) throw new Error(json.error || 'โหลดข้อมูลจากฐานข้อมูลกลางไม่สำเร็จ');
-  return json.data;
+  // GET ไม่มีผลข้างเคียง ลองใหม่ได้ปลอดภัยเสมอถ้าเจอ error (ต่างจาก apiPost ที่ห้าม retry
+  // เพราะ request เดิมอาจสำเร็จจริงฝั่งเซิร์ฟเวอร์แล้ว แค่ parse response ไม่ได้ — retry ซ้ำ
+  // จะสร้างข้อมูลซ้ำ) ที่นี่ retry รองรับ error ชั่วคราวจาก GAS quota (ตอบ HTML แทน JSON)
+  const maxRetries = 2;
+  for(let attempt=0; attempt<=maxRetries; attempt++){
+    try{
+      const res = await fetch(GAS_URL + '?token=' + encodeURIComponent(APP_TOKEN) + '&table=' + encodeURIComponent(table));
+      const json = await res.json();
+      if(!json.ok) throw new Error(json.error || 'โหลดข้อมูลจากฐานข้อมูลกลางไม่สำเร็จ');
+      return json.data;
+    }catch(err){
+      if(attempt >= maxRetries) throw err;
+      await new Promise(r=>setTimeout(r, 700 * (attempt+1)));
+    }
+  }
 }
 async function apiPost(action, table, data, id){
   const body = { token: APP_TOKEN, username: apiCurrentUsername(), table, action, data };
