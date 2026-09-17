@@ -295,8 +295,10 @@
   .print-only{display:none;}
   .official-form{font-family:'Sarabun',sans-serif;font-size:14px;color:#000;line-height:1.7;max-width:210mm;margin:0 auto;}
   .official-form .form-code{text-align:right;font-weight:600;}
+  /* หัวฟอร์ม: ชื่อฟอร์มกึ่งกลาง, "กรมทางหลวง" + เลขแบบฟอร์มชิดขวาบน ให้ตรงตำแหน่งกับแบบฟอร์มจริง (จ.3-05/จ.3-06) */
+  .official-form .form-header{position:relative;text-align:center;margin-bottom:12px;min-height:36px;}
+  .official-form .form-org-block{position:absolute;top:0;right:0;text-align:right;font-size:13px;font-weight:600;line-height:1.5;}
   .official-form .form-title{text-align:center;font-family:'Kanit';font-size:17px;font-weight:600;margin-bottom:2px;}
-  .official-form .form-org{text-align:center;font-size:14px;margin-bottom:10px;}
   .official-form .writeline{text-align:right;margin-bottom:14px;}
   .official-form p{margin:6px 0;}
   .official-form .dotted{border-bottom:1px dotted #333;padding:0 2px;}
@@ -441,6 +443,7 @@
               <select id="complaint-route-filter" class="edit-input" style="width:260px;" onchange="renderComplaints()">
                 <option value="all">ทุกสายทาง</option>
               </select>
+              <button class="btn btn-primary" onclick="openAddComplaint()">+ เพิ่มคำร้องทุกข์</button>
             </div>
           </div>
           <div class="table-wrap"><table>
@@ -453,6 +456,20 @@
           </div>
         </div>
       </div>
+
+      <!-- ============ COMPLAINT DETAIL / ADD / EDIT MODAL ============ -->
+      <div id="complaint-modal" class="modal-overlay hidden no-print">
+        <div class="modal-box" style="max-width:560px;">
+          <div class="modal-head">
+            <div class="modal-head-icon" id="cp-icon">📝</div>
+            <h3 id="cp-title">คำร้องทุกข์</h3>
+            <button type="button" class="modal-close" onclick="closeComplaintModal()">✕</button>
+          </div>
+          <div class="modal-body" id="cp-body"></div>
+          <div class="modal-foot" id="cp-foot"></div>
+        </div>
+      </div>
+
       <!-- ============ STAFF ============ -->
       <div class="panel" id="panel-staff">
         <div class="section">
@@ -473,7 +490,7 @@
             <div class="tab" data-stafftab="ลูกจ้างชั่วคราว">ลูกจ้างชั่วคราว</div>
           </div>
           <div class="table-wrap table-wrap-scroll"><table>
-            <thead><tr><th>ชื่อ-สกุล</th><th>ตำแหน่งทางราชการ</th><th>ประเภทบุคลากร</th><th>สถานะ</th><th style="min-width:120px"></th></tr></thead>
+            <thead><tr><th>ชื่อ-สกุล</th><th>ตำแหน่งทางราชการ</th><th>ประเภทบุคลากร</th><th>สถานะ</th></tr></thead>
             <tbody id="staff-body"></tbody>
           </table></div>
           <div class="legend-block" id="staff-foot-block">
@@ -831,10 +848,6 @@ function formatKmDisplay(km){
   if(/^\d+\s*\+\s*\d{1,3}/.test(text)) return 'กม.'+text;
   return 'บริเวณ'+text;
 }
-/* สาย/กม. ของ "คำร้องทุกข์" อ่านจากหมายเลขสายทาง/กม. ของหนังสือเอง (ไม่มีช่องกรอกซ้ำอีกต่อไป)
-   คง fallback ไปที่ d.complaint.route/km ไว้ เผื่อรายการเก่าที่เคยบันทึกด้วยช่องกรอกแยกก่อนหน้านี้ */
-function complaintRouteOf(d){ return d.route || (d.complaint && d.complaint.route) || ''; }
-function complaintKmOf(d){ return d.km || (d.complaint && d.complaint.km) || ''; }
 function routeOptionsHtml(selected){
   const routes = getControlledRoutes();
   let opts = '<option value="">— เลือกสายทางที่ควบคุม —</option>';
@@ -850,16 +863,19 @@ function populateRouteSelects(){
   });
   populateComplaintRouteFilter();
 }
-/* เติมตัวเลือกสายทางใน dropdown กรองของ "ติดตามคำร้องทุกข์" จากฐานข้อมูลสายทางที่ควบคุม + ตัวเลือก "อื่นๆ" ถ้ามีคำร้องทุกข์ที่ไม่อยู่ในฐานข้อมูล */
+/* เติมตัวเลือกสายทางใน dropdown กรองของ "ติดตามคำร้องทุกข์" จากสายทางที่มีคำร้องทุกข์บันทึกไว้จริงเท่านั้น
+   (ไม่ใช่รายชื่อสายทางทั้งหมดในฐานข้อมูลสายทางที่ควบคุม — สายที่ยังไม่มีคำร้องทุกข์จะไม่ถูกแสดงในตัวกรองนี้) */
 function populateComplaintRouteFilter(){
   const el = document.getElementById('complaint-route-filter');
   if(!el) return;
   const prev = el.value || 'all';
   const routes = getControlledRoutes();
+  const usedRoutes = [...new Set(complaints.map(c=>c.route).filter(Boolean))];
   let opts = '<option value="all">ทุกสายทาง</option>';
-  opts += routes.map(r=>`<option value="ทล.${r.routeNo}">ทล.${r.routeNo} — ${r.section}</option>`).join('');
-  const hasOther = docs.some(d=>d.type==='in' && d.complaint && complaintRouteOf(d) && !routes.some(r=>complaintRouteOf(d)==='ทล.'+r.routeNo));
-  if(hasOther) opts += '<option value="__other__">อื่นๆ / นอกฐานข้อมูลควบคุม</option>';
+  opts += usedRoutes.map(rt=>{
+    const match = routes.find(r=>'ทล.'+r.routeNo===rt);
+    return `<option value="${rt}">${formatRouteDisplay(rt)}${match?' — '+match.section:''}</option>`;
+  }).join('');
   el.innerHTML = opts;
   el.value = [...el.options].some(o=>o.value===prev) ? prev : 'all';
 }
@@ -955,6 +971,19 @@ async function loadStaffFromApi(){
   }catch(err){
     console.error('โหลดข้อมูลพนักงานจากฐานข้อมูลกลางล้มเหลว', err);
     alert('โหลดข้อมูลพนักงานจากฐานข้อมูลกลางไม่สำเร็จ: ' + err.message + '\nกรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ตแล้วรีเฟรชหน้าใหม่');
+  }
+}
+
+/* คำร้องทุกข์ — บันทึกเป็นรายการอิสระในฐานข้อมูลกลางแท็บ "complaints" ไม่ผูกกับ
+   ทะเบียนหนังสือรับอีกต่อไป (ก่อนหน้านี้ต้องคัดจาก docs[].complaint เท่านั้น ซึ่งไม่มี
+   ทางเพิ่มได้จริงในหน้าเว็บเลย) หน้านี้โหลดจาก API ตอนเปิดหน้าเสมอ */
+let complaints = [];
+async function loadComplaintsFromApi(){
+  try{
+    complaints = await apiGet('complaints');
+  }catch(err){
+    console.error('โหลดข้อมูลคำร้องทุกข์จากฐานข้อมูลกลางล้มเหลว', err);
+    alert('โหลดข้อมูลคำร้องทุกข์จากฐานข้อมูลกลางไม่สำเร็จ: ' + err.message + '\nกรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ตแล้วรีเฟรชหน้าใหม่');
   }
 }
 
@@ -1266,50 +1295,147 @@ document.querySelectorAll('.sec-tab').forEach(t=>{
 });
 
 /* ============================================================
-   COMPLAINTS TRACKING (คัดจากหนังสือรับที่เป็นเรื่องร้องเรียน)
+   COMPLAINTS TRACKING (รายการอิสระ บันทึก/แก้ไขได้เองผ่านโมดัลลอย)
    ============================================================ */
 function complaintStatusPill(st){
   const map = {'รอดำเนินการ':'pill-warn','กำลังดำเนินการ':'pill-neutral','รอหน่วยงานภายนอกดำเนินการ':'pill-warn','ดำเนินการแล้วเสร็จ':'pill-ok'};
   return `<span class="pill ${map[st]||'pill-neutral'}">${st||'ยังไม่ระบุ'}</span>`;
 }
-function complaintDaysElapsed(receiveDateISO){
-  if(!receiveDateISO) return null;
-  return Math.floor((TODAY - new Date(receiveDateISO+'T00:00:00'))/86400000);
+function complaintDaysElapsed(dateISO){
+  if(!dateISO) return null;
+  return Math.floor((TODAY - new Date(dateISO+'T00:00:00'))/86400000);
 }
 function renderComplaints(){
   populateComplaintRouteFilter();
   const routeFilter = document.getElementById('complaint-route-filter')?.value || 'all';
-  const routes = getControlledRoutes();
-  let list = docs.filter(d=>d.type==='in' && d.complaint);
-  if(routeFilter==='__other__'){
-    list = list.filter(d=> complaintRouteOf(d) && !routes.some(r=>complaintRouteOf(d)==='ทล.'+r.routeNo));
-  } else if(routeFilter!=='all'){
-    list = list.filter(d=> complaintRouteOf(d)===routeFilter);
+  let list = complaints;
+  if(routeFilter!=='all'){
+    list = list.filter(c=>c.route===routeFilter);
   }
-  document.getElementById('complaint-body').innerHTML = list.map((d,idx)=>{
-    const c = d.complaint, i = docs.indexOf(d);
-    const days = complaintDaysElapsed(d.sectionDateISO || d.provinceDateISO);
+  document.getElementById('complaint-body').innerHTML = list.map((c,idx)=>{
+    const i = complaints.indexOf(c);
+    const days = complaintDaysElapsed(c.date);
     const daysDisp = days===null ? '—' : (c.status==='ดำเนินการแล้วเสร็จ' ? `${days} วัน` : (days>=7 ? `<span class="hazard-soft">${days} วัน</span>` : `${days} วัน`));
-    return `<tr>
+    return `<tr style="cursor:pointer;" onclick="openComplaintDetail(${i})" title="กดเพื่อดูรายละเอียด">
       <td>${idx+1}</td>
-      <td>${d.date}</td>
-      <td>${d.provinceNo||d.no}</td>
-      <td>${formatRouteDisplay(complaintRouteOf(d))||'—'}</td>
-      <td>${formatKmDisplay(complaintKmOf(d))||'—'}</td>
-      <td style="max-width:220px">${d.subj}</td>
-      <td>${isAdmin()?`<input class="edit-input" value="${c.remark||''}" onchange="updateComplaintField(${i},'remark',this.value)">`:(c.remark||'—')}</td>
-      <td>${isAdmin()?`<select class="edit-input" onchange="updateComplaintField(${i},'status',this.value)">
-        ${['รอดำเนินการ','กำลังดำเนินการ','รอหน่วยงานภายนอกดำเนินการ','ดำเนินการแล้วเสร็จ'].map(s=>`<option value="${s}" ${c.status===s?'selected':''}>${s}</option>`).join('')}
-      </select>`:complaintStatusPill(c.status)}</td>
+      <td>${c.date?fmtDate(c.date):'—'}</td>
+      <td>${c.receiveNo||'—'}</td>
+      <td>${formatRouteDisplay(c.route)||'—'}</td>
+      <td>${formatKmDisplay(c.km)||'—'}</td>
+      <td style="max-width:220px">${c.subject||''}</td>
+      <td>${c.remark||'—'}</td>
+      <td>${complaintStatusPill(c.status)}</td>
       <td>${daysDisp}</td>
     </tr>`;
-  }).join('') || `<tr><td colspan="9" style="text-align:center;color:var(--ink-400);padding:20px;">ยังไม่มีคำร้องทุกข์ที่คัดมาจากหนังสือรับ</td></tr>`;
-  const total = list.length, done = list.filter(d=>d.complaint.status==='ดำเนินการแล้วเสร็จ').length;
-  document.getElementById('complaint-foot').innerHTML = `ทั้งหมด ${total} เรื่อง · ดำเนินการแล้วเสร็จ ${done} เรื่อง · อยู่ระหว่างติดตาม ${total-done} เรื่อง<br>แสดงคำร้องทุกข์จากทะเบียนหนังสือโดยอัตโนมัติ`;
+  }).join('') || `<tr><td colspan="9" style="text-align:center;color:var(--ink-400);padding:20px;">ยังไม่มีคำร้องทุกข์ที่บันทึกไว้</td></tr>`;
+  const total = list.length, done = list.filter(c=>c.status==='ดำเนินการแล้วเสร็จ').length;
+  document.getElementById('complaint-foot').innerHTML = `ทั้งหมด ${total} เรื่อง · ดำเนินการแล้วเสร็จ ${done} เรื่อง · อยู่ระหว่างติดตาม ${total-done} เรื่อง`;
 }
-function updateComplaintField(docIdx, field, val){
+
+/* ---------- เพิ่ม / ดู / แก้ไขคำร้องทุกข์ (โมดัลลอยเดียวกัน สลับโหมด) ---------- */
+let complaintModalIndex = null; // index ใน complaints ที่กำลังดู/แก้ไข (null = โหมดเพิ่มใหม่)
+let complaintModalMode = 'closed'; // 'add' | 'view' | 'edit'
+function emptyComplaintForm(){ return {date:'', receiveNo:'', route:'', km:'', subject:'', remark:'', status:'รอดำเนินการ'}; }
+function openAddComplaint(){
+  if(!isAdmin()){ alert('ต้องเข้าสู่ระบบด้วยสิทธิ์แก้ไข (หัวหน้าหมวด/ผู้ช่วยหัวหน้าหมวด) จึงจะเพิ่มข้อมูลได้'); return; }
+  complaintModalIndex = null;
+  complaintModalMode = 'add';
+  renderComplaintModal(emptyComplaintForm());
+  document.getElementById('complaint-modal').classList.remove('hidden');
+}
+function openComplaintDetail(i){
+  complaintModalIndex = i;
+  complaintModalMode = 'view';
+  renderComplaintModal(complaints[i]);
+  document.getElementById('complaint-modal').classList.remove('hidden');
+}
+function closeComplaintModal(){
+  complaintModalIndex = null;
+  complaintModalMode = 'closed';
+  document.getElementById('complaint-modal').classList.add('hidden');
+}
+function startComplaintEdit(){
   if(!isAdmin()) return;
-  docs[docIdx].complaint[field] = val;
+  complaintModalMode = 'edit';
+  renderComplaintModal(complaints[complaintModalIndex]);
+}
+function cancelComplaintEdit(){
+  if(complaintModalMode==='edit' && complaintModalIndex!==null){
+    complaintModalMode = 'view';
+    renderComplaintModal(complaints[complaintModalIndex]);
+  } else {
+    closeComplaintModal();
+  }
+}
+const COMPLAINT_STATUS_OPTIONS = ['รอดำเนินการ','กำลังดำเนินการ','รอหน่วยงานภายนอกดำเนินการ','ดำเนินการแล้วเสร็จ'];
+function renderComplaintModal(data){
+  const isView = complaintModalMode==='view';
+  document.getElementById('cp-icon').textContent = complaintModalMode==='add' ? '📝' : (complaintModalMode==='edit' ? '✏️' : '📋');
+  document.getElementById('cp-title').textContent = complaintModalMode==='add' ? 'เพิ่มคำร้องทุกข์ใหม่' : (complaintModalMode==='edit' ? 'แก้ไขคำร้องทุกข์' : 'รายละเอียดคำร้องทุกข์');
+  const body = document.getElementById('cp-body');
+  const foot = document.getElementById('cp-foot');
+  if(isView){
+    body.innerHTML = `
+      <div class="detail-grid" style="grid-template-columns:repeat(2,1fr);">
+        <div><div class="d-label">วันที่</div><div class="d-val">${data.date?fmtDate(data.date):'—'}</div></div>
+        <div><div class="d-label">เลขรับแขวง</div><div class="d-val">${data.receiveNo||'—'}</div></div>
+        <div><div class="d-label">สายทาง</div><div class="d-val">${formatRouteDisplay(data.route)||'—'}</div></div>
+        <div><div class="d-label">กม.</div><div class="d-val">${formatKmDisplay(data.km)||'—'}</div></div>
+        <div style="grid-column:1/-1;"><div class="d-label">เรื่อง</div><div class="d-val">${data.subject||'—'}</div></div>
+        <div style="grid-column:1/-1;"><div class="d-label">หมายเหตุ</div><div class="d-val">${data.remark||'—'}</div></div>
+        <div><div class="d-label">สถานะความคืบหน้า</div><div>${complaintStatusPill(data.status)}</div></div>
+      </div>
+    `;
+    foot.innerHTML = isAdmin()
+      ? `<button class="btn btn-ghost" onclick="closeComplaintModal()">ปิด</button><button class="btn btn-primary" onclick="startComplaintEdit()">แก้ไขรายการ</button>`
+      : `<button class="btn btn-ghost" onclick="closeComplaintModal()">ปิด</button>`;
+  } else {
+    body.innerHTML = `
+      <div class="two-col">
+        <div class="f-row"><label>วันที่รับเรื่อง</label><input type="date" class="edit-input" id="cp-date" value="${data.date||''}"></div>
+        <div class="f-row"><label>เลขรับแขวง</label><input class="edit-input" id="cp-receiveno" value="${data.receiveNo||''}" placeholder="เช่น ทล.ระยอง 123/2569"></div>
+      </div>
+      <div class="two-col">
+        <div class="f-row"><label>สายทาง</label><input class="edit-input" id="cp-route" value="${data.route||''}" placeholder="เช่น ทล.3191"></div>
+        <div class="f-row"><label>กม.</label><input class="edit-input" id="cp-km" value="${data.km||''}" placeholder="เช่น 14+200"></div>
+      </div>
+      <div class="f-row"><label>เรื่อง</label><input class="edit-input" id="cp-subject" value="${data.subject||''}" placeholder="เช่น ถนนชำรุด เป็นหลุมบ่อ"></div>
+      <div class="f-row"><label>หมายเหตุ</label><input class="edit-input" id="cp-remark" value="${data.remark||''}" placeholder="ไม่บังคับ"></div>
+      <div class="f-row"><label>สถานะความคืบหน้า</label><select class="edit-input" id="cp-status">
+        ${COMPLAINT_STATUS_OPTIONS.map(s=>`<option value="${s}" ${data.status===s?'selected':''}>${s}</option>`).join('')}
+      </select></div>
+    `;
+    foot.innerHTML = `<button class="btn btn-ghost" onclick="cancelComplaintEdit()">ยกเลิก</button><button class="btn btn-primary" onclick="saveComplaint()">บันทึก</button>`;
+  }
+}
+async function saveComplaint(){
+  if(!isAdmin()) return;
+  const form = {
+    date: document.getElementById('cp-date').value,
+    receiveNo: document.getElementById('cp-receiveno').value.trim(),
+    route: document.getElementById('cp-route').value.trim(),
+    km: document.getElementById('cp-km').value.trim(),
+    subject: document.getElementById('cp-subject').value.trim(),
+    remark: document.getElementById('cp-remark').value.trim(),
+    status: document.getElementById('cp-status').value
+  };
+  if(!form.subject){ alert('กรุณากรอกเรื่องคำร้องทุกข์'); return; }
+  try{
+    if(complaintModalMode==='edit' && complaintModalIndex!==null){
+      const existing = complaints[complaintModalIndex];
+      const saved = await apiPost('update', 'complaints', {...existing, ...form});
+      Object.assign(existing, saved);
+      complaintModalMode = 'view';
+      renderComplaintModal(existing);
+    } else {
+      const saved = await apiPost('add', 'complaints', form);
+      complaints.push(saved);
+      closeComplaintModal();
+    }
+  }catch(err){
+    alert('บันทึกคำร้องทุกข์ไปยังฐานข้อมูลกลางไม่สำเร็จ: ' + err.message);
+    return;
+  }
   renderComplaints();
 }
 
@@ -1347,17 +1473,14 @@ function renderStaff(){
   staff.forEach((s,i)=>{
     if(filter!=='all' && s.ptype!==filter) return;
     if(q && !(s.name.toLowerCase().includes(q) || (s.nickname||'').toLowerCase().includes(q))) return;
-    html += `<tr>
+    html += `<tr style="cursor:pointer;" ondblclick="openStaffDetail(${i})" title="ดับเบิ้ลคลิกเพื่อดูรายละเอียด">
       <td><div class="person">${ptypeBadge(s.ptype)}<div><div class="p-name">${s.name}</div>${s.nickname?`<div class="p-sub">(${s.nickname})</div>`:''}</div></div></td>
       <td>${s.role||'<span style="color:var(--ink-400);font-size:12.5px">ยังไม่ระบุ</span>'}${s.duty?` <span class="pill pill-warn" style="font-size:10.5px;">ปฏิบัติหน้าที่${s.duty}</span>`:''}${(()=>{const el=__leaveEligibleDate(s); if(!el || TODAY.toISOString().slice(0,10)>=el) return ''; return ` <span class="pill pill-danger" style="font-size:10.5px;" title="ยังไม่มีสิทธิ์ลาถึง ${fmtDate(el)}">🔒 ทดลองงาน</span>`;})()}${(()=>{const ri=__retirementInfo(s); if(!ri || s.status!=='ok') return ''; return ri.status==='overdue' ? ` <span class="pill pill-danger" style="font-size:10.5px;" title="ครบกำหนดเกษียณอายุเมื่อ ${fmtDate(ri.date)}">⏳ ถึงกำหนดเกษียณ</span>` : ` <span class="pill pill-warn" style="font-size:10.5px;" title="ครบกำหนดเกษียณอายุ ${fmtDate(ri.date)}">⏳ ใกล้เกษียณอายุ</span>`;})()}</td>
       <td><span class="pill pill-neutral">${s.ptype}</span></td>
       <td>${s.status==='resigned'?'<span class="pill pill-danger">● ลาออก</span>':'<span class="pill pill-ok">● ปฏิบัติงาน</span>'}</td>
-      <td style="white-space:nowrap;">
-        <button class="btn btn-ghost btn-sm" onclick="openStaffDetail(${i})">รายละเอียด</button>
-      </td>
     </tr>`;
   });
-  body.innerHTML = html || '<tr><td colspan="5" style="text-align:center;color:var(--ink-400);padding:20px;">ไม่พบรายการ</td></tr>';
+  body.innerHTML = html || '<tr><td colspan="4" style="text-align:center;color:var(--ink-400);padding:20px;">ไม่พบรายการ</td></tr>';
   document.getElementById('staff-foot').textContent = `ปฏิบัติงาน ${activeStaff().length} · ลาออก ${staff.length-activeStaff().length} (คงข้อมูลไว้ตรวจสอบ) · ทั้งหมด ${staff.length} คน` + (isAdmin()?' · โหมดแก้ไข: เปิด':' · โหมดแก้ไข: ปิด (ดูอย่างเดียว)');
 }
 
@@ -1417,6 +1540,7 @@ function renderStaffDetailModal(){
       </div>
       <div class="f-row"><label>ข้อมูลการรักษาพยาบาล</label><input class="edit-input" id="sd-med" value="${s.med||''}"></div>
     `;
+    foot.style.justifyContent = 'flex-end';
     foot.innerHTML = `
       <button class="btn btn-ghost" onclick="toggleStaffDetailEdit(false)">ยกเลิก</button>
       <button class="btn btn-primary" onclick="saveStaffDetail()">บันทึกการแก้ไข</button>
@@ -1437,10 +1561,36 @@ function renderStaffDetailModal(){
         <div style="grid-column:1/-1;"><div class="d-label">ข้อมูลการรักษาพยาบาล</div><div class="d-val">${s.med||'—'}</div></div>
       </div>
     `;
+    foot.style.justifyContent = isAdmin() ? 'space-between' : 'flex-end';
     foot.innerHTML = isAdmin()
-      ? `<button class="btn btn-ghost" onclick="closeStaffDetail()">ปิด</button><button class="btn btn-primary" onclick="toggleStaffDetailEdit(true)">✏️ แก้ไขข้อมูล</button>`
+      ? `<button class="btn btn-danger" onclick="deleteStaffDetail()">ลบรายการ</button>
+         <div style="display:flex;gap:8px;">
+           <button class="btn btn-ghost" onclick="closeStaffDetail()">ปิด</button>
+           <button class="btn btn-primary" onclick="toggleStaffDetailEdit(true)">แก้ไขรายการ</button>
+         </div>`
       : `<button class="btn btn-ghost" onclick="closeStaffDetail()">ปิด</button>`;
   }
+}
+function deleteStaffDetail(){
+  if(!isAdmin() || staffDetailIndex===null) return;
+  const s = staff[staffDetailIndex];
+  if(!s) return;
+  showConfirm({
+    title:'ลบข้อมูลเจ้าหน้าที่',
+    message:`ยืนยันลบข้อมูลของ <b>"${s.name}"</b> ออกจากฐานข้อมูลบุคลากร?`,
+    warn:'การลบไม่สามารถย้อนกลับได้ ประวัติการลาและรายการอื่นที่เคยอ้างอิงชื่อนี้จะยังคงอยู่ แต่จะไม่เชื่อมกับข้อมูลบุคลากรนี้อีก',
+    onConfirm: async ()=>{
+      try{
+        await apiPost('delete', 'staff', null, s.id);
+      }catch(err){
+        alert('ลบข้อมูลเจ้าหน้าที่ในฐานข้อมูลกลางไม่สำเร็จ: ' + err.message);
+        return;
+      }
+      staff.splice(staffDetailIndex,1);
+      closeStaffDetail();
+      renderAll();
+    }
+  });
 }
 async function saveStaffDetail(){
   if(!isAdmin() || staffDetailIndex===null) return;
@@ -2027,9 +2177,10 @@ function buildForm306(name, s, from, to, days, cover, contact, stats, fy){
   const rightYear = carried + 10;
   document.getElementById('print-leave-form').innerHTML = `
   <div class="official-form">
-    <div class="form-code">จ.๓-๐๖</div>
-    <div class="form-title">แบบใบลาพักผ่อน</div>
-    <div class="form-org">กรมทางหลวง</div>
+    <div class="form-header">
+      <div class="form-org-block">กรมทางหลวง<br>จ.๓-๐๖</div>
+      <div class="form-title">แบบใบลาพักผ่อน</div>
+    </div>
     <div class="writeline">(เขียนที่) หมวดทางหลวงเชิงเนิน<br>วันที่ .......... เดือน .............................. พ.ศ. ...................</div>
     <p>เรื่อง &nbsp;ขอลาพักผ่อน</p>
     <p>เรียน &nbsp;หัวหน้าหมวดทางหลวงเชิงเนิน</p>
@@ -2053,14 +2204,14 @@ function buildForm306(name, s, from, to, days, cover, contact, stats, fy){
         <b>ความเห็นผู้บังคับบัญชา</b><br><br><br>
         ......................................................................<br>
         (ลงชื่อ)......................................................<br>
-        ( &nbsp; )&nbsp;&nbsp;ตำแหน่ง.....................................<br>
+        ( นายอิศรินทร์&nbsp;อรุณสวัสดิ์ )&nbsp;&nbsp;ตำแหน่ง หัวหน้าหมวดทางหลวงเชิงเนิน<br>
         วันที่ ........./........./.........
       </div>
     </div>
     <div class="cmd-box">
       คำสั่ง &nbsp;☐ อนุญาต &nbsp;☐ ไม่อนุญาต<br><br>
       ลงชื่อ....................................................ผู้ตรวจสอบ<br>
-      ( นายอิศรินทร์ &nbsp;อรุณสวัสดิ์ )&nbsp;&nbsp; (ตำแหน่ง) หัวหน้าหมวดทางหลวงเชิงเนิน<br>
+      ( &nbsp; )&nbsp;&nbsp;(ตำแหน่ง)..............................................<br>
       วันที่ ........./........./.........
     </div>
   </div>`;
@@ -2070,9 +2221,10 @@ function buildForm305(name, s, type, from, to, days, reason, cover, contact, sta
   const typeLabel = type==='คลอดบุตร'?'คลอดบุตร':type==='กิจ'?'กิจส่วนตัว':'ป่วย';
   document.getElementById('print-leave-form').innerHTML = `
   <div class="official-form">
-    <div class="form-code">จ.3-05</div>
-    <div class="form-title">แบบใบลาป่วย ลาคลอดบุตร ลากิจส่วนตัว</div>
-    <div class="form-org">กรมทางหลวง</div>
+    <div class="form-header">
+      <div class="form-org-block">กรมทางหลวง<br>จ.3-05</div>
+      <div class="form-title">แบบใบลาป่วย ลาคลอดบุตร ลากิจส่วนตัว</div>
+    </div>
     <div class="writeline">(เขียนที่) หมวดทางหลวงเชิงเนิน<br>วันที่ .......... เดือน .............................. พ.ศ. ...................</div>
     <p>เรื่อง &nbsp;ขอลา${typeLabel}</p>
     <p>เรียน &nbsp;หัวหน้าหมวดทางหลวงเชิงเนิน</p>
@@ -2099,14 +2251,14 @@ function buildForm305(name, s, type, from, to, days, reason, cover, contact, sta
         <b>ความเห็นผู้บังคับบัญชา</b><br><br><br>
         ......................................................................<br>
         (ลงชื่อ)......................................................<br>
-        ( &nbsp; )&nbsp;&nbsp;ตำแหน่ง.....................................<br>
+        ( นายอิศรินทร์&nbsp;อรุณสวัสดิ์ )&nbsp;&nbsp;ตำแหน่ง หัวหน้าหมวดทางหลวงเชิงเนิน<br>
         วันที่ ........./........./.........
       </div>
     </div>
     <div class="cmd-box">
       คำสั่ง &nbsp;☐ อนุญาต &nbsp;☐ ไม่อนุญาต<br><br>
       ลงชื่อ....................................................ผู้ตรวจสอบ<br>
-      ( นายอิศรินทร์ &nbsp;อรุณสวัสดิ์ )&nbsp;&nbsp; (ตำแหน่ง) หัวหน้าหมวดทางหลวงเชิงเนิน<br>
+      ( &nbsp; )&nbsp;&nbsp;(ตำแหน่ง)..............................................<br>
       วันที่ ........./........./.........
     </div>
   </div>`;
@@ -2530,6 +2682,7 @@ renderAll();
   await loadLeaveRequestsFromApi();
   await loadPublicHolidaysFromApi();
   await loadControlledRoutesCacheFromApi();
+  await loadComplaintsFromApi();
   __syncLeaveStatusFromShared();
   __saveSharedLeaveRequests();
   renderAll();
