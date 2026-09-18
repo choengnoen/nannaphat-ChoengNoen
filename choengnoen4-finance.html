@@ -451,8 +451,8 @@
             </div>
             <div class="modal-foot">
               <div style="display:flex;gap:8px;margin-left:auto;">
-                <button class="btn btn-ghost" onclick="closeOTModal()">ยกเลิก</button>
-                <button class="btn btn-primary" onclick="submitOT()">ส่งคำขออนุมัติ</button>
+                <button class="btn btn-ghost" id="ot-cancel-btn" onclick="closeOTModal()">ยกเลิก</button>
+                <button class="btn btn-primary" id="ot-submit-btn" onclick="submitOT()">ส่งคำขออนุมัติ</button>
               </div>
             </div>
           </div>
@@ -479,8 +479,8 @@
               </div>
               <div class="modal-body" id="budget-edit-body"></div>
               <div class="toolbar" style="justify-content:flex-end;padding:0 20px 18px;">
-                <button class="btn btn-ghost" onclick="closeBudgetEditModal()">ยกเลิก</button>
-                <button class="btn btn-primary" onclick="saveBudgetEditModal()">💾 บันทึก</button>
+                <button class="btn btn-ghost" id="budget-edit-cancel-btn" onclick="closeBudgetEditModal()">ยกเลิก</button>
+                <button class="btn btn-primary" id="budget-edit-save-btn" onclick="saveBudgetEditModal()">💾 บันทึก</button>
               </div>
             </div>
           </div>
@@ -527,7 +527,7 @@
               </div>
               <div class="modal-foot">
                 <div style="display:flex;gap:8px;margin-left:auto;">
-                  <button class="btn btn-ghost" onclick="toggleUtilForm()">ยกเลิก</button>
+                  <button class="btn btn-ghost" id="util-cancel-btn" onclick="toggleUtilForm()">ยกเลิก</button>
                   <button class="btn btn-primary" id="util-save-btn" onclick="saveUtility()">บันทึก</button>
                 </div>
               </div>
@@ -593,7 +593,7 @@
               </div>
               <div class="modal-foot">
                 <div style="display:flex;gap:8px;margin-left:auto;">
-                  <button class="btn btn-ghost" onclick="toggleWaterForm()">ยกเลิก</button>
+                  <button class="btn btn-ghost" id="water-cancel-btn" onclick="toggleWaterForm()">ยกเลิก</button>
                   <button class="btn btn-primary" id="water-save-btn" onclick="saveWaterMeter()">บันทึก</button>
                 </div>
               </div>
@@ -1448,14 +1448,24 @@ async function submitOT(){
   const amount = parseFloat(document.getElementById('ot-amount').value)||0;
   if(!name||!date||!time||!task){ alert('กรุณากรอกข้อมูลให้ครบถ้วน'); return; }
   const rec = {no:`บช.OT-0${otCounter++}/2569`, name, team:'', date, time, task, amount, status:'pending'};
+  const saveBtn = document.getElementById('ot-submit-btn');
+  const cancelBtn = document.getElementById('ot-cancel-btn');
+  const originalLabel = saveBtn ? saveBtn.textContent : '';
+  // ป้องกันการกดซ้ำระหว่างรอผลจากเซิร์ฟเวอร์ (สาเหตุของแถวซ้ำที่เคยเกิดขึ้น) — ปิดปุ่มและแสดงสถานะกำลังบันทึกให้เห็นชัดเจน
+  if(saveBtn){ saveBtn.disabled = true; saveBtn.textContent = 'กำลังบันทึก...'; }
+  if(cancelBtn) cancelBtn.disabled = true;
   try{
     const saved = await apiPost('add', 'ot_requests', otToApi(rec));
     otRequests.unshift(otFromApi(saved));
   }catch(err){
     otCounter--;
     alert('บันทึกคำขอ OT ไปยังฐานข้อมูลกลางไม่สำเร็จ: ' + err.message);
+    if(saveBtn){ saveBtn.disabled = false; saveBtn.textContent = originalLabel; }
+    if(cancelBtn) cancelBtn.disabled = false;
     return;
   }
+  if(saveBtn){ saveBtn.disabled = false; saveBtn.textContent = originalLabel; }
+  if(cancelBtn) cancelBtn.disabled = false;
   document.getElementById('ot-date').value='';
   document.getElementById('ot-time').value='';
   document.getElementById('ot-task').value='';
@@ -1557,6 +1567,12 @@ async function saveBudgetEditModal(){
   if(!isAdmin()) return;
   const cyc = document.getElementById('budget-cycle').value || currentCycle();
   const fy = cycleFiscalYearBE(cyc);
+  const saveBtn = document.getElementById('budget-edit-save-btn');
+  const cancelBtn = document.getElementById('budget-edit-cancel-btn');
+  const originalLabel = saveBtn ? saveBtn.textContent : '';
+  // ป้องกันการกดซ้ำระหว่างรอผลจากเซิร์ฟเวอร์ (สาเหตุของแถวซ้ำที่เคยเกิดขึ้น) — ปิดปุ่มและแสดงสถานะกำลังบันทึกให้เห็นชัดเจน
+  if(saveBtn){ saveBtn.disabled = true; saveBtn.textContent = 'กำลังบันทึก...'; }
+  if(cancelBtn) cancelBtn.disabled = true;
   try{
     for(const cat of budgetCategories){
       const amount = parseFloat(document.getElementById('budget-edit-'+cat).value)||0;
@@ -1564,9 +1580,13 @@ async function saveBudgetEditModal(){
     }
   }catch(err){
     alert('บันทึกวงเงินงบประมาณไปยังฐานข้อมูลกลางไม่สำเร็จ (บางหมวดอาจบันทึกไปแล้ว): ' + err.message);
+    if(saveBtn){ saveBtn.disabled = false; saveBtn.textContent = originalLabel; }
+    if(cancelBtn) cancelBtn.disabled = false;
     renderAll();
     return;
   }
+  if(saveBtn){ saveBtn.disabled = false; saveBtn.textContent = originalLabel; }
+  if(cancelBtn) cancelBtn.disabled = false;
   closeBudgetEditModal();
   renderAll();
 }
@@ -1618,21 +1638,30 @@ async function saveUtility(){
   const amount = parseFloat(document.getElementById('util-amount').value)||0;
   const due = document.getElementById('util-due').value;
   if(!cycle||!amount||!due){ alert('กรุณากรอกข้อมูลให้ครบถ้วน'); return; }
+  const saveBtn = document.getElementById('util-save-btn');
+  const cancelBtn = document.getElementById('util-cancel-btn');
+  const originalLabel = saveBtn ? saveBtn.textContent : '';
+  // ป้องกันการกดซ้ำระหว่างรอผลจากเซิร์ฟเวอร์ (สาเหตุของแถวซ้ำที่เคยเกิดขึ้น) — ปิดปุ่มและแสดงสถานะกำลังบันทึกให้เห็นชัดเจน
+  if(saveBtn){ saveBtn.disabled = true; saveBtn.textContent = 'กำลังบันทึก...'; }
+  if(cancelBtn) cancelBtn.disabled = true;
   try{
     if(utilEditIndex!=null){
       const merged = {...utilityBills[utilEditIndex], type, cycle, amount, due};
       await apiPost('update', 'utility_bills', utilToApi(merged));
       utilityBills[utilEditIndex] = merged;
       utilEditIndex = null;
-      document.getElementById('util-save-btn').textContent = 'บันทึก';
     } else {
       const saved = await apiPost('add', 'utility_bills', utilToApi({type, cycle, amount, due, status:'รอเบิกจ่าย'}));
       utilityBills.unshift(utilFromApi(saved));
     }
   }catch(err){
     alert('บันทึกบิลค่าสาธารณูปโภคไปยังฐานข้อมูลกลางไม่สำเร็จ: ' + err.message);
+    if(saveBtn){ saveBtn.disabled = false; saveBtn.textContent = originalLabel; }
+    if(cancelBtn) cancelBtn.disabled = false;
     return;
   }
+  if(saveBtn){ saveBtn.disabled = false; saveBtn.textContent = 'บันทึก'; }
+  if(cancelBtn) cancelBtn.disabled = false;
   document.getElementById('util-amount').value='';
   toggleUtilForm();
   selectedUtilFY = cycleFiscalYearBE(cycle);
@@ -1891,6 +1920,12 @@ async function saveWaterMeter(){
   const rec = {__backendId: existingIdx>=0 ? waterMeterLog[existingIdx].__backendId : undefined,
     cycle, mainReading, billAmount, subA, subAPaid, subAUsageOverride, subB, subBPaid, subBUsageOverride, note};
 
+  const saveBtn = document.getElementById('water-save-btn');
+  const cancelBtn = document.getElementById('water-cancel-btn');
+  const originalLabel = saveBtn ? saveBtn.textContent : '';
+  // ป้องกันการกดซ้ำระหว่างรอผลจากเซิร์ฟเวอร์ (สาเหตุของแถวซ้ำที่เคยเกิดขึ้น) — ปิดปุ่มและแสดงสถานะกำลังบันทึกให้เห็นชัดเจน
+  if(saveBtn){ saveBtn.disabled = true; saveBtn.textContent = 'กำลังบันทึก...'; }
+  if(cancelBtn) cancelBtn.disabled = true;
   try{
     if(existingIdx>=0){
       await apiPost('update', 'water_meter_log', waterToApi(rec));
@@ -1914,10 +1949,14 @@ async function saveWaterMeter(){
     }
   }catch(err){
     alert('บันทึกข้อมูลมิเตอร์น้ำไปยังฐานข้อมูลกลางไม่สำเร็จ: ' + err.message);
+    if(saveBtn){ saveBtn.disabled = false; saveBtn.textContent = originalLabel; }
+    if(cancelBtn) cancelBtn.disabled = false;
     renderAll();
     return;
   }
 
+  if(saveBtn) saveBtn.disabled = false;
+  if(cancelBtn) cancelBtn.disabled = false;
   document.getElementById('water-cycle').disabled = false;
   document.getElementById('water-save-btn').textContent = 'บันทึก';
   ['water-main','water-amount','water-suba','water-suba-paid','water-suba-override','water-subb','water-subb-paid','water-subb-override','water-note'].forEach(id=>document.getElementById(id).value='');

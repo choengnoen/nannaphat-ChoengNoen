@@ -151,15 +151,15 @@
     thead th{padding:8px 10px;font-size:10.5px;}
     tbody td{padding:8px 10px;font-size:13px;}
   }
-  #bmm-table{table-layout:fixed;font-size:12px;}
-  #bmm-table th,#bmm-table td{padding:7px 8px;white-space:normal;word-break:break-word;vertical-align:top;}
-  #bmm-table thead th{text-align:center;white-space:normal;word-break:keep-all;overflow-wrap:normal;line-height:1.35;}
-  #bmm-table tbody tr:nth-child(even){background:none;} /* ตารางแผน/ผลมีสีแถวกลุ่ม/แถวรวมของตัวเองอยู่แล้ว ไม่ใส่สีสลับแถวทับ */
-  #bmm-table tbody tr.bmm-group-b td{background:#faf9f6;}
-  #bmm-table tbody tr:hover td{background:#f3f1ea;}
-  #bmm-table td.num{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums;}
+  .bmm-inner-table{table-layout:fixed;font-size:12px;width:100%;border-collapse:collapse;}
+  .bmm-inner-table th,.bmm-inner-table td{padding:7px 8px;white-space:normal;word-break:break-word;vertical-align:top;}
+  .bmm-inner-table thead th{text-align:center;white-space:normal;word-break:keep-all;overflow-wrap:normal;line-height:1.35;}
+  .bmm-inner-table tbody tr:nth-child(even){background:none;} /* ตารางแผน/ผลมีสีแถวกลุ่ม/แถวรวมของตัวเองอยู่แล้ว ไม่ใส่สีสลับแถวทับ */
+  .bmm-inner-table tbody tr.bmm-group-b td{background:#faf9f6;}
+  .bmm-inner-table tbody tr:hover td{background:#f3f1ea;}
+  .bmm-inner-table td.num{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums;}
   #routes-body td.num, #routes-foot td.num{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums;}
-  #bmm-table tr.bmm-total-row td{background:var(--paper-50);font-weight:700;color:var(--navy-900);border-top:2px solid var(--line);}
+  .bmm-inner-table tr.bmm-total-row td{background:var(--paper-50);font-weight:700;color:var(--navy-900);border-top:2px solid var(--line);}
 
   #daily-table td{vertical-align:top;}
   #daily-table td:nth-child(1){white-space:nowrap;}
@@ -197,10 +197,6 @@
   .row-menu-item:hover{background:var(--paper-100);}
   .row-menu-item.danger{color:var(--danger);}
   .row-menu-item.danger:hover{background:var(--danger-bg);}
-
-  #jc-body td.jc-name{min-width:200px;max-width:260px;white-space:normal;line-height:1.5;}
-  #jc-body.jc-wide-name td.jc-name{white-space:nowrap;max-width:none;min-width:0;}
-  #jc-body td.jc-desc{min-width:440px;max-width:640px;white-space:normal;line-height:1.6;}
 
   .pill{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:20px;font-size:11.5px;font-weight:600;white-space:nowrap;}
   .pill-in{background:#e3edf6;color:var(--navy-700);}
@@ -247,6 +243,54 @@
   .crew-leader-tag{flex-shrink:0;background:var(--paper-100);color:var(--ink-400);font-size:10px;font-weight:700;padding:1px 5px;border-radius:4px;}
   .crew-count-badge{background:var(--paper-100);color:var(--ink-600);font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px;flex-shrink:0;white-space:nowrap;}
   .crew-empty{color:var(--ink-400);font-size:12.5px;padding:20px 16px;border:1px dashed var(--line);border-radius:12px;margin:0 20px 4px;text-align:center;}
+
+  /* งานบำรุงปกติ (A): แถบ KPI "วันนี้" + สถานะชุดทำงาน */
+  .routine-kpi{background:linear-gradient(120deg,var(--navy-900),var(--navy-700) 75%);border-radius:16px;padding:20px 6px;display:flex;align-items:stretch;margin-bottom:18px;}
+  .routine-kpi-item{flex:1;padding:0 24px;min-width:0;}
+  .routine-kpi-item .kpi-label{font-size:11px;font-family:'Kanit';letter-spacing:.05em;color:#9db2c5;margin-bottom:6px;}
+  .routine-kpi-item .kpi-val{font-family:'Kanit';font-size:21px;font-weight:600;color:#fff;line-height:1.2;}
+  .routine-kpi-item .kpi-sub{font-size:11px;color:#9db2c5;margin-top:3px;}
+  .routine-kpi-div{width:1px;background:rgba(255,255,255,.16);}
+  .crew-status-pill{display:inline-block;padding:3px 9px;border-radius:20px;font-size:10.5px;font-weight:600;font-family:'Kanit';}
+  .crew-status-pill.working{background:#fdeee0;color:var(--orange-600);}
+  .crew-status-pill.idle{background:var(--paper-100);color:var(--ink-400);}
+  .crew-avatar-stack{display:flex;align-items:center;margin-top:10px;}
+  .crew-avatar{width:22px;height:22px;border-radius:50%;background:var(--navy-700);color:#fff;font-family:'Kanit';font-size:9px;font-weight:600;display:flex;align-items:center;justify-content:center;margin-left:-7px;border:2px solid #fff;flex-shrink:0;}
+  .crew-avatar:first-child{margin-left:0;}
+  .crew-job-line{margin-top:9px;padding-top:8px;border-top:1px solid var(--paper-100);font-size:11px;color:var(--ink-600);min-height:14px;}
+  .crew-job-line.idle{color:var(--ink-400);font-style:italic;}
+  .bmm-progress-track{height:10px;border-radius:6px;background:var(--paper-100);overflow:hidden;}
+  .bmm-progress-fill{height:100%;border-radius:6px;}
+  .bmm-main-row{cursor:pointer;}
+  .bmm-main-row:hover{background:#fbfbfa;}
+  .bmm-main-chevron{display:inline-block;transition:transform .15s;color:var(--ink-400);width:14px;}
+  .bmm-main-chevron.open{transform:rotate(90deg);}
+  .bmm-main-row{display:flex;align-items:center;gap:14px;padding:14px 20px;border-bottom:1px solid var(--paper-100);}
+
+  /* ข้อมูลอ้างอิงงาน: list ซ้าย + การ์ดรายละเอียด/UNIT COST ขวา */
+  .refdata-layout{display:flex;gap:16px;align-items:flex-start;padding:0 20px 20px;}
+  .refdata-list-pane{width:340px;flex-shrink:0;background:#fff;border:1px solid var(--line);border-radius:12px;display:flex;flex-direction:column;overflow:hidden;}
+  .refdata-list-pane .search-box{margin:12px 12px 8px;}
+  .refdata-list-pane .tabs{padding:0 8px;}
+  .refdata-list{max-height:640px;overflow-y:auto;}
+  .refdata-group-label{padding:8px 14px 4px;font-size:10.5px;color:var(--ink-400);font-weight:600;background:var(--paper-50);}
+  .refdata-row{display:flex;align-items:center;gap:9px;padding:9px 14px;cursor:pointer;border-bottom:1px solid var(--paper-100);}
+  .refdata-row:hover{background:var(--paper-50);}
+  .refdata-row.active{background:#fdf2df;}
+  .refdata-row .code{font-family:'Kanit';font-size:12px;font-weight:600;color:var(--navy-900);}
+  .refdata-row .name{font-size:11.5px;color:var(--ink-600);}
+  .refdata-status-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+  .refdata-status-dot.has{background:var(--orange-500);}
+  .refdata-status-dot.none{background:var(--line);}
+  .refdata-legend{padding:8px 14px;border-top:1px solid var(--paper-100);font-size:10px;color:var(--ink-400);}
+  .refdata-detail-pane{flex:1;min-width:0;display:flex;flex-direction:column;gap:14px;}
+  .refdata-card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:18px 22px;}
+  .uc-formula-table{width:100%;border-collapse:collapse;margin-bottom:12px;}
+  .uc-formula-table th{text-align:left;font-size:10px;color:var(--ink-400);padding:5px 10px;border-bottom:1px solid var(--line);text-transform:uppercase;}
+  .uc-formula-table td{padding:6px 10px;font-size:12px;border-bottom:1px solid var(--paper-100);}
+  .uc-formula-table td.num{text-align:right;}
+  .uc-variant-card{border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin-bottom:14px;}
+  .uc-variant-title{font-family:'Kanit';font-size:12.5px;font-weight:600;color:var(--navy-900);margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;}
 
   #route-form-overlay{align-items:center;}
   #route-form-overlay .route-modal-box{max-width:640px;border-radius:20px;overflow:hidden;padding:0;}
@@ -549,6 +593,7 @@
         <div class="sec-tab active" data-sec="routes">ทางหลวงควบคุม</div>
         <div class="sec-tab" data-sec="routine">งานบำรุงปกติ</div>
         <div class="sec-tab" data-sec="routine2">งานบำรุงปกติ (2)</div>
+        <div class="sec-tab" data-sec="refdata">ข้อมูลอ้างอิงงาน</div>
         <div class="sec-tab" data-sec="permit">งานขออนุญาตในเขตทาง</div>
         <div class="sec-tab" data-sec="encroach">งานรุกล้ำ</div>
         <div class="sec-tab" data-sec="emergency">รายงานเหตุฉุกเฉิน</div>
@@ -607,8 +652,8 @@
               <div class="route-modal-footer">
                 <button class="btn btn-ghost hidden" id="route-form-delete-btn" onclick="deleteRouteFromForm()">ลบสายทางนี้</button>
                 <div style="display:flex;gap:8px;margin-left:auto;">
-                  <button class="btn btn-ghost" onclick="closeRouteForm()">ยกเลิก</button>
-                  <button class="btn btn-primary" onclick="saveRoute()">บันทึกสายทาง</button>
+                  <button class="btn btn-ghost" id="route-form-cancel-btn" onclick="closeRouteForm()">ยกเลิก</button>
+                  <button class="btn btn-primary" id="route-form-save-btn" onclick="saveRoute()">บันทึกสายทาง</button>
                 </div>
               </div>
             </div>
@@ -680,8 +725,8 @@
               </div>
               <div class="gmodal-footer">
                 <div style="display:flex;gap:8px;margin-left:auto;">
-                  <button class="btn btn-ghost" onclick="togglePermitForm()">ยกเลิก</button>
-                  <button class="btn btn-primary" onclick="savePermit()">บันทึกคำขอ</button>
+                  <button class="btn btn-ghost" id="permit-form-cancel-btn" onclick="togglePermitForm()">ยกเลิก</button>
+                  <button class="btn btn-primary" id="permit-form-save-btn" onclick="savePermit()">บันทึกคำขอ</button>
                 </div>
               </div>
             </div>
@@ -753,8 +798,8 @@
               </div>
               <div class="gmodal-footer">
                 <div style="display:flex;gap:8px;margin-left:auto;">
-                  <button class="btn btn-ghost" onclick="toggleEncForm()">ยกเลิก</button>
-                  <button class="btn btn-primary" onclick="saveEnc()">บันทึกรายการ</button>
+                  <button class="btn btn-ghost" id="enc-form-cancel-btn" onclick="toggleEncForm()">ยกเลิก</button>
+                  <button class="btn btn-primary" id="enc-form-save-btn" onclick="saveEnc()">บันทึกรายการ</button>
                 </div>
               </div>
             </div>
@@ -777,6 +822,7 @@
       </div>
       <!-- ============ ROUTINE MAINTENANCE (งานบำรุงปกติ) ============ -->
       <div class="panel" id="panel-routine">
+        <div class="routine-kpi" id="routine-kpi-band"></div>
         <div class="section">
           <div class="section-head">
             <h2><span class="section-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#f2a930" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>
@@ -834,8 +880,8 @@
             <div class="crew-modal-footer">
               <button class="btn btn-ghost hidden crew-delete-btn" id="crew-modal-delete-btn" onclick="deleteCrewFromModal()">ลบชุดนี้</button>
               <div style="display:flex;gap:8px;margin-left:auto;">
-                <button class="btn btn-ghost" onclick="closeCrewModal()">ยกเลิก</button>
-                <button class="btn btn-primary" onclick="saveCrewModal()">บันทึก</button>
+                <button class="btn btn-ghost" id="crew-modal-cancel-btn" onclick="closeCrewModal()">ยกเลิก</button>
+                <button class="btn btn-primary" id="crew-modal-save-btn" onclick="saveCrewModal()">บันทึก</button>
               </div>
             </div>
           </div>
@@ -966,7 +1012,7 @@
             </div>
             <div class="modal-plain-footer">
               <button class="btn btn-primary" id="daily-form-save-btn" onclick="saveDailyEntry()">บันทึกใบสั่งการ</button>
-              <button class="btn btn-ghost" onclick="toggleDailyForm()">ยกเลิก</button>
+              <button class="btn btn-ghost" id="daily-form-cancel-btn" onclick="toggleDailyForm()">ยกเลิก</button>
             </div>
           </div>
           </div>
@@ -993,11 +1039,11 @@
                 <option value="4">เม.ย.</option><option value="5">พ.ค.</option><option value="6">มิ.ย.</option>
                 <option value="7" selected>ก.ค.</option><option value="8">ส.ค.</option><option value="9">ก.ย.</option>
               </select>
-              <button class="btn btn-ok" style="flex:none;white-space:nowrap;" onclick="commitRollupToActual()">บันทึกผลงาน</button>
+              <button class="btn btn-ok" id="rollup-commit-btn" style="flex:none;white-space:nowrap;" onclick="commitRollupToActual()">บันทึกผลงาน</button>
             </div>
           </div>
           <div class="table-wrap"><table>
-            <thead><tr><th>รหัสงาน</th><th>ลักษณะงาน</th><th>ปริมาณรวม</th><th>วัสดุ</th><th>แรงงาน</th><th>เครื่องจักร/เช่า</th><th>น้ำมัน</th><th>รวมงบประมาณ</th></tr></thead>
+            <thead><tr><th>รหัสงาน</th><th>ลักษณะงาน</th><th>ปริมาณรวม</th><th>วัสดุ</th><th>แรงงาน</th><th>เครื่องจักร/เช่า</th><th>น้ำมัน</th><th>รวมงบประมาณ</th><th>% ของแผนทั้งปี (สะสม)</th></tr></thead>
             <tbody id="rollup-body"></tbody>
           </table></div>
           <div class="legend-block" id="rollup-foot-block">
@@ -1025,12 +1071,7 @@
               <button class="btn btn-primary" style="flex:none;white-space:nowrap;" onclick="openBmmForm()">+ บันทึกแผน/ผลรายเดือน</button>
             </div>
           </div>
-          <div id="bmm-summary" style="padding:10px 20px 0;font-size:12.5px;color:var(--ink-600);"></div>
-          <div class="tabs" id="bmm-tabs">
-            <div class="tab active" data-bmmtab="main">รหัสงานหลัก</div>
-            <div class="tab" data-bmmtab="sub">รหัสงานย่อย</div>
-            <div class="tab" data-bmmtab="all">ทั้งหมด</div>
-          </div>
+          <div id="bmm-summary" style="padding:10px 20px 0 20px;font-size:12.5px;color:var(--ink-600);"></div>
 
           <div id="bmm-form-overlay" class="modal-overlay hidden no-print">
             <div class="modal-box bmm-modal-box">
@@ -1110,191 +1151,163 @@
               </div>
               <div class="bmm-modal-footer">
                 <div style="display:flex;gap:8px;margin-left:auto;">
-                  <button class="btn btn-ghost" onclick="closeBmmForm()">ยกเลิก</button>
-                  <button class="btn btn-primary" onclick="saveBmmEntry()">บันทึก</button>
+                  <button class="btn btn-ghost" id="bmm-form-cancel-btn" onclick="closeBmmForm()">ยกเลิก</button>
+                  <button class="btn btn-primary" id="bmm-form-save-btn" onclick="saveBmmEntry()">บันทึก</button>
                 </div>
               </div>
             </div>
           </div>
 
-          <div class="table-wrap table-wrap-sticky"><table id="bmm-table">
-            <colgroup id="bmm-colgroup">
-              <col style="width:6%"><col style="width:15%"><col style="width:5%"><col style="width:6%">
-              <col style="width:8%"><col style="width:9%"><col style="width:8%"><col style="width:7%">
-              <col style="width:7%"><col style="width:7%"><col style="width:7%"><col style="width:5%"><col style="width:9%">
-            </colgroup>
-            <thead id="bmm-thead"><tr><th>รหัสงาน</th><th>ลักษณะงาน</th><th>หน่วย</th><th>แผน/ผล</th><th>ปริมาณ</th><th>งบประมาณ (บาท)</th><th>ราคาต่อหน่วย</th><th>วัสดุ</th><th>แรงงาน</th><th>เช่า</th><th>น้ำมัน</th><th>ใช้สอย/<br>จ้างเหมา</th><th>จัดการ</th></tr></thead>
-            <tbody id="bmm-body"></tbody>
-          </table></div>
+          <div class="table-wrap table-wrap-sticky" id="bmm-body-wrap" style="background:#fff;"></div>
           <div class="legend-block" id="bmm-foot-block">
             <button type="button" class="legend-dot-btn no-print" id="bmm-foot-toggle" onclick="__toggleNote('bmm-foot',this)" aria-expanded="false" title="แสดง/ซ่อนหมายเหตุ">⋮</button>
-            <div class="foot-note" id="bmm-foot" style="display:none;background:transparent;border-top:none;">หัวข้อ "รหัสงานหลัก" คำนวณจากผลรวมของ "รหัสงานย่อย" ทั้งหมดที่อยู่ใต้หมวดนั้น<br>หัวข้อ "รหัสงานย่อย" แสดงเฉพาะรายการตามรหัสงานย่อยจริงที่คีย์เข้าระบบ<br>แถวสรุป "รวมแผน"/"รวมผล" ท้ายตารางคือยอดรวมทั้งหมดของปีงบประมาณ/ประเภทที่เลือก ซึ่งจะเท่ากันในทุกแท็บ เพราะข้อมูลรหัสงานหลักคำนวณมาจากรหัสงานย่อยชุดเดียวกัน</div>
+            <div class="foot-note" id="bmm-foot" style="display:none;background:transparent;border-top:none;">แสดงเป็นหมวดงานหลัก 6 หมวด พร้อมแถบเทียบผล/แผนงบประมาณ (ไม่ขึ้นกับตัวกรอง "แผน+ผล/เฉพาะแผน/เฉพาะผล") — กดหมวดใดเพื่อขยายดูรหัสงานย่อยที่อยู่ใต้หมวดนั้น ตัวกรองแผน/ผลมีผลเฉพาะตารางย่อยที่ขยายออกมาและแถวสรุปท้ายสุดเท่านั้น<br>แถวสรุป "รวมแผน"/"รวมผล" ท้ายสุดคือยอดรวมทั้งหมดของปีงบประมาณ/ตัวกรองที่เลือก</div>
           </div>
         </div>
+      </div>
 
+      <!-- ============ ข้อมูลอ้างอิงงาน (รวมรายละเอียดรหัสงาน + UNIT COST) ============ -->
+      <div class="panel" id="panel-refdata">
         <div class="section">
           <div class="section-head">
             <h2><span class="section-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#f2a930" stroke-width="2"><circle cx="10" cy="10" r="6"/><path d="m21 21-4.3-4.3"/></svg></span>
-              รายละเอียดรหัสงาน
+              ข้อมูลอ้างอิงงาน
             </h2>
             <div class="toolbar">
-              <div class="search-box">🔍 <input id="jc-search" placeholder="พิมพ์ค้นหา เช่น ตัดหญ้า, ฉาบ, ป้ายจราจร, 211..."></div>
               <button class="btn btn-primary" onclick="openJcForm()">+ เพิ่มรหัสงาน</button>
             </div>
           </div>
-          <div id="jc-summary" style="padding:10px 20px 0;font-size:12.5px;color:var(--ink-600);"></div>
-
-          <div class="tabs">
-            <div class="tab active" data-jctab="main">รหัสงานหลัก</div>
-            <div class="tab" data-jctab="sub">รหัสงานย่อย</div>
-            <div class="tab" data-jctab="all">ทั้งหมด</div>
-          </div>
-
-          <div class="table-wrap"><table>
-            <thead><tr><th style="min-width:90px">รหัสงาน</th><th>ระดับ</th><th style="min-width:220px">ชื่องาน</th><th style="min-width:480px">ลักษณะงาน</th><th>หน่วยนับ</th><th>ผลผลิต</th><th>จัดการ</th></tr></thead>
-            <tbody id="jc-body"></tbody>
-          </table></div>
-
-          <div id="jc-form-overlay" class="modal-overlay hidden no-print">
-            <div class="modal-box jc-modal-box">
-              <div class="modal-head jc-modal-head">
-                <div class="jc-modal-head-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><circle cx="10" cy="10" r="6"/><path d="m21 21-4.3-4.3"/></svg></div>
-                <div>
-                  <h3 id="jc-form-title">เพิ่มรหัสงาน</h3>
-                  <div class="jc-modal-subtitle" id="jc-form-subtitle">กรอกรายละเอียดรหัสงานตามคู่มืองานบำรุงรักษาทางหลวง</div>
-                </div>
-                <button class="modal-close" onclick="closeJcForm()">✕</button>
+          <div class="refdata-layout">
+            <div class="refdata-list-pane">
+              <div class="search-box">🔍 <input id="jc-search" placeholder="พิมพ์ค้นหา เช่น ตัดหญ้า, ฉาบ, ป้ายจราจร, 211..."></div>
+              <div class="tabs">
+                <div class="tab active" data-jctab="main">รหัสงานหลัก</div>
+                <div class="tab" data-jctab="sub">รหัสงานย่อย</div>
+                <div class="tab" data-jctab="all">ทั้งหมด</div>
               </div>
-              <div class="modal-body">
-                <div class="dw-group">
-                  <div class="dw-group-title"><span class="dot"></span>รหัสและระดับ</div>
-                  <div class="two-col">
-                    <div class="f-row"><label>รหัสงาน</label><input id="jc-f-code" placeholder="เช่น 21311"></div>
-                    <div class="f-row"><label>ระดับ</label><select id="jc-f-level" onchange="onJcLevelChange()"><option value="main">หลัก</option><option value="sub">ย่อย</option></select></div>
-                  </div>
-                  <div class="f-row" id="jc-f-parent-row"><label>สังกัดใต้รหัสงานหลัก/กลุ่ม</label><select id="jc-f-parent"></select></div>
-                </div>
-                <div class="dw-group">
-                  <div class="dw-group-title"><span class="dot"></span>ชื่องานและหน่วยนับ</div>
-                  <div class="f-row"><label>ชื่องาน</label><input id="jc-f-name" placeholder="เช่น งานทางระบายน้ำ"></div>
-                  <div class="two-col">
-                    <div class="f-row"><label>หน่วยนับ</label><input id="jc-f-unit" placeholder="เช่น ม., ตร.ม. (คั่นด้วยจุลภาคถ้ามีหลายหน่วย)"></div>
-                    <div class="f-row"><label>ผลผลิต</label><input id="jc-f-output" placeholder="เช่น แห่ง"></div>
-                  </div>
-                </div>
-                <div class="dw-group">
-                  <div class="dw-group-title"><span class="dot"></span>ลักษณะงาน</div>
-                  <div class="f-row"><textarea id="jc-f-desc" rows="4" placeholder="อธิบายลักษณะงานโดยละเอียด"></textarea></div>
-                </div>
-              </div>
-              <div class="jc-modal-footer">
-                <button class="btn btn-ghost hidden" id="jc-form-delete-btn" onclick="deleteJcEntry()">ลบรายการนี้</button>
-                <div style="display:flex;gap:8px;margin-left:auto;">
-                  <button class="btn btn-ghost" onclick="closeJcForm()">ยกเลิก</button>
-                  <button class="btn btn-primary" onclick="saveJcEntry()">บันทึก</button>
-                </div>
-              </div>
+              <div class="refdata-list" id="refdata-list"></div>
+              <div class="refdata-legend">● มีข้อมูล UNIT COST ของรหัสนี้แล้ว</div>
             </div>
+            <div class="refdata-detail-pane" id="refdata-detail"></div>
           </div>
-
           <div class="legend-block" id="jc-foot-block">
             <button type="button" class="legend-dot-btn no-print" id="jc-foot-toggle" onclick="__toggleNote('jc-foot',this)" aria-expanded="false" title="แสดง/ซ่อนหมายเหตุ">⋮</button>
-            <div class="foot-note" id="jc-foot" style="display:none;background:transparent;border-top:none;">อ้างอิงจากรายละเอียดรหัสงานและลักษณะงานบำรุงรักษาทาง (กรมทางหลวง) — พิมพ์คำค้นหรือรหัสงานเพื่อดูว่าตรงกับรหัสงานหลัก/ย่อยใด</div>
+            <div class="foot-note" id="jc-foot" style="display:none;background:transparent;border-top:none;">รายละเอียดรหัสงานอ้างอิงคู่มืองานบำรุงรักษาทางหลวง (กรมทางหลวง) ค่างานต่อหน่วย (UNIT COST) คำนวณจากค่าแรงงาน/วัสดุ/น้ำมัน/ค่าเช่าจริง — รหัสงานเดียวสามารถมีได้หลายอัตรา (เช่น แยกตามลักษณะพื้นที่)</div>
           </div>
         </div>
 
-        <!-- ============ ค่างานต่อหน่วย (UNIT COST) ============ -->
-        <div class="section">
-          <div class="section-head">
-            <h2><span class="section-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#f2a930" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></span>
-              ค่างานต่อหน่วย (UNIT COST)
-            </h2>
-            <div class="toolbar">
-              <div class="search-box">🔍 <input id="uc-search" placeholder="พิมพ์ค้นหารหัสงาน/ชื่องาน" oninput="renderUcTable()"></div>
-              <select id="uc-fy-filter" class="edit-input" style="width:150px;" onchange="renderUcTable()"></select>
-              <button class="btn btn-primary" onclick="openUcForm()">+ เพิ่มค่างานต่อหน่วย</button>
+        <div id="jc-form-overlay" class="modal-overlay hidden no-print">
+          <div class="modal-box jc-modal-box">
+            <div class="modal-head jc-modal-head">
+              <div class="jc-modal-head-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><circle cx="10" cy="10" r="6"/><path d="m21 21-4.3-4.3"/></svg></div>
+              <div>
+                <h3 id="jc-form-title">เพิ่มรหัสงาน</h3>
+                <div class="jc-modal-subtitle" id="jc-form-subtitle">กรอกรายละเอียดรหัสงานตามคู่มืองานบำรุงรักษาทางหลวง</div>
+              </div>
+              <button class="modal-close" onclick="closeJcForm()">✕</button>
+            </div>
+            <div class="modal-body">
+              <div class="dw-group">
+                <div class="dw-group-title"><span class="dot"></span>รหัสและระดับ</div>
+                <div class="two-col">
+                  <div class="f-row"><label>รหัสงาน</label><input id="jc-f-code" placeholder="เช่น 21311"></div>
+                  <div class="f-row"><label>ระดับ</label><select id="jc-f-level" onchange="onJcLevelChange()"><option value="main">หลัก</option><option value="sub">ย่อย</option></select></div>
+                </div>
+                <div class="f-row" id="jc-f-parent-row"><label>สังกัดใต้รหัสงานหลัก/กลุ่ม</label><select id="jc-f-parent"></select></div>
+              </div>
+              <div class="dw-group">
+                <div class="dw-group-title"><span class="dot"></span>ชื่องานและหน่วยนับ</div>
+                <div class="f-row"><label>ชื่องาน</label><input id="jc-f-name" placeholder="เช่น งานทางระบายน้ำ"></div>
+                <div class="two-col">
+                  <div class="f-row"><label>หน่วยนับ</label><input id="jc-f-unit" placeholder="เช่น ม., ตร.ม. (คั่นด้วยจุลภาคถ้ามีหลายหน่วย)"></div>
+                  <div class="f-row"><label>ผลผลิต</label><input id="jc-f-output" placeholder="เช่น แห่ง"></div>
+                </div>
+              </div>
+              <div class="dw-group">
+                <div class="dw-group-title"><span class="dot"></span>ลักษณะงาน</div>
+                <div class="f-row"><textarea id="jc-f-desc" rows="4" placeholder="อธิบายลักษณะงานโดยละเอียด"></textarea></div>
+              </div>
+            </div>
+            <div class="jc-modal-footer">
+              <button class="btn btn-ghost hidden" id="jc-form-delete-btn" onclick="deleteJcEntry()">ลบรายการนี้</button>
+              <div style="display:flex;gap:8px;margin-left:auto;">
+                <button class="btn btn-ghost" id="jc-form-cancel-btn" onclick="closeJcForm()">ยกเลิก</button>
+                <button class="btn btn-primary" id="jc-form-save-btn" onclick="saveJcEntry()">บันทึก</button>
+              </div>
             </div>
           </div>
-          <div id="uc-summary" style="padding:10px 20px 0;font-size:12.5px;color:var(--ink-600);"></div>
-          <div class="table-wrap"><table>
-            <thead><tr><th>รหัสงาน</th><th>ลักษณะงาน</th><th>ปีงบ</th><th>หน่วย</th><th>ปริมาณงาน/วัน</th><th>ค่าแรงงาน</th><th>ค่าวัสดุ</th><th>ค่าน้ำมัน</th><th>ค่าเช่า</th><th>รวม/วัน</th><th>ค่างานต่อหน่วย</th><th>จัดการ</th></tr></thead>
-            <tbody id="uc-body"></tbody>
-          </table></div>
-          <div class="legend-block" id="uc-foot-block">
-            <button type="button" class="legend-dot-btn no-print" id="uc-foot-toggle" onclick="__toggleNote('uc-foot',this)" aria-expanded="false" title="แสดง/ซ่อนหมายเหตุ">⋮</button>
-            <div class="foot-note" id="uc-foot" style="display:none;background:transparent;border-top:none;">อัตรามาตรฐานสำหรับประเมิน/วางแผนงบประมาณต่อรหัสงาน — คำนวณจาก ราคาวัสดุ/น้ำมัน/ค่าเช่าจริงจากระบบพัสดุและเครื่องจักร และอัตราค่าจ้างจากฐานข้อมูลเจ้าหน้าที่ ยังไม่ได้เปรียบเทียบกับต้นทุนจริงจากใบสั่งการรายวัน</div>
-          </div>
+        </div>
 
-          <div id="uc-form-overlay" class="modal-overlay hidden no-print">
-            <div class="modal-box">
-              <div class="modal-head">
-                <div class="modal-head-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div>
-                <div><h3 id="uc-form-title">+ เพิ่มค่างานต่อหน่วย</h3><div class="modal-head-subtitle" id="uc-form-subtitle">กรอกข้อมูลตามแบบฟอร์ม ค่างานต่อหน่วย (UNIT COST)</div></div>
-                <button class="modal-close" onclick="closeUcForm()">✕</button>
+        <div id="uc-form-overlay" class="modal-overlay hidden no-print">
+          <div class="modal-box">
+            <div class="modal-head">
+              <div class="modal-head-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div>
+              <div><h3 id="uc-form-title">+ เพิ่มค่างานต่อหน่วย</h3><div class="modal-head-subtitle" id="uc-form-subtitle">กรอกข้อมูลตามแบบฟอร์ม ค่างานต่อหน่วย (UNIT COST)</div></div>
+              <button class="modal-close" onclick="closeUcForm()">✕</button>
+            </div>
+            <div class="modal-body">
+              <div class="dw-group">
+                <div class="dw-group-title"><span class="dot"></span>รหัสงานและปริมาณงาน</div>
+                <div class="two-col">
+                  <div class="f-row" style="position:relative;">
+                    <label>รหัสงาน</label>
+                    <input id="uc-job-search" placeholder="พิมพ์ค้นหา เช่น ตัดหญ้า, 21521" autocomplete="off"
+                           oninput="renderUcJobSuggest()" onfocus="renderUcJobSuggest()" onblur="setTimeout(hideUcJobSuggest,150)">
+                    <input type="hidden" id="uc-job">
+                    <div id="uc-job-suggest" class="hidden" style="position:absolute;z-index:20;top:100%;left:0;right:0;background:#fff;border:1px solid var(--line);border-top:none;border-radius:0 0 7px 7px;max-height:220px;overflow-y:auto;box-shadow:0 8px 18px rgba(0,0,0,.10);"></div>
+                  </div>
+                  <div class="f-row"><label>ปีงบประมาณ</label><select id="uc-fy"></select></div>
+                </div>
+                <div class="two-col">
+                  <div class="f-row"><label>ปริมาณงานที่ทำได้ต่อวัน</label><input type="number" step="0.01" id="uc-qtyday" placeholder="0" oninput="renderUcSummary()"></div>
+                  <div class="f-row"><label>หน่วยนับ</label><input id="uc-unit-label" readonly style="background:var(--paper-100);"></div>
+                </div>
+                <div class="f-row"><label>ลักษณะพื้นที่/หมายเหตุ (ถ้ารหัสนี้มีหลายอัตรา)</label><input id="uc-variant-label" placeholder="เช่น เกาะแบ่งถนน, ข้างทาง — เว้นว่างได้ถ้ามีอัตราเดียว"></div>
               </div>
-              <div class="modal-body">
-                <div class="dw-group">
-                  <div class="dw-group-title"><span class="dot"></span>รหัสงานและปริมาณงาน</div>
-                  <div class="two-col">
-                    <div class="f-row" style="position:relative;">
-                      <label>รหัสงาน</label>
-                      <input id="uc-job-search" placeholder="พิมพ์ค้นหา เช่น ตัดหญ้า, 21521" autocomplete="off"
-                             oninput="renderUcJobSuggest()" onfocus="renderUcJobSuggest()" onblur="setTimeout(hideUcJobSuggest,150)">
-                      <input type="hidden" id="uc-job">
-                      <div id="uc-job-suggest" class="hidden" style="position:absolute;z-index:20;top:100%;left:0;right:0;background:#fff;border:1px solid var(--line);border-top:none;border-radius:0 0 7px 7px;max-height:220px;overflow-y:auto;box-shadow:0 8px 18px rgba(0,0,0,.10);"></div>
-                    </div>
-                    <div class="f-row"><label>ปีงบประมาณ</label><select id="uc-fy"></select></div>
+              <div class="dw-group">
+                <div class="dw-group-title"><span class="dot"></span>ค่าแรงงาน/วัน</div>
+                <div id="uc-labor-items"></div>
+                <button class="btn btn-ghost btn-sm" onclick="addUcLaborRow()">+ เพิ่มประเภทแรงงาน</button>
+              </div>
+              <div class="dw-group">
+                <div class="dw-group-title"><span class="dot"></span>ค่าวัสดุอุปกรณ์/วัน</div>
+                <div class="dw-subhead">อัตราการใช้วัสดุต่อหน่วยงาน × ปริมาณงาน/วัน = ปริมาณที่ใช้จริง; ราคา/หน่วยดึงจากระบบพัสดุอัตโนมัติ (แก้ไขได้)</div>
+                <div id="uc-material-items"></div>
+                <button class="btn btn-ghost btn-sm" onclick="addUcMaterialRow()">+ เพิ่มวัสดุ</button>
+              </div>
+              <div class="dw-group">
+                <div class="dw-group-title"><span class="dot"></span>ค่าเครื่องจักร/ยานพาหนะ/วัน</div>
+                <div class="dw-subhead">ราคาน้ำมัน/ค่าเช่าดึงจากระบบพัสดุและเครื่องจักรอัตโนมัติ (แก้ไขได้)</div>
+                <div id="uc-vehicle-items"></div>
+                <button class="btn btn-ghost btn-sm" onclick="addUcVehicleRow()">+ เพิ่มเครื่องจักร/ยานพาหนะ</button>
+              </div>
+              <div class="dw-group">
+                <div class="dw-group-title"><span class="dot"></span>สรุปค่าใช้จ่าย/วัน และค่างานต่อหน่วย</div>
+                <div class="uc-sum-grid">
+                  <div class="uc-sum-row"><span>ค่าแรงงาน</span><b id="uc-sum-labor">0.00</b></div>
+                  <div class="uc-sum-row"><span>ค่าวัสดุ</span><b id="uc-sum-material">0.00</b></div>
+                  <div class="uc-sum-row"><span>ค่าน้ำมันเชื้อเพลิง</span><b id="uc-sum-fuel">0.00</b></div>
+                  <div class="uc-sum-row"><span>ค่าเช่าเครื่องจักร/ยานพาหนะ</span><b id="uc-sum-rent">0.00</b></div>
+                </div>
+                <div class="uc-sum-row" style="border-top:1px solid var(--line);margin-top:4px;padding-top:8px;font-size:14px;"><span>รวมค่าใช้จ่าย/วัน</span><b id="uc-sum-total">0.00</b></div>
+                <div class="uc-unitcost-box">
+                  <div>
+                    <div class="uc-unitcost-label">ค่างานต่อหน่วย = รวมค่าใช้จ่าย/วัน ÷ ปริมาณงาน/วัน</div>
+                    <div class="uc-unitcost-value"><span id="uc-sum-unitcost">0.00</span> <span id="uc-sum-unit-suffix" style="font-size:13px;font-weight:400;">บาท/หน่วย</span></div>
                   </div>
-                  <div class="two-col">
-                    <div class="f-row"><label>ปริมาณงานที่ทำได้ต่อวัน</label><input type="number" step="0.01" id="uc-qtyday" placeholder="0" oninput="renderUcSummary()"></div>
-                    <div class="f-row"><label>หน่วยนับ</label><input id="uc-unit-label" readonly style="background:var(--paper-100);"></div>
-                  </div>
-                </div>
-                <div class="dw-group">
-                  <div class="dw-group-title"><span class="dot"></span>ค่าแรงงาน/วัน</div>
-                  <div id="uc-labor-items"></div>
-                  <button class="btn btn-ghost btn-sm" onclick="addUcLaborRow()">+ เพิ่มประเภทแรงงาน</button>
-                </div>
-                <div class="dw-group">
-                  <div class="dw-group-title"><span class="dot"></span>ค่าวัสดุอุปกรณ์/วัน</div>
-                  <div class="dw-subhead">อัตราการใช้วัสดุต่อหน่วยงาน × ปริมาณงาน/วัน = ปริมาณที่ใช้จริง; ราคา/หน่วยดึงจากระบบพัสดุอัตโนมัติ (แก้ไขได้)</div>
-                  <div id="uc-material-items"></div>
-                  <button class="btn btn-ghost btn-sm" onclick="addUcMaterialRow()">+ เพิ่มวัสดุ</button>
-                </div>
-                <div class="dw-group">
-                  <div class="dw-group-title"><span class="dot"></span>ค่าเครื่องจักร/ยานพาหนะ/วัน</div>
-                  <div class="dw-subhead">ราคาน้ำมัน/ค่าเช่าดึงจากระบบพัสดุและเครื่องจักรอัตโนมัติ (แก้ไขได้)</div>
-                  <div id="uc-vehicle-items"></div>
-                  <button class="btn btn-ghost btn-sm" onclick="addUcVehicleRow()">+ เพิ่มเครื่องจักร/ยานพาหนะ</button>
-                </div>
-                <div class="dw-group">
-                  <div class="dw-group-title"><span class="dot"></span>สรุปค่าใช้จ่าย/วัน และค่างานต่อหน่วย</div>
-                  <div class="uc-sum-grid">
-                    <div class="uc-sum-row"><span>ค่าแรงงาน</span><b id="uc-sum-labor">0.00</b></div>
-                    <div class="uc-sum-row"><span>ค่าวัสดุ</span><b id="uc-sum-material">0.00</b></div>
-                    <div class="uc-sum-row"><span>ค่าน้ำมันเชื้อเพลิง</span><b id="uc-sum-fuel">0.00</b></div>
-                    <div class="uc-sum-row"><span>ค่าเช่าเครื่องจักร/ยานพาหนะ</span><b id="uc-sum-rent">0.00</b></div>
-                  </div>
-                  <div class="uc-sum-row" style="border-top:1px solid var(--line);margin-top:4px;padding-top:8px;font-size:14px;"><span>รวมค่าใช้จ่าย/วัน</span><b id="uc-sum-total">0.00</b></div>
-                  <div class="uc-unitcost-box">
-                    <div>
-                      <div class="uc-unitcost-label">ค่างานต่อหน่วย = รวมค่าใช้จ่าย/วัน ÷ ปริมาณงาน/วัน</div>
-                      <div class="uc-unitcost-value"><span id="uc-sum-unitcost">0.00</span> <span id="uc-sum-unit-suffix" style="font-size:13px;font-weight:400;">บาท/หน่วย</span></div>
-                    </div>
-                    <div>
-                      <div class="uc-share-row"><span>ค่าแรงงานต่อหน่วย</span><span id="uc-sum-labor-share">0.00</span></div>
-                      <div class="uc-share-row"><span>ค่าวัสดุต่อหน่วย</span><span id="uc-sum-material-share">0.00</span></div>
-                      <div class="uc-share-row"><span>ค่าน้ำมันต่อหน่วย</span><span id="uc-sum-fuel-share">0.00</span></div>
-                      <div class="uc-share-row"><span>ค่าเช่าต่อหน่วย</span><span id="uc-sum-rent-share">0.00</span></div>
-                    </div>
+                  <div>
+                    <div class="uc-share-row"><span>ค่าแรงงานต่อหน่วย</span><span id="uc-sum-labor-share">0.00</span></div>
+                    <div class="uc-share-row"><span>ค่าวัสดุต่อหน่วย</span><span id="uc-sum-material-share">0.00</span></div>
+                    <div class="uc-share-row"><span>ค่าน้ำมันต่อหน่วย</span><span id="uc-sum-fuel-share">0.00</span></div>
+                    <div class="uc-share-row"><span>ค่าเช่าต่อหน่วย</span><span id="uc-sum-rent-share">0.00</span></div>
                   </div>
                 </div>
               </div>
-              <div class="modal-plain-footer">
-                <button class="btn btn-ghost hidden" id="uc-form-delete-btn" style="color:var(--danger);" onclick="deleteUcEntry(__ucEditingNo)">ลบรายการนี้</button>
-                <button class="btn btn-primary" onclick="saveUcEntry()">บันทึก</button>
-                <button class="btn btn-ghost" onclick="closeUcForm()">ยกเลิก</button>
-              </div>
+            </div>
+            <div class="modal-plain-footer">
+              <button class="btn btn-ghost hidden" id="uc-form-delete-btn" style="color:var(--danger);" onclick="deleteUcEntry(__ucEditingNo)">ลบรายการนี้</button>
+              <button class="btn btn-primary" id="uc-form-save-btn" onclick="saveUcEntry()">บันทึก</button>
+              <button class="btn btn-ghost" id="uc-form-cancel-btn" onclick="closeUcForm()">ยกเลิก</button>
             </div>
           </div>
         </div>
@@ -1340,8 +1353,8 @@
               </div>
               <div class="gmodal-footer">
                 <div style="display:flex;gap:8px;margin-left:auto;">
-                  <button class="btn btn-ghost" onclick="toggleEmForm()">ยกเลิก</button>
-                  <button class="btn btn-primary" onclick="saveEm()">บันทึกเหตุฉุกเฉิน</button>
+                  <button class="btn btn-ghost" id="em-form-cancel-btn" onclick="toggleEmForm()">ยกเลิก</button>
+                  <button class="btn btn-primary" id="em-form-save-btn" onclick="saveEm()">บันทึกเหตุฉุกเฉิน</button>
                 </div>
               </div>
             </div>
@@ -1628,13 +1641,15 @@ function ucFromApi(row){
     fy:Number(row.fiscalYear)||0, qtyPerDay:Number(row.qtyPerDay)||0,
     laborRows: Array.isArray(row.laborRowsJson) ? row.laborRowsJson : [],
     materialRows: Array.isArray(row.materialRowsJson) ? row.materialRowsJson : [],
-    vehicleRows: Array.isArray(row.vehicleRowsJson) ? row.vehicleRowsJson : [] };
+    vehicleRows: Array.isArray(row.vehicleRowsJson) ? row.vehicleRowsJson : [],
+    variantLabel: row.variantLabel||'' };
 }
 function ucToApi(r){
   const t = ucRecordTotals(r);
   return { id:r.__backendId, jobCode:r.code, jobName:r.jobName, unit:r.unit, fiscalYear:r.fy, qtyPerDay:r.qtyPerDay,
     materialCostPerDay:t.material, laborCostPerDay:t.labor, fuelCostPerDay:t.fuel, rentCostPerDay:t.rent, unitCost:t.unitCost,
-    laborRowsJson:r.laborRows||[], materialRowsJson:r.materialRows||[], vehicleRowsJson:r.vehicleRows||[] };
+    laborRowsJson:r.laborRows||[], materialRowsJson:r.materialRows||[], vehicleRowsJson:r.vehicleRows||[],
+    variantLabel:r.variantLabel||'' };
 }
 /* ข้อมูลค่างานต่อหน่วยจริงย้ายไปอยู่ที่ Google Sheets แท็บ "unit_cost_records" แล้ว
    หน้านี้โหลดจาก API ตอนเปิดหน้าเสมอ ดูฟังก์ชัน loadUnitCostRecordsFromApi() ด้านล่าง */
@@ -1682,21 +1697,29 @@ async function loadJobCodeReferenceFromApi(){
   }
 }
 
-function jcRowHtml(r){
-  return `
-    <tr>
-      <td>${r.code}</td>
-      <td>${r.level==='main' ? '<span class="pill pill-in">หลัก</span>' : '<span class="pill pill-out">ย่อย</span>'}</td>
-      <td class="jc-name">${r.name}</td>
-      <td class="jc-desc">${r.desc || '-'}</td>
-      <td>${r.unit || '-'}</td>
-      <td>${r.output || '-'}</td>
-      <td><button class="btn btn-ghost btn-sm" onclick="openJcForm('${r.code}')">แก้ไข</button></td>
-    </tr>
-  `;
+/* ============================================================
+   ข้อมูลอ้างอิงงาน (รวมรายละเอียดรหัสงาน + UNIT COST) — list ซ้าย + รายละเอียด/ตารางสูตรขวา
+   renderJobCodeRef() คุม list ซ้าย (คงชื่อเดิมไว้เพราะ jc-search/[data-jctab] ผูก event ไว้แล้ว)
+   renderUcTable() คุมรีเฟรชฝั่งขวาหลัง UNIT COST ถูกบันทึก/ลบ (คงชื่อเดิมไว้เพราะ saveUcEntry/deleteUcEntry เรียกอยู่แล้ว)
+   ============================================================ */
+let __refSelectedCode = null;
+function pickRefCode(code){
+  __refSelectedCode = code;
+  document.querySelectorAll('.refdata-row').forEach(el=>el.classList.toggle('active', el.dataset.code===code));
+  renderRefDetail();
+}
+function refdataRowHtml(r){
+  const hasCost = unitCostRecords.some(u=>u.code===r.code);
+  return `<div class="refdata-row ${__refSelectedCode===r.code?'active':''}" data-code="${r.code}" onclick="pickRefCode('${r.code}')">
+    <span class="refdata-status-dot ${hasCost?'has':'none'}"></span>
+    <div style="min-width:0;">
+      <div class="code">${r.code}</div>
+      <div class="name">${r.name}</div>
+    </div>
+  </div>`;
 }
 function renderJobCodeRef(){
-  const el = document.getElementById('jc-body');
+  const el = document.getElementById('refdata-list');
   if(!el) return;
   const q = (document.getElementById('jc-search')?.value || '').trim().toLowerCase();
   const tab = document.querySelector('[data-jctab].active')?.dataset.jctab || 'all';
@@ -1704,19 +1727,115 @@ function renderJobCodeRef(){
   if(q){
     rows = rows.filter(r=> r.code.includes(q) || r.name.toLowerCase().includes(q) || (r.parentName||'').toLowerCase().includes(q) || (r.desc||'').toLowerCase().includes(q));
   }
-  const mainCount = rows.filter(r=>r.level==='main').length;
-  const subCount = rows.filter(r=>r.level==='sub').length;
   if(tab!=='all') rows = rows.filter(r=>r.level===tab);
-  el.classList.toggle('jc-wide-name', tab==='main');
-  document.getElementById('jc-summary').textContent = q
-    ? `พบ ${rows.length} รายการ ที่ตรงกับ "${q}" (หลัก ${mainCount} / ย่อย ${subCount})`
-    : `รหัสงานทั้งหมด ${mainCount+subCount} รายการ (หลัก ${mainCount} / ย่อย ${subCount})`;
-  el.innerHTML = rows.map(jcRowHtml).join('') || '<tr><td colspan="7" style="text-align:center;color:var(--ink-400);">ไม่พบรายการ</td></tr>';
+  rows = rows.slice().sort((a,b)=> a.code.localeCompare(b.code,'th'));
+
+  if(!__refSelectedCode || !jobCodeReference.some(r=>r.code===__refSelectedCode)){
+    __refSelectedCode = rows[0] ? rows[0].code : null;
+  }
+
+  const groups = [];
+  const groupIdx = {};
+  rows.forEach(r=>{
+    const label = r.level==='main' ? 'รหัสงานหลัก' : (r.parentName || 'ไม่มีหมวดหมู่');
+    if(!(label in groupIdx)){ groupIdx[label] = groups.length; groups.push({label, rows:[]}); }
+    groups[groupIdx[label]].rows.push(r);
+  });
+  el.innerHTML = groups.map(g=>`<div class="refdata-group-label">${g.label}</div>${g.rows.map(refdataRowHtml).join('')}`).join('')
+    || '<div style="padding:20px;text-align:center;color:var(--ink-400);font-size:12.5px;">ไม่พบรายการ</div>';
+
+  renderRefDetail();
 }
 document.getElementById('jc-search')?.addEventListener('input', ()=>renderJobCodeRef());
 document.querySelectorAll('[data-jctab]').forEach(t=>t.addEventListener('click',()=>{
   document.querySelectorAll('[data-jctab]').forEach(x=>x.classList.remove('active')); t.classList.add('active'); renderJobCodeRef();
 }));
+/* ตารางสูตรของ UNIT COST 1 อัตรา (1 แถวจาก unitCostRecords) — ใช้ทั้งตอนแสดงอัตราเดียวและหลายอัตราย่อย */
+function ucFormulaTableHtml(r){
+  const t = ucRecordTotals(r);
+  const unitLabel = (r.unit||'').split(',')[0].trim() || 'หน่วย';
+  const laborRows = (r.laborRows||[]).map(x=>`<tr><td>${x.type}</td><td class="num">${fmtNum(x.count,0)}</td><td class="num">${fmtNum(x.rate,2)}</td><td class="num">${fmtNum(x.count*x.rate,2)}</td></tr>`).join('')
+    || '<tr><td colspan="4" style="text-align:center;color:var(--ink-400);">ไม่มีข้อมูล</td></tr>';
+  const matRows = (r.materialRows||[]).map(x=>{
+    const m = getMaterialsX().find(mm=>mm.code===x.code);
+    const qty = x.useRate*(r.qtyPerDay||0);
+    return `<tr><td>${m?m.name:x.code}</td><td class="num">${fmtNum(x.useRate,4)}</td><td class="num">${fmtNum(qty,2)}</td><td>${m?m.unit:''}</td><td class="num">${fmtNum(x.price,2)}</td><td class="num">${fmtNum(qty*x.price,2)}</td></tr>`;
+  }).join('') || '<tr><td colspan="6" style="text-align:center;color:var(--ink-400);">ไม่มีข้อมูล</td></tr>';
+  const vehRows = (r.vehicleRows||[]).map(x=>{
+    const v = getVehiclesX().find(vv=>vv.id===x.vehId);
+    return `<tr><td>${v?v.label:'—'}</td><td class="num">${fmtNum(x.liters,2)}</td><td class="num">${fmtNum(x.fuelPrice,2)}</td><td class="num">${fmtNum(x.liters*x.fuelPrice,2)}</td><td class="num">${fmtNum(x.rentPerDay,2)}</td></tr>`;
+  }).join('') || '<tr><td colspan="5" style="text-align:center;color:var(--ink-400);">ไม่มีข้อมูล</td></tr>';
+  return `
+    <div style="display:flex;gap:20px;margin-bottom:12px;flex-wrap:wrap;">
+      <div style="font-size:11.5px;color:var(--ink-600);">ปีงบประมาณ: <b style="color:var(--ink-900);">${r.fy}</b></div>
+      <div style="font-size:11.5px;color:var(--ink-600);">ปริมาณงาน/วัน: <b style="color:var(--ink-900);">${fmtNum(r.qtyPerDay,2)} ${unitLabel}</b></div>
+    </div>
+    <div style="font-family:'Kanit';font-size:11px;font-weight:600;color:var(--orange-600);margin-bottom:5px;">1) ค่าแรงงาน / วัน</div>
+    <table class="uc-formula-table"><thead><tr><th>แรงงาน</th><th>จำนวน (คน)</th><th>อัตรา/วัน</th><th>เป็นเงิน (บาท)</th></tr></thead><tbody>${laborRows}</tbody></table>
+    <div style="font-family:'Kanit';font-size:11px;font-weight:600;color:var(--orange-600);margin-bottom:5px;">2) ค่าวัสดุอุปกรณ์ / วัน</div>
+    <table class="uc-formula-table"><thead><tr><th>วัสดุ</th><th>อัตราใช้/หน่วยงาน</th><th>ปริมาณจริง</th><th>หน่วย</th><th>ราคา/หน่วย</th><th>เป็นเงิน (บาท)</th></tr></thead><tbody>${matRows}</tbody></table>
+    <div style="font-family:'Kanit';font-size:11px;font-weight:600;color:var(--orange-600);margin-bottom:5px;">3) ค่าเครื่องจักร/ยานพาหนะ / วัน</div>
+    <table class="uc-formula-table"><thead><tr><th>เครื่องจักร/ยานพาหนะ</th><th>น้ำมัน (ลิตร)</th><th>ราคา/ลิตร</th><th>เป็นเงินน้ำมัน</th><th>ค่าเช่า/วัน</th></tr></thead><tbody>${vehRows}</tbody></table>
+    <div style="background:#fdf6ee;border:1px solid var(--amber-400);border-radius:10px;padding:14px 18px;">
+      <div style="display:flex;gap:22px;flex-wrap:wrap;margin-bottom:10px;font-size:11.5px;color:var(--ink-600);">
+        <div>ค่าแรงงาน <b style="color:var(--ink-900);">${fmtNum(t.labor,2)}</b></div>
+        <div>+ ค่าวัสดุ <b style="color:var(--ink-900);">${fmtNum(t.material,2)}</b></div>
+        <div>+ ค่าน้ำมัน <b style="color:var(--ink-900);">${fmtNum(t.fuel,2)}</b></div>
+        <div>+ ค่าเช่า <b style="color:var(--ink-900);">${fmtNum(t.rent,2)}</b></div>
+        <div>= รวม/วัน <b style="color:var(--navy-900);">${fmtNum(t.total,2)}</b> บาท</div>
+      </div>
+      <div style="display:flex;align-items:baseline;gap:10px;">
+        <span style="font-size:12px;color:var(--ink-600);">ค่างานต่อหน่วย = รวม/วัน ÷ ปริมาณงาน/วัน =</span>
+        <span style="font-family:'Kanit';font-size:24px;font-weight:700;color:var(--navy-900);">${fmtNum(t.unitCost,2)}</span>
+        <span style="font-size:12px;color:var(--ink-600);">บาท/${unitLabel}</span>
+      </div>
+      <div style="display:flex;gap:18px;margin-top:8px;font-size:10.5px;color:var(--ink-400);flex-wrap:wrap;">
+        <span>แรงงาน ${fmtNum(r.qtyPerDay>0?t.labor/r.qtyPerDay:0,2)} บาท/หน่วย</span>
+        <span>วัสดุ ${fmtNum(r.qtyPerDay>0?t.material/r.qtyPerDay:0,2)} บาท/หน่วย</span>
+        <span>น้ำมัน ${fmtNum(r.qtyPerDay>0?t.fuel/r.qtyPerDay:0,2)} บาท/หน่วย</span>
+        <span>เช่า ${fmtNum(r.qtyPerDay>0?t.rent/r.qtyPerDay:0,2)} บาท/หน่วย</span>
+      </div>
+    </div>`;
+}
+/* ฝั่งขวา: การ์ดรายละเอียดรหัสงาน + การ์ด UNIT COST (ทุกอัตราย่อยของรหัสที่เลือก เรียงเป็นตารางสูตรเต็มทุกแถว) */
+function renderRefDetail(){
+  const el = document.getElementById('refdata-detail');
+  if(!el) return;
+  const rec = jobCodeReference.find(r=>r.code===__refSelectedCode);
+  if(!rec){
+    el.innerHTML = '<div class="refdata-card" style="text-align:center;color:var(--ink-400);">เลือกรหัสงานทางซ้ายเพื่อดูรายละเอียด</div>';
+    return;
+  }
+  const variants = unitCostRecords.filter(u=>u.code===rec.code);
+  const ucHtml = variants.length
+    ? variants.map(r=>`<div class="uc-variant-card"><div class="uc-variant-title"><span>${r.variantLabel ? r.variantLabel : 'อัตรามาตรฐาน'}</span><span><button class="btn btn-ghost btn-sm" onclick="openUcForm(${r.no})">แก้ไข</button> <button class="btn btn-ghost btn-sm" style="color:var(--danger);" onclick="deleteUcEntry(${r.no})">ลบ</button></span></div>${ucFormulaTableHtml(r)}</div>`).join('')
+    : `<div style="text-align:center;padding:30px 0;color:var(--ink-400);">
+        <div style="font-size:13px;margin-bottom:14px;">ยังไม่มีข้อมูลค่างานต่อหน่วยของรหัสนี้</div>
+        <button class="btn btn-primary" onclick="openUcForm(null,'${rec.code}')">+ เพิ่มค่างานต่อหน่วยใหม่</button>
+      </div>`;
+  el.innerHTML = `
+    <div class="refdata-card">
+      <div style="display:flex;align-items:center;gap:9px;margin-bottom:7px;">
+        <span style="${rec.level==='main'?'background:var(--navy-900);color:#fff;':'background:var(--paper-100);color:var(--ink-600);'}display:inline-block;padding:3px 9px;border-radius:6px;font-size:10.5px;font-weight:700;font-family:'Kanit';">${rec.level==='main'?'หลัก':'ย่อย'}</span>
+        <span style="font-family:'Kanit';font-size:12px;color:var(--ink-400);">รหัสงาน ${rec.code}</span>
+        <button class="btn btn-ghost btn-sm" style="margin-left:auto;" onclick="openJcForm('${rec.code}')">แก้ไขรหัสงาน</button>
+      </div>
+      <h2 style="font-family:'Kanit';font-size:18px;font-weight:600;color:var(--navy-900);margin:0 0 12px;">${rec.name}</h2>
+      <div style="display:flex;gap:28px;margin-bottom:12px;flex-wrap:wrap;">
+        <div><div style="font-size:10.5px;color:var(--ink-400);margin-bottom:3px;">หน่วยนับ</div><div style="font-family:'Kanit';font-size:13px;font-weight:600;color:var(--ink-900);">${rec.unit||'-'}</div></div>
+        <div><div style="font-size:10.5px;color:var(--ink-400);margin-bottom:3px;">ผลผลิต</div><div style="font-family:'Kanit';font-size:13px;font-weight:600;color:var(--ink-900);">${rec.output||'-'}</div></div>
+      </div>
+      <div style="font-size:10.5px;color:var(--ink-400);margin-bottom:5px;">ลักษณะงาน</div>
+      <p style="font-size:12.5px;color:var(--ink-600);line-height:1.7;margin:0;">${rec.desc||'—'}</p>
+    </div>
+    <div class="refdata-card">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+        <h3 style="font-family:'Kanit';font-size:14.5px;font-weight:600;color:var(--navy-900);margin:0;">ค่างานต่อหน่วย (UNIT COST)</h3>
+        ${variants.length ? `<button class="btn btn-ghost btn-sm" onclick="openUcForm(null,'${rec.code}')">+ เพิ่มอัตราใหม่</button>` : ''}
+      </div>
+      ${ucHtml}
+    </div>`;
+}
 /* ---- เพิ่ม/แก้ไขรหัสงาน (รายละเอียดรหัสงาน) — หน้าต่างโมดัลลอย ---- */
 let __jcEditingCode = null;
 function jcMainOptions(){
@@ -1771,6 +1890,11 @@ async function saveJcEntry(){
   /* รหัสงาน (jc-f-code) ปิดแก้ไขเสมอตอน edit (ดู openJcForm) ดังนั้น rec.code === __jcEditingCode
      เสมอเมื่อแก้ไข — updateRow หาแถวเจอแน่นอนด้วย jobCode เดิม */
   const affectedChildren = __jcEditingCode ? jobCodeReference.filter(r=>r.parent===__jcEditingCode) : [];
+  const jcSaveBtn = document.getElementById('jc-form-save-btn');
+  const jcCancelBtn = document.getElementById('jc-form-cancel-btn');
+  const jcSaveBtnOrigText = jcSaveBtn ? jcSaveBtn.textContent : '';
+  if(jcSaveBtn){ jcSaveBtn.disabled = true; jcSaveBtn.textContent = 'กำลังบันทึก...'; }
+  if(jcCancelBtn) jcCancelBtn.disabled = true;
   try{
     if(__jcEditingCode){
       await apiPost('update', 'job_code_reference', jcToApi(rec));
@@ -1786,8 +1910,12 @@ async function saveJcEntry(){
     }
   }catch(err){
     alert('บันทึกรหัสงานไปยังฐานข้อมูลกลางไม่สำเร็จ: ' + err.message);
+    if(jcSaveBtn){ jcSaveBtn.disabled = false; jcSaveBtn.textContent = jcSaveBtnOrigText; }
+    if(jcCancelBtn) jcCancelBtn.disabled = false;
     return;
   }
+  if(jcSaveBtn){ jcSaveBtn.disabled = false; jcSaveBtn.textContent = jcSaveBtnOrigText; }
+  if(jcCancelBtn) jcCancelBtn.disabled = false;
   closeJcForm();
   document.querySelectorAll('[data-jctab]').forEach(x=>x.classList.remove('active'));
   document.querySelector(`[data-jctab="${level}"]`)?.classList.add('active');
@@ -1798,12 +1926,21 @@ async function deleteJcEntry(){
   const hasChildren = jobCodeReference.some(r=>r.parent===__jcEditingCode);
   if(hasChildren){ alert('ไม่สามารถลบได้ — มีรหัสงานย่อยที่สังกัดอยู่ใต้รหัสนี้ กรุณาลบหรือย้ายรหัสย่อยเหล่านั้นก่อน'); return; }
   if(!confirm(`ยืนยันลบรหัสงาน ${__jcEditingCode} ออกจากรายการอ้างอิงนี้?`)) return;
+  const jcDeleteBtn = document.getElementById('jc-form-delete-btn');
+  const jcSaveBtn2 = document.getElementById('jc-form-save-btn');
+  const jcDeleteBtnOrigText = jcDeleteBtn ? jcDeleteBtn.textContent : '';
+  if(jcDeleteBtn){ jcDeleteBtn.disabled = true; jcDeleteBtn.textContent = 'กำลังบันทึก...'; }
+  if(jcSaveBtn2) jcSaveBtn2.disabled = true;
   try{
     await apiPost('delete', 'job_code_reference', null, __jcEditingCode);
   }catch(err){
     alert('ลบรหัสงานในฐานข้อมูลกลางไม่สำเร็จ: ' + err.message);
+    if(jcDeleteBtn){ jcDeleteBtn.disabled = false; jcDeleteBtn.textContent = jcDeleteBtnOrigText; }
+    if(jcSaveBtn2) jcSaveBtn2.disabled = false;
     return;
   }
+  if(jcDeleteBtn){ jcDeleteBtn.disabled = false; jcDeleteBtn.textContent = jcDeleteBtnOrigText; }
+  if(jcSaveBtn2) jcSaveBtn2.disabled = false;
   const idx = jobCodeReference.findIndex(r=>r.code===__jcEditingCode);
   if(idx>-1) jobCodeReference.splice(idx,1);
   closeJcForm();
@@ -2125,6 +2262,11 @@ async function saveRoute(){
     concrete: parseFloat(document.getElementById('rf-concrete').value)||0,
     workQty: parseFloat(document.getElementById('rf-workqty').value)||0,
   };
+  const routeSaveBtn = document.getElementById('route-form-save-btn');
+  const routeCancelBtn = document.getElementById('route-form-cancel-btn');
+  const routeSaveBtnOrigText = routeSaveBtn ? routeSaveBtn.textContent : '';
+  if(routeSaveBtn){ routeSaveBtn.disabled = true; routeSaveBtn.textContent = 'กำลังบันทึก...'; }
+  if(routeCancelBtn) routeCancelBtn.disabled = true;
   try{
     if(id){
       const r = controlledRoutes.find(x=>x.id===Number(id));
@@ -2139,8 +2281,12 @@ async function saveRoute(){
     }
   }catch(err){
     alert('บันทึกสายทางควบคุมไปยังฐานข้อมูลกลางไม่สำเร็จ: ' + err.message);
+    if(routeSaveBtn){ routeSaveBtn.disabled = false; routeSaveBtn.textContent = routeSaveBtnOrigText; }
+    if(routeCancelBtn) routeCancelBtn.disabled = false;
     return;
   }
+  if(routeSaveBtn){ routeSaveBtn.disabled = false; routeSaveBtn.textContent = routeSaveBtnOrigText; }
+  if(routeCancelBtn) routeCancelBtn.disabled = false;
   closeRouteForm();
   renderAll();
 }
@@ -2148,12 +2294,21 @@ async function deleteRoute(id){
   if(!isAdmin()) return;
   const r = controlledRoutes.find(x=>x.id===id); if(!r) return;
   if(!confirm(`ยืนยันลบสายทาง ทล.${r.routeNo} (${r.section}) ออกจากฐานข้อมูลควบคุม?\nข้อมูลที่เคยบันทึกไว้ในโมดูลอื่นจะไม่ถูกลบ แต่จะไม่สามารถเลือกสายทางนี้ในฟอร์มใหม่ได้อีก`)) return;
+  const routeDeleteBtn = document.getElementById('route-form-delete-btn');
+  const routeSaveBtn2 = document.getElementById('route-form-save-btn');
+  const routeDeleteBtnOrigText = routeDeleteBtn ? routeDeleteBtn.textContent : '';
+  if(routeDeleteBtn){ routeDeleteBtn.disabled = true; routeDeleteBtn.textContent = 'กำลังบันทึก...'; }
+  if(routeSaveBtn2) routeSaveBtn2.disabled = true;
   try{
     await apiPost('delete', 'controlled_routes', null, id);
   }catch(err){
     alert('ลบสายทางควบคุมในฐานข้อมูลกลางไม่สำเร็จ: ' + err.message);
+    if(routeDeleteBtn){ routeDeleteBtn.disabled = false; routeDeleteBtn.textContent = routeDeleteBtnOrigText; }
+    if(routeSaveBtn2) routeSaveBtn2.disabled = false;
     return;
   }
+  if(routeDeleteBtn){ routeDeleteBtn.disabled = false; routeDeleteBtn.textContent = routeDeleteBtnOrigText; }
+  if(routeSaveBtn2) routeSaveBtn2.disabled = false;
   const idx = controlledRoutes.findIndex(x=>x.id===id);
   if(idx>=0) controlledRoutes.splice(idx,1);
   renderAll();
@@ -2351,13 +2506,22 @@ async function savePermit(){
     doc: document.getElementById('pf-doc').value || TODAY.toISOString().slice(0,10),
     status:'pending'
   };
+  const permitSaveBtn = document.getElementById('permit-form-save-btn');
+  const permitCancelBtn = document.getElementById('permit-form-cancel-btn');
+  const permitSaveBtnOrigText = permitSaveBtn ? permitSaveBtn.textContent : '';
+  if(permitSaveBtn){ permitSaveBtn.disabled = true; permitSaveBtn.textContent = 'กำลังบันทึก...'; }
+  if(permitCancelBtn) permitCancelBtn.disabled = true;
   try{
     const saved = await apiPost('add', 'permits', permitToApi(p));
     permits.push(permitFromApi(saved));
   }catch(err){
     alert('บันทึกคำขออนุญาตไปยังฐานข้อมูลกลางไม่สำเร็จ: ' + err.message);
+    if(permitSaveBtn){ permitSaveBtn.disabled = false; permitSaveBtn.textContent = permitSaveBtnOrigText; }
+    if(permitCancelBtn) permitCancelBtn.disabled = false;
     return;
   }
+  if(permitSaveBtn){ permitSaveBtn.disabled = false; permitSaveBtn.textContent = permitSaveBtnOrigText; }
+  if(permitCancelBtn) permitCancelBtn.disabled = false;
   document.getElementById('permit-form-overlay').classList.add('hidden');
   renderAll();
 }
@@ -2388,8 +2552,8 @@ function renderEnc(filter){
     let actionBtn = '';
     if(isAdmin() && !e.cleared){
       actionBtn = e.stage<4
-        ? `<button class="btn btn-ghost btn-sm" onclick="advanceEnc('${e.code}')">เลื่อนขั้นถัดไป</button>`
-        : `<button class="btn btn-ghost btn-sm" onclick="markEncCleared('${e.code}')">✓ รื้อถอนแล้ว</button>`;
+        ? `<button class="btn btn-ghost btn-sm" onclick="advanceEnc('${e.code}', event)">เลื่อนขั้นถัดไป</button>`
+        : `<button class="btn btn-ghost btn-sm" onclick="markEncCleared('${e.code}', event)">✓ รื้อถอนแล้ว</button>`;
     }
     return `<tr>
       <td>${e.code}</td>
@@ -2405,17 +2569,21 @@ function renderEnc(filter){
   const nextRep = nextEncReport();
   document.getElementById('enc-foot').textContent = `กำหนดส่งสรุปรายงานการรุกล้ำเขตทาง (3 งวด/ปี) — งวดถัดไป: ${nextRep.label} ภายในวันที่ ${fmtDateShort(nextRep.due)} (เหลืออีก ${nextRep.left} วัน)`;
 }
-async function advanceEnc(code){
+async function advanceEnc(code, evt){
   if(!isAdmin()) return;
   const e = encroachments.find(x=>x.code===code); if(!e) return;
   const before = {stage:e.stage, stageDate:e.stageDate};
   e.stage = Math.min(4, e.stage+1);
   e.stageDate = TODAY.toISOString().slice(0,10);
+  const btn = evt ? evt.currentTarget : null;
+  const btnOrigText = btn ? btn.textContent : '';
+  if(btn){ btn.disabled = true; btn.textContent = 'กำลังบันทึก...'; }
   try{
     await apiPost('update', 'encroachments', encToApi(e));
   }catch(err){
     Object.assign(e, before);
     alert('บันทึกขั้นตอนงานรุกล้ำไปยังฐานข้อมูลกลางไม่สำเร็จ: ' + err.message);
+    if(btn){ btn.disabled = false; btn.textContent = btnOrigText; }
     return;
   }
   renderAll();
@@ -2423,18 +2591,22 @@ async function advanceEnc(code){
 /* ทำเครื่องหมาย "รื้อถอนแล้ว" — ใช้ได้เฉพาะเคสที่แจ้งความร้องทุกข์แล้ว (stage 4) เป็นผล
    ลัพธ์สุดท้ายแยกจาก stage การแจ้งเตือน ไม่ใช่ stage ที่ 5 (แก้บั๊กเดิม: แท็บ "รื้อถอนแล้ว"
    ไม่เคยมีทางไปถึงได้เลยเพราะไม่มี field ให้ทำเครื่องหมาย) */
-async function markEncCleared(code){
+async function markEncCleared(code, evt){
   if(!isAdmin()) return;
   const e = encroachments.find(x=>x.code===code); if(!e || e.stage<4) return;
   if(!confirm(`ยืนยันว่ารื้อถอนสิ่งปลูกสร้างรุกล้ำของ "${e.name}" (${e.code}) เรียบร้อยแล้ว?`)) return;
   const before = {cleared:e.cleared, clearedDate:e.clearedDate};
   e.cleared = true;
   e.clearedDate = TODAY.toISOString().slice(0,10);
+  const btn = evt ? evt.currentTarget : null;
+  const btnOrigText = btn ? btn.textContent : '';
+  if(btn){ btn.disabled = true; btn.textContent = 'กำลังบันทึก...'; }
   try{
     await apiPost('update', 'encroachments', encToApi(e));
   }catch(err){
     Object.assign(e, before);
     alert('บันทึกสถานะรื้อถอนไปยังฐานข้อมูลกลางไม่สำเร็จ: ' + err.message);
+    if(btn){ btn.disabled = false; btn.textContent = btnOrigText; }
     return;
   }
   renderAll();
@@ -2454,13 +2626,22 @@ async function saveEnc(){
     stage:1, stageDate: document.getElementById('ef-date').value || TODAY.toISOString().slice(0,10),
     cleared:false, clearedDate:null
   };
+  const encSaveBtn = document.getElementById('enc-form-save-btn');
+  const encCancelBtn = document.getElementById('enc-form-cancel-btn');
+  const encSaveBtnOrigText = encSaveBtn ? encSaveBtn.textContent : '';
+  if(encSaveBtn){ encSaveBtn.disabled = true; encSaveBtn.textContent = 'กำลังบันทึก...'; }
+  if(encCancelBtn) encCancelBtn.disabled = true;
   try{
     const saved = await apiPost('add', 'encroachments', encToApi(e));
     encroachments.push(encFromApi(saved));
   }catch(err){
     alert('บันทึกงานรุกล้ำไปยังฐานข้อมูลกลางไม่สำเร็จ: ' + err.message);
+    if(encSaveBtn){ encSaveBtn.disabled = false; encSaveBtn.textContent = encSaveBtnOrigText; }
+    if(encCancelBtn) encCancelBtn.disabled = false;
     return;
   }
+  if(encSaveBtn){ encSaveBtn.disabled = false; encSaveBtn.textContent = encSaveBtnOrigText; }
+  if(encCancelBtn) encCancelBtn.disabled = false;
   document.getElementById('enc-form-overlay').classList.add('hidden');
   renderAll();
 }
@@ -2521,13 +2702,12 @@ function bmmAggregateToMain(subRows){
   return Object.values(groups);
 }
 function renderRoutine(){
+  renderRoutineKpiBand();
   renderCrewList();
   populateFySelects();
   renderBmmTable();
   renderDailyLog();
   renderRollup();
-  renderJobCodeRef();
-  renderUcTable();
 }
 function bmmMatchesMonth(e, monthSel){
   if(monthSel==='all') return true;
@@ -2535,9 +2715,6 @@ function bmmMatchesMonth(e, monthSel){
   const m = +monthSel;
   if(e.baseline) return e.asOfMonth===m;
   return e.month===m;
-}
-function bmmActiveTab(){
-  return document.querySelector('#bmm-tabs [data-bmmtab].active')?.dataset.bmmtab || 'main';
 }
 function bmmRowHtml(e, groupClass, showUnit){
   return `
@@ -2581,61 +2758,74 @@ function bmmTotalsRowHtml(rows, kind, label, showUnit){
     </tr>
   `;
 }
-/* แท็บ "รหัสงานหลัก" ไม่มีหน่วยนับ (เป็นยอดรวมของหลายหน่วย) จึงตัดคอลัมน์ "หน่วย" ออกไปทั้งคอลัมน์ (ไม่ใช่แค่ซ่อน)
-   สร้าง colgroup/thead ใหม่ทั้งชุดตามแท็บที่เลือก เพื่อไม่ให้เหลือคอลัมน์ว่างค้างจากการซ่อนด้วย CSS */
-function bmmColgroupHtml(showUnit){
-  return showUnit
-    ? `<col style="width:6%"><col style="width:7%"><col style="width:5%"><col style="width:5%">
-       <col style="width:9%"><col style="width:10%"><col style="width:9%"><col style="width:8%">
-       <col style="width:8%"><col style="width:8%"><col style="width:8%"><col style="width:7%"><col style="width:10%">`
-    : `<col style="width:6%"><col style="width:11%"><col style="width:5%">
-       <col style="width:9%"><col style="width:10%"><col style="width:9%"><col style="width:8%">
-       <col style="width:8%"><col style="width:8%"><col style="width:8%"><col style="width:7%"><col style="width:11%">`;
-}
 function bmmTheadHtml(showUnit){
   return `<tr><th>รหัสงาน</th><th>ลักษณะงาน</th>${showUnit ? '<th>หน่วย</th>' : ''}<th>แผน/ผล</th><th>ปริมาณ</th><th>งบประมาณ (บาท)</th><th>ราคาต่อหน่วย</th><th>วัสดุ</th><th>แรงงาน</th><th>เช่า</th><th>น้ำมัน</th><th><span style="white-space:nowrap">ใช้สอย/</span><br><span style="white-space:nowrap">จ้างเหมา</span></th><th>จัดการ</th></tr>`;
+}
+/* แผนงาน-ผลงาน (แบบ D — ไล่ระดับหลัก→ย่อย): การ์ดหมวดหลักคำนวณแผน/ผลจากทุกรายการของปีงบเสมอ
+   (ไม่ขึ้นกับตัวกรอง bmm-kind) เพราะแถบเทียบต้องเห็นทั้งสองค่าพร้อมกันตลอด — ตัวกรอง kind มีผลแค่กับ
+   ตารางย่อยที่ขยายออกมา (subRows) และแถวสรุปท้ายสุดเท่านั้น */
+let __bmmExpandedMain = null;
+function toggleBmmMain(code){
+  __bmmExpandedMain = (__bmmExpandedMain===code) ? null : code;
+  renderBmmTable();
 }
 function renderBmmTable(){
   const fy = +document.getElementById('bmm-fy').value || 2569;
   const kind = document.getElementById('bmm-kind').value || 'all';
-  const tab = bmmActiveTab();
-  const showUnit = tab !== 'main';
 
-  // ที่มาของข้อมูลจริงมีแค่ระดับ "รหัสงานย่อย" เท่านั้น — รหัสงานหลักคำนวณสดจากผลรวมของรหัสงานย่อยในหมวดนั้นเสมอ
   const fySub = bmmEntries.filter(e=> e.fy===fy && e.level==='sub');
   const subRows = fySub.filter(e=> kind==='all' || e.kind===kind);
-  const mainRows = bmmAggregateToMain(subRows);
 
-  let rows;
-  if(tab==='main') rows = mainRows;
-  else if(tab==='sub') rows = subRows;
-  else rows = mainRows.concat(subRows);
-  rows = rows.slice().sort((a,b)=> a.code.localeCompare(b.code,'th') || (a.unit||'').localeCompare(b.unit||'','th') || (a.kind==='plan'?-1:1));
+  const planMain = bmmAggregateToMain(fySub.filter(e=>e.kind==='plan'));
+  const actualMain = bmmAggregateToMain(fySub.filter(e=>e.kind==='actual'));
+  const mainCodes = Array.from(new Set([...planMain.map(m=>m.code), ...actualMain.map(m=>m.code)])).sort((a,b)=>a.localeCompare(b,'th'));
 
-  const mainN = new Set(fySub.map(e=>bmmMainCodeOf(e.code)).filter(Boolean)).size;
-  const subN = new Set(fySub.map(e=>e.code+'|'+e.unit)).size;
-  document.getElementById('bmm-summary').textContent = rows.length
-    ? `พบ ${rows.length} รายการ (หลัก ${mainN} / ย่อย ${subN} รหัสงาน)`
+  document.getElementById('bmm-summary').textContent = mainCodes.length
+    ? `พบ ${mainCodes.length} หมวดงานหลัก (ปีงบ ${fy})`
     : 'ไม่พบข้อมูลตามเงื่อนไขที่เลือก';
 
-  document.getElementById('bmm-colgroup').innerHTML = bmmColgroupHtml(showUnit);
-  document.getElementById('bmm-thead').innerHTML = bmmTheadHtml(showUnit);
-
-  // แรเงาสลับเป็นคู่ตามรหัสงาน+หน่วย เพื่อให้เห็นชัดว่าแถว "แผน" กับ "ผล" คู่ไหนเป็นของรหัสงานเดียวกัน
-  let lastGroupKey = null, altOn = false;
-  const body = rows.map(e=>{
-    const groupKey = e.code + '|' + (e.unit||'');
-    if(groupKey !== lastGroupKey){ altOn = !altOn; lastGroupKey = groupKey; }
-    return bmmRowHtml(e, altOn ? 'bmm-group-b' : '', showUnit);
+  const cards = mainCodes.map(code=>{
+    const plan = planMain.find(m=>m.code===code);
+    const actual = actualMain.find(m=>m.code===code);
+    const planBudget = plan ? bmmBudget(plan) : 0;
+    const actualBudget = actual ? bmmBudget(actual) : 0;
+    const pct = planBudget>0 ? Math.round(actualBudget/planBudget*100) : null;
+    const low = pct!=null && pct<50;
+    const barWidth = pct==null ? 0 : Math.min(pct,100);
+    const expanded = __bmmExpandedMain===code;
+    const subOfThis = subRows.filter(e=>bmmMainCodeOf(e.code)===code)
+      .slice().sort((a,b)=> a.code.localeCompare(b.code,'th') || (a.unit||'').localeCompare(b.unit||'','th') || (a.kind==='plan'?-1:1));
+    let subTable = '';
+    if(expanded){
+      const rowsHtml = subOfThis.map(e=>bmmRowHtml(e,'',true)).join('');
+      subTable = `<div style="padding:0 20px 16px 46px;background:var(--paper-50);">
+        <table class="bmm-inner-table" style="background:#fff;border-radius:8px;overflow:hidden;">
+          <thead>${bmmTheadHtml(true)}</thead>
+          <tbody>${rowsHtml || `<tr><td colspan="13" style="text-align:center;color:var(--ink-400);">ไม่มีรหัสงานย่อยในหมวดนี้ตามตัวกรองที่เลือก</td></tr>`}</tbody>
+        </table>
+      </div>`;
+    }
+    return `
+    <div class="bmm-main-row" onclick="toggleBmmMain('${code}')">
+      <span class="bmm-main-chevron ${expanded?'open':''}">▸</span>
+      <div style="width:260px;flex-shrink:0;">
+        <div style="font-family:'Kanit';font-weight:600;color:var(--navy-900);">${code} · ${bmmMainName(code)}</div>
+        <div style="font-size:10.5px;color:var(--ink-400);margin-top:2px;">${subOfThis.length} รายการย่อย (ตามตัวกรอง)</div>
+      </div>
+      <div class="bmm-progress-track" style="flex:1;">
+        <div class="bmm-progress-fill" style="width:${barWidth}%;background:${low?'var(--amber-400)':'var(--orange-500)'};"></div>
+      </div>
+      <div style="width:90px;text-align:right;flex-shrink:0;font-family:'Kanit';font-weight:700;color:${low?'var(--orange-600)':'var(--navy-900)'};">${pct==null?'—':pct+'%'}</div>
+      <div style="width:260px;text-align:right;flex-shrink:0;font-size:11.5px;color:var(--ink-600);">ผล ${fmtNum(actualBudget,0)} / แผน ${fmtNum(planBudget,0)} บาท</div>
+    </div>
+    ${subTable}`;
   }).join('');
-  // แถวสรุปรวมคำนวณจากรหัสงานย่อยเสมอ เพื่อให้ยอด "รวมแผน"/"รวมผล" เท่ากันทุกแท็บ
-  const colCount = showUnit ? 13 : 12;
-  const totals = subRows.length ? (bmmTotalsRowHtml(subRows,'plan','รวมแผน',showUnit) + bmmTotalsRowHtml(subRows,'actual','รวมผล',showUnit)) : '';
-  document.getElementById('bmm-body').innerHTML = body + totals || `<tr><td colspan="${colCount}" style="text-align:center;color:var(--ink-400);">ไม่พบรายการ</td></tr>`;
+
+  const totals = subRows.length ? (bmmTotalsRowHtml(subRows,'plan','รวมแผน',true) + bmmTotalsRowHtml(subRows,'actual','รวมผล',true)) : '';
+  const totalsHtml = subRows.length ? `<div style="padding:14px 20px;border-top:2px solid var(--line);"><table class="bmm-inner-table"><thead>${bmmTheadHtml(true)}</thead><tbody>${totals}</tbody></table></div>` : '';
+
+  document.getElementById('bmm-body-wrap').innerHTML = (cards || `<div style="padding:30px;text-align:center;color:var(--ink-400);">ไม่พบข้อมูลตามเงื่อนไขที่เลือก</div>`) + totalsHtml;
 }
-document.querySelectorAll('#bmm-tabs [data-bmmtab]').forEach(t=>t.addEventListener('click',()=>{
-  document.querySelectorAll('#bmm-tabs [data-bmmtab]').forEach(x=>x.classList.remove('active')); t.classList.add('active'); renderBmmTable();
-}));
 /* บันทึกแผน/ผลรายเดือน — floating modal, รองรับทั้งเพิ่มรายการใหม่และแก้ไขรายการเดิม
    (ระหว่างปีงบประมาณอาจมีการรับงบประมาณเพิ่มเติมจากแขวง จึงมักต้องปรับแก้ไขแผนของหมวด) */
 let __bmmEditingNo = null;
@@ -2756,6 +2946,11 @@ async function saveBmmEntry(){
     contract: 0,
     supplementLog: kind==='plan' ? __bfSuppDraft.slice() : []
   };
+  const bmmSaveBtn = document.getElementById('bmm-form-save-btn');
+  const bmmCancelBtn = document.getElementById('bmm-form-cancel-btn');
+  const bmmSaveBtnOrigText = bmmSaveBtn ? bmmSaveBtn.textContent : '';
+  if(bmmSaveBtn){ bmmSaveBtn.disabled = true; bmmSaveBtn.textContent = 'กำลังบันทึก...'; }
+  if(bmmCancelBtn) bmmCancelBtn.disabled = true;
   try{
     if(__bmmEditingNo!=null){
       const idx = bmmEntries.findIndex(e=>e.no===__bmmEditingNo);
@@ -2773,8 +2968,12 @@ async function saveBmmEntry(){
     }
   }catch(err){
     alert('บันทึกแผน/ผลงานบำรุงปกติไปยังฐานข้อมูลกลางไม่สำเร็จ: ' + err.message);
+    if(bmmSaveBtn){ bmmSaveBtn.disabled = false; bmmSaveBtn.textContent = bmmSaveBtnOrigText; }
+    if(bmmCancelBtn) bmmCancelBtn.disabled = false;
     return;
   }
+  if(bmmSaveBtn){ bmmSaveBtn.disabled = false; bmmSaveBtn.textContent = bmmSaveBtnOrigText; }
+  if(bmmCancelBtn) bmmCancelBtn.disabled = false;
   closeBmmForm();
   renderAll();
 }
@@ -2810,6 +3009,60 @@ function findPersonCrew(name, excludeCrewId){
   return fieldCrews.find(c => c.id!==excludeCrewId && (c.leader===name || c.members.includes(name))) || null;
 }
 
+/* งานบำรุงปกติ (A): แถบ KPI "วันนี้" — คำนวณจากข้อมูลที่โหลดอยู่แล้วในหน่วยความจำเท่านั้น ไม่ query เพิ่ม
+   __todaysCrewStatus ถูกเก็บไว้เป็น cache ให้ renderCrewList() อ่านต่อ ไม่ต้องคำนวณ "ใครทำงานวันนี้" ซ้ำสองที่ */
+let __todaysCrewStatus = {};
+function renderRoutineKpiBand(){
+  const el = document.getElementById('routine-kpi-band');
+  if(!el) return;
+  const todayIso = TODAY.toISOString().slice(0,10);
+  const fy = fyOfDate(todayIso);
+  const todaysOrders = dailyWorkOrders.filter(d=>d.date===todayIso);
+  const todaysTotal = todaysOrders.reduce((s,d)=>s+dwTotal(d),0);
+
+  __todaysCrewStatus = {};
+  let workingCount = 0;
+  fieldCrews.forEach(c=>{
+    const members = crewAllMembers(c);
+    const matches = todaysOrders.filter(d=>(d.staff||[]).some(n=>members.includes(n)));
+    const working = matches.length>0;
+    if(working) workingCount++;
+    const job = findJob(matches[0]?.code);
+    __todaysCrewStatus[c.id] = {
+      working,
+      jobLine: working ? matches.map(d=>`${d.code}${job?' '+job.name:''} · ${d.loc}`).join(' · ') : ''
+    };
+  });
+
+  const ytdActual = dailyWorkOrders.filter(d=>!d.qtyPending && fyOfDate(d.date)===fy).reduce((s,d)=>s+dwTotal(d),0);
+  const planTotal = bmmEntries.filter(e=>e.kind==='plan' && e.fy===fy).reduce((s,e)=>s+bmmBudget(e),0);
+  const pct = planTotal>0 ? Math.round(ytdActual/planTotal*100) : null;
+
+  el.innerHTML = `
+    <div class="routine-kpi-item">
+      <div class="kpi-label">วันนี้</div>
+      <div class="kpi-val">${fmtDateShort(todayIso)}</div>
+      <div class="kpi-sub">ปีงบประมาณ ${fy}</div>
+    </div>
+    <div class="routine-kpi-div"></div>
+    <div class="routine-kpi-item">
+      <div class="kpi-label">ใบสั่งการวันนี้</div>
+      <div class="kpi-val">${todaysOrders.length} ใบ</div>
+      <div class="kpi-sub">รวม ${fmtNum(todaysTotal,0)} บาท</div>
+    </div>
+    <div class="routine-kpi-div"></div>
+    <div class="routine-kpi-item">
+      <div class="kpi-label">ชุดลงพื้นที่วันนี้</div>
+      <div class="kpi-val">${workingCount} / ${fieldCrews.length} ชุด</div>
+      <div class="kpi-sub">${!fieldCrews.length ? 'ยังไม่มีชุดทำงาน' : (fieldCrews.length-workingCount ? 'ว่าง '+(fieldCrews.length-workingCount)+' ชุด' : 'ลงพื้นที่ครบทุกชุด')}</div>
+    </div>
+    <div class="routine-kpi-div"></div>
+    <div class="routine-kpi-item">
+      <div class="kpi-label">ใช้งบสะสมปีงบนี้</div>
+      <div class="kpi-val" style="${pct!=null && pct>100 ? 'color:#f2a930;' : ''}">${pct==null?'—':pct+'%'}</div>
+      <div class="kpi-sub">${pct==null?'ยังไม่มีแผนงบประมาณของปีนี้':fmtNum(ytdActual,0)+' จาก '+fmtNum(planTotal,0)+' บาท'}</div>
+    </div>`;
+}
 function renderCrewList(){
   const el = document.getElementById('crew-list');
   if(!el) return;
@@ -2819,13 +3072,18 @@ function renderCrewList(){
   }
   const cards = fieldCrews.map(c=>{
     const total = c.members.length + (c.leader ? 1 : 0);
+    const status = __todaysCrewStatus[c.id] || {working:false, jobLine:''};
+    const initials = crewAllMembers(c).filter(Boolean).map(n=>n.trim().charAt(0));
     return `
     <button type="button" class="crew-card" onclick="openCrewModal(${c.id})">
-      <div class="crew-card-name">${c.name}</div>
+      <span class="crew-status-pill ${status.working?'working':'idle'}">${status.working?'● กำลังปฏิบัติงาน':'○ ว่างวันนี้'}</span>
+      <div class="crew-card-name" style="margin-top:9px;">${c.name}</div>
       <div class="crew-card-footer">
         <span class="crew-leader-compact"><span class="crew-leader-tag">หน.</span>${c.leader||'—'}</span>
         <span class="crew-count-badge">${total} คน</span>
       </div>
+      <div class="crew-avatar-stack">${initials.map(i=>`<div class="crew-avatar">${i}</div>`).join('')}</div>
+      <div class="crew-job-line ${status.working?'':'idle'}">${status.working ? status.jobLine : 'ไม่ได้ลงพื้นที่วันนี้'}</div>
     </button>`;
   }).join('');
   el.innerHTML = `<div class="crew-list-grid">${cards}</div>`;
@@ -2974,6 +3232,11 @@ async function saveCrewModal(){
     }
   }
   __hideCrewModalError();
+  const crewSaveBtn = document.getElementById('crew-modal-save-btn');
+  const crewCancelBtn = document.getElementById('crew-modal-cancel-btn');
+  const crewSaveBtnOrigText = crewSaveBtn ? crewSaveBtn.textContent : '';
+  if(crewSaveBtn){ crewSaveBtn.disabled = true; crewSaveBtn.textContent = 'กำลังบันทึก...'; }
+  if(crewCancelBtn) crewCancelBtn.disabled = true;
   try{
     if(__crewDraft.id==null){
       const saved = await apiPost('add', 'field_crews', crewToApi({name, leader, members:[...__crewDraft.members]}));
@@ -2987,20 +3250,33 @@ async function saveCrewModal(){
     }
   }catch(err){
     alert('บันทึกชุดปฏิบัติงานไปยังฐานข้อมูลกลางไม่สำเร็จ: ' + err.message);
+    if(crewSaveBtn){ crewSaveBtn.disabled = false; crewSaveBtn.textContent = crewSaveBtnOrigText; }
+    if(crewCancelBtn) crewCancelBtn.disabled = false;
     return;
   }
+  if(crewSaveBtn){ crewSaveBtn.disabled = false; crewSaveBtn.textContent = crewSaveBtnOrigText; }
+  if(crewCancelBtn) crewCancelBtn.disabled = false;
   closeCrewModal();
   renderAll();
 }
 async function deleteCrewFromModal(){
   if(!__crewDraft || __crewDraft.id==null || !isAdmin()) return;
   if(!confirm('ต้องการลบชุดทำงานนี้หรือไม่?')) return;
+  const crewDeleteBtn = document.getElementById('crew-modal-delete-btn');
+  const crewSaveBtn2 = document.getElementById('crew-modal-save-btn');
+  const crewDeleteBtnOrigText = crewDeleteBtn ? crewDeleteBtn.textContent : '';
+  if(crewDeleteBtn){ crewDeleteBtn.disabled = true; crewDeleteBtn.textContent = 'กำลังบันทึก...'; }
+  if(crewSaveBtn2) crewSaveBtn2.disabled = true;
   try{
     await apiPost('delete', 'field_crews', null, __crewDraft.id);
   }catch(err){
     alert('ลบชุดปฏิบัติงานในฐานข้อมูลกลางไม่สำเร็จ: ' + err.message);
+    if(crewDeleteBtn){ crewDeleteBtn.disabled = false; crewDeleteBtn.textContent = crewDeleteBtnOrigText; }
+    if(crewSaveBtn2) crewSaveBtn2.disabled = false;
     return;
   }
+  if(crewDeleteBtn){ crewDeleteBtn.disabled = false; crewDeleteBtn.textContent = crewDeleteBtnOrigText; }
+  if(crewSaveBtn2) crewSaveBtn2.disabled = false;
   const i = fieldCrews.findIndex(x=>x.id===__crewDraft.id);
   if(i>-1) fieldCrews.splice(i,1);
   closeCrewModal();
@@ -3659,19 +3935,12 @@ function onDwQtyPendingToggle(){
    ============================================================ */
 let __ucEditingNo = null;
 let __ucLaborCount = 0, __ucMatCount = 0, __ucVehCount = 0;
-function populateUcFyFilter(){
-  const el = document.getElementById('uc-fy-filter');
-  if(!el || el.dataset.filled) return;
-  const opts = bmmFyList().map(y=>`<option value="${y}">ปีงบประมาณ ${y}</option>`).join('');
-  el.innerHTML = '<option value="">ทุกปีงบประมาณ</option>' + opts;
-  el.dataset.filled = '1';
-}
 function avgWorkerRate(){
   const rates = getStaffX().filter(s=>s.ptype==='ลูกจ้างชั่วคราว' && s.rate).map(s=>s.rate);
   if(!rates.length) return 0;
   return rates.reduce((a,b)=>a+b,0)/rates.length;
 }
-function openUcForm(no){
+function openUcForm(no, presetCode){
   if(!requireAdmin()) return;
   __ucEditingNo = no || null;
   const rec = no ? unitCostRecords.find(r=>r.no===no) : null;
@@ -3679,9 +3948,23 @@ function openUcForm(no){
   document.getElementById('uc-form-title').textContent = rec ? 'แก้ไขค่างานต่อหน่วย' : '+ เพิ่มค่างานต่อหน่วย';
   document.getElementById('uc-form-subtitle').textContent = rec ? `แก้ไขรหัสงาน ${rec.code} — ${rec.jobName}` : 'กรอกข้อมูลตามแบบฟอร์ม ค่างานต่อหน่วย (UNIT COST)';
   document.getElementById('uc-form-delete-btn').classList.toggle('hidden', !rec);
-  document.getElementById('uc-job').value = rec ? rec.code : '';
-  document.getElementById('uc-job-search').value = rec ? `${rec.code} — ${rec.jobName}` : '';
-  document.getElementById('uc-unit-label').value = rec ? (rec.unit||'') : '';
+  document.getElementById('uc-variant-label').value = rec ? (rec.variantLabel||'') : '';
+  if(rec){
+    document.getElementById('uc-job').value = rec.code;
+    document.getElementById('uc-job-search').value = `${rec.code} — ${rec.jobName}`;
+    document.getElementById('uc-unit-label').value = rec.unit||'';
+  } else if(presetCode){
+    /* เปิดจากแท็บ "ข้อมูลอ้างอิงงาน" — pre-fill ด้วยรหัสงานที่เลือกอยู่ ใช้ jobCodeReference (ข้อมูลจริงจาก backend)
+       แทน bmmJobs (array คงที่ที่ค้นหารหัสงานทั่วไปในไฟล์นี้ใช้ — อาจไม่มีรหัสที่เพิ่มใหม่ล่าสุด) */
+    const job = jobCodeReference.find(j=>j.code===presetCode);
+    document.getElementById('uc-job').value = presetCode;
+    document.getElementById('uc-job-search').value = job ? `${job.code} — ${job.name}` : presetCode;
+    document.getElementById('uc-unit-label').value = job ? (job.unit||'') : '';
+  } else {
+    document.getElementById('uc-job').value = '';
+    document.getElementById('uc-job-search').value = '';
+    document.getElementById('uc-unit-label').value = '';
+  }
   const fySel = document.getElementById('uc-fy');
   fySel.innerHTML = bmmFyList().map(y=>`<option value="${y}">ปีงบประมาณ ${y}</option>`).join('');
   fySel.value = rec ? rec.fy : (+document.getElementById('bmm-fy')?.value || 2569);
@@ -3949,16 +4232,25 @@ async function saveUcEntry(){
   if(!isAdmin()) return;
   const code = document.getElementById('uc-job').value;
   if(!code){ alert('กรุณาเลือกรหัสงานก่อนบันทึก'); return; }
-  const job = bmmJobs.find(j=>j.code===code);
+  /* ชื่องาน: ลองหาจาก jobCodeReference (ข้อมูลจริงจาก backend) ก่อน แล้วค่อย fallback ไป bmmJobs
+     (array คงที่เก่าที่ใช้ค้นหารหัสงานในฟอร์มนี้อยู่ — อาจไม่มีรหัสที่เพิ่มใหม่ล่าสุดผ่านแท็บข้อมูลอ้างอิงงาน) */
+  const jcJob = jobCodeReference.find(j=>j.code===code);
+  const job = jcJob || bmmJobs.find(j=>j.code===code);
   const fy = +document.getElementById('uc-fy').value || 2569;
   const qtyPerDay = +document.getElementById('uc-qtyday').value || 0;
+  const variantLabel = document.getElementById('uc-variant-label').value.trim();
   const laborRows = ucLaborRowsData();
   const materialRows = ucMaterialRowsData();
   const vehicleRows = ucVehicleRowsData();
   const isEdit = !!__ucEditingNo;
   const record = { no: isEdit ? __ucEditingNo : (unitCostRecords.length ? Math.max(...unitCostRecords.map(r=>r.no))+1 : 1),
     __backendId: isEdit ? (unitCostRecords.find(r=>r.no===__ucEditingNo)||{}).__backendId : undefined,
-    code, jobName: job?job.name:code, unit: document.getElementById('uc-unit-label').value||(job?job.unit:''), fy, qtyPerDay, laborRows, materialRows, vehicleRows };
+    code, jobName: job?job.name:code, unit: document.getElementById('uc-unit-label').value||(job?job.unit:''), fy, qtyPerDay, variantLabel, laborRows, materialRows, vehicleRows };
+  const ucSaveBtn = document.getElementById('uc-form-save-btn');
+  const ucCancelBtn = document.getElementById('uc-form-cancel-btn');
+  const ucSaveBtnOrigText = ucSaveBtn ? ucSaveBtn.textContent : '';
+  if(ucSaveBtn){ ucSaveBtn.disabled = true; ucSaveBtn.textContent = 'กำลังบันทึก...'; }
+  if(ucCancelBtn) ucCancelBtn.disabled = true;
   try{
     if(isEdit){
       await apiPost('update', 'unit_cost_records', ucToApi(record));
@@ -3972,8 +4264,12 @@ async function saveUcEntry(){
     }
   }catch(err){
     alert('บันทึกค่างานต่อหน่วยไปยังฐานข้อมูลกลางไม่สำเร็จ: ' + err.message);
+    if(ucSaveBtn){ ucSaveBtn.disabled = false; ucSaveBtn.textContent = ucSaveBtnOrigText; }
+    if(ucCancelBtn) ucCancelBtn.disabled = false;
     return;
   }
+  if(ucSaveBtn){ ucSaveBtn.disabled = false; ucSaveBtn.textContent = ucSaveBtnOrigText; }
+  if(ucCancelBtn) ucCancelBtn.disabled = false;
   closeUcForm();
   renderUcTable();
   showSuccessModal(isEdit ? 'แก้ไขค่างานต่อหน่วยเรียบร้อยแล้ว' : 'บันทึกค่างานต่อหน่วยเรียบร้อยแล้ว');
@@ -4009,35 +4305,17 @@ function ucRecordTotals(r){
   const unitCost = r.qtyPerDay>0 ? total/r.qtyPerDay : 0;
   return {labor, material, fuel, rent, total, unitCost};
 }
-function ucRowHtml(r){
-  const t = ucRecordTotals(r);
-  return `<tr>
-    <td>${r.code}</td>
-    <td class="jc-name" style="max-width:260px;">${r.jobName}</td>
-    <td>${r.fy}</td>
-    <td>${r.unit||'-'}</td>
-    <td>${fmtNum(r.qtyPerDay,2)}</td>
-    <td>${fmtNum(t.labor,2)}</td>
-    <td>${fmtNum(t.material,2)}</td>
-    <td>${fmtNum(t.fuel,2)}</td>
-    <td>${fmtNum(t.rent,2)}</td>
-    <td>${fmtNum(t.total,2)}</td>
-    <td style="font-weight:700;color:var(--navy-800);">${fmtNum(t.unitCost,2)}</td>
-    <td><div style="display:flex;flex-direction:column;gap:4px;align-items:flex-start;"><button class="btn btn-ghost btn-sm" onclick="openUcForm(${r.no})">แก้ไข</button><button class="btn btn-ghost btn-sm" style="color:var(--danger);" onclick="deleteUcEntry(${r.no})">ลบ</button></div></td>
-  </tr>`;
-}
+/* renderUcTable() คงชื่อเดิมไว้เพราะ saveUcEntry()/deleteUcEntry() เรียกอยู่แล้วหลัง CRUD สำเร็จ —
+   ของเดิม render ตารางแบนที่ย้ายออกไปแล้ว ตอนนี้แค่รีเฟรชการ์ดรายละเอียดฝั่งขวาของแท็บ "ข้อมูลอ้างอิงงาน" */
 function renderUcTable(){
-  const el = document.getElementById('uc-body');
-  if(!el) return;
-  populateUcFyFilter();
-  const q = (document.getElementById('uc-search')?.value || '').trim().toLowerCase();
-  const fyFilter = document.getElementById('uc-fy-filter')?.value;
-  let rows = unitCostRecords.slice();
-  if(fyFilter) rows = rows.filter(r=>String(r.fy)===String(fyFilter));
-  if(q) rows = rows.filter(r=> r.code.toLowerCase().includes(q) || (r.jobName||'').toLowerCase().includes(q));
-  rows.sort((a,b)=> a.code.localeCompare(b.code));
-  document.getElementById('uc-summary').textContent = unitCostRecords.length ? `บันทึกไว้ ${rows.length} จาก ${unitCostRecords.length} รายการ` : 'ยังไม่มีข้อมูล';
-  el.innerHTML = rows.map(ucRowHtml).join('') || '<tr><td colspan="12" style="text-align:center;color:var(--ink-400);">ไม่พบรายการ — กด "+ เพิ่มค่างานต่อหน่วย" เพื่อเริ่มบันทึก</td></tr>';
+  renderRefDetail();
+  // ถ้าเพิ่ง "เพิ่มค่างานต่อหน่วยใหม่" จากรหัสงานที่ยังไม่เคยเลือกในลิสต์ซ้าย ให้จุดสถานะซ้ายอัปเดตตามด้วย
+  document.querySelectorAll('.refdata-row').forEach(el=>{
+    const has = unitCostRecords.some(u=>u.code===el.dataset.code);
+    const dot = el.querySelector('.refdata-status-dot');
+    if(dot) dot.classList.toggle('has', has);
+    if(dot) dot.classList.toggle('none', !has);
+  });
 }
 /* ============================================================
    ใบสั่งการรายวัน — หัวข้อรอง (accordion: แรงงาน/วัสดุ/เครื่องจักร/สรุป) และปีงบประมาณอัตโนมัติ
@@ -4397,6 +4675,11 @@ async function proceedSaveDailyEntry(date, code, kmStart, kmEnd, locText, qtyPen
     rent: +document.getElementById('dw-rent').value||0,
     fuel: +document.getElementById('dw-fuel').value||0
   };
+  const dwSaveBtn = document.getElementById('daily-form-save-btn');
+  const dwCancelBtn = document.getElementById('daily-form-cancel-btn');
+  const dwSaveBtnOrigText = dwSaveBtn ? dwSaveBtn.textContent : '';
+  if(dwSaveBtn){ dwSaveBtn.disabled = true; dwSaveBtn.textContent = 'กำลังบันทึก...'; }
+  if(dwCancelBtn) dwCancelBtn.disabled = true;
   try{
     if(isEdit){
       await apiPost('update', 'daily_work_orders', dwoToApi(record));
@@ -4412,13 +4695,16 @@ async function proceedSaveDailyEntry(date, code, kmStart, kmEnd, locText, qtyPen
     const materialTx = partRows.map(p=>({date, itemCode:p.code, kind:'issue', qty:p.qty, vehicle:vehicleLabels.join(', '), crew:staffLabel, note:'เบิกตามใบสั่งการรายวัน', sourceDailyId:record.__backendId}));
     if(fuelTx.length || materialTx.length) await pushToSubsys3(fuelTx, materialTx);
   }catch(err){
-    alert('บันทึกใบสั่งการรายวันไปยังฐานข้อมูลกลางไม่สำเร็จ: ' + err.message);
+    alert('บันทึกใบสั่งการรายวันไปยังฐานข้อมูลกลางไม่สำเร็จ: ' + err.message + '\nกรุณาตรวจสอบในตารางใบสั่งการรายวันก่อนว่าบันทึกไปแล้วหรือยัง ก่อนลองบันทึกซ้ำ');
+    if(dwSaveBtn){ dwSaveBtn.disabled = false; dwSaveBtn.textContent = dwSaveBtnOrigText; }
+    if(dwCancelBtn) dwCancelBtn.disabled = false;
     renderAll();
     return;
   }
   __dwEditingNo = null;
   document.getElementById('daily-form-title').textContent = 'บันทึกใบสั่งการรายวัน';
-  document.getElementById('daily-form-save-btn').textContent = 'บันทึกใบสั่งการ';
+  if(dwSaveBtn){ dwSaveBtn.disabled = false; dwSaveBtn.textContent = 'บันทึกใบสั่งการ'; }
+  if(dwCancelBtn) dwCancelBtn.disabled = false;
   document.getElementById('daily-form-overlay').classList.add('hidden');
   renderAll();
 }
@@ -4449,18 +4735,38 @@ function rollupRows(){
   rows.__pendingCount = pendingCount;
   return rows;
 }
+/* ผลรวมสะสม "ผล" ของรหัสงานนี้ ตั้งแต่ต้นปีงบจนถึงก่อนเดือนที่เลือก (ไม่รวมเดือนที่เลือกเอง —
+   เดือนที่เลือกใช้ตัวเลขสดจาก rollupRows() แทน กันนับซ้ำไม่ว่าจะเคย "บันทึกผลงาน" เดือนนี้ไปแล้วหรือยัง) */
+function bmmPriorMonthsQty(code, fy, month){
+  const seq = DW_LOG_FY_MONTHS.indexOf(month);
+  const priorMonths = seq>0 ? DW_LOG_FY_MONTHS.slice(0, seq) : [];
+  return bmmEntries.filter(e=> e.kind==='actual' && e.fy===fy && e.code===code && priorMonths.includes(e.month))
+    .reduce((s,e)=>s+(e.qty||0), 0);
+}
 function renderRollup(){
   const rows = rollupRows();
-  const pendingNote = rows.__pendingCount ? `<tr><td colspan="8" style="text-align:center;color:#b4801f;background:#fdf2df;">⚠ มีใบสั่งการรายวัน ${rows.__pendingCount} ใบของเดือนนี้ที่ยังติ๊ก "รอปริมาณงาน" — ไม่ถูกรวมในสรุปนี้ กรุณากลับไปกรอกปริมาณงานให้ครบก่อนปิดยอดเดือน</td></tr>` : '';
+  const fy = +document.getElementById('rollup-fy').value || 2569;
+  const month = +document.getElementById('rollup-month').value;
+  const pendingNote = rows.__pendingCount ? `<tr><td colspan="9" style="text-align:center;color:#b4801f;background:#fdf2df;">⚠ มีใบสั่งการรายวัน ${rows.__pendingCount} ใบของเดือนนี้ที่ยังติ๊ก "รอปริมาณงาน" — ไม่ถูกรวมในสรุปนี้ กรุณากลับไปกรอกปริมาณงานให้ครบก่อนปิดยอดเดือน</td></tr>` : '';
   document.getElementById('rollup-body').innerHTML = pendingNote + (rows.length ? rows.map(r=>{
     const job = findJob(r.code);
     const total = r.material+r.labor+r.rent+r.fuel;
+    const planEntry = bmmEntries.find(e=>e.kind==='plan' && e.fy===fy && e.code===r.code);
+    const planQty = planEntry ? (planEntry.qty||0) : 0;
+    const ytdQty = bmmPriorMonthsQty(r.code, fy, month) + (r.qty||0);
+    const pct = planQty>0 ? Math.min(Math.round(ytdQty/planQty*100), 999) : null;
+    const pctCell = pct==null ? '<span style="color:var(--ink-400);">— ไม่มีแผน</span>' : `
+      <div style="display:flex;align-items:center;gap:8px;">
+        <div class="bmm-progress-track" style="width:70px;"><div class="bmm-progress-fill" style="width:${Math.min(pct,100)}%;background:${pct<50?'var(--amber-400)':'var(--orange-500)'};"></div></div>
+        <span style="font-weight:600;color:${pct<50?'var(--orange-600)':'var(--navy-900)'};">${pct}%</span>
+      </div>`;
     return `<tr>
       <td>${r.code}</td><td>${job?job.name:'—'}</td>
       <td>${fmtNum(r.qty,2)}</td><td>${fmtNum(r.material,2)}</td><td>${fmtNum(r.labor,2)}</td>
       <td>${fmtNum(r.rent,2)}</td><td>${fmtNum(r.fuel,2)}</td><td>${fmtNum(total,2)}</td>
+      <td>${pctCell}</td>
     </tr>`;
-  }).join('') : (rows.__pendingCount ? '' : `<tr><td colspan="8" style="text-align:center;color:var(--ink-400);">ยังไม่มีใบสั่งการรายวันของเดือนนี้</td></tr>`));
+  }).join('') : (rows.__pendingCount ? '' : `<tr><td colspan="9" style="text-align:center;color:var(--ink-400);">ยังไม่มีใบสั่งการรายวันของเดือนนี้</td></tr>`));
 }
 async function commitRollupToActual(){
   if(!isAdmin()) return;
@@ -4469,6 +4775,9 @@ async function commitRollupToActual(){
   if(!rows.length){ alert('ไม่มีข้อมูลใบสั่งการรายวันของเดือนที่เลือกให้สรุป'); return; }
   const fy = +document.getElementById('rollup-fy').value || 2569;
   const month = +document.getElementById('rollup-month').value;
+  const rollupBtn = document.getElementById('rollup-commit-btn');
+  const rollupBtnOrigText = rollupBtn ? rollupBtn.textContent : '';
+  if(rollupBtn){ rollupBtn.disabled = true; rollupBtn.textContent = 'กำลังบันทึก...'; }
   try{
     for(const r of rows){
       const job = findJob(r.code);
@@ -4490,10 +4799,12 @@ async function commitRollupToActual(){
       }
     }
   }catch(err){
-    alert('บันทึกผลงานบำรุงปกติไปยังฐานข้อมูลกลางไม่สำเร็จ (บางรายการอาจบันทึกไปแล้ว): ' + err.message);
+    alert('บันทึกผลงานบำรุงปกติไปยังฐานข้อมูลกลางไม่สำเร็จ (บางรายการอาจบันทึกไปแล้ว): ' + err.message + '\nกรุณาตรวจสอบในตารางแผน/ผลบำรุงปกติก่อนว่าบันทึกไปแล้วหรือยัง ก่อนลองบันทึกซ้ำ');
+    if(rollupBtn){ rollupBtn.disabled = false; rollupBtn.textContent = rollupBtnOrigText; }
     renderAll();
     return;
   }
+  if(rollupBtn){ rollupBtn.disabled = false; rollupBtn.textContent = rollupBtnOrigText; }
   showSuccessModal('บันทึกผลบำรุงปกติของเดือน '+monthLabel(month)+' '+fy+' เรียบร้อย');
   renderAll();
 }
@@ -4501,6 +4812,7 @@ async function commitRollupToActual(){
 /* ============================================================
    EMERGENCY
    ============================================================ */
+let __emUpdating = new Set();
 function renderEm(filter){
   filter = filter || document.querySelector('[data-emtab].active')?.dataset.emtab || 'ongoing';
   const q = (document.getElementById('em-search')?.value || '').toLowerCase();
@@ -4508,6 +4820,7 @@ function renderEm(filter){
   if(q) rows = rows.filter(e=> e.loc.toLowerCase().includes(q) || e.type.toLowerCase().includes(q));
   document.getElementById('em-body').innerHTML = rows.map(e=>{
     const nd = emNextDue(e);
+    const pending = __emUpdating.has(e.no);
     return `<tr>
       <td>${e.no}</td>
       <td>${e.type}</td>
@@ -4516,18 +4829,21 @@ function renderEm(filter){
       <td>${fmtDateTimeShort(e.lastUpdate)}</td>
       <td>${e.status==='ongoing' ? (nd.overdue?`<span class="hazard">${nd.text}</span>`:`<span class="pill pill-neutral">${nd.text}</span>`) : '<span class="pill pill-neutral">—</span>'}</td>
       <td>${e.status==='ongoing' ? '<span class="pill pill-warn">กำลังดำเนินการ</span>' : '<span class="pill pill-ok">ยุติแล้ว</span>'}</td>
-      <td>${isAdmin() && e.status==='ongoing' ? `<button class="btn btn-ghost btn-sm" onclick="updateEm(${e.no})">อัปเดตสถานการณ์</button><button class="btn btn-ok btn-sm" onclick="endEm(${e.no})">ยุติเหตุการณ์</button>` : ''}</td>
+      <td>${isAdmin() && e.status==='ongoing' ? `<button class="btn btn-ghost btn-sm" ${pending?'disabled':''} onclick="updateEm(${e.no})">${pending?'กำลังบันทึก...':'อัปเดตสถานการณ์'}</button><button class="btn btn-ok btn-sm" ${pending?'disabled':''} onclick="endEm(${e.no})">ยุติเหตุการณ์</button>` : ''}</td>
     </tr>`;
   }).join('');
 }
 async function updateEm(no){
-  if(!isAdmin()) return;
+  if(!isAdmin() || __emUpdating.has(no)) return;
   const e=emergencies.find(x=>x.no===no); if(!e) return;
   const before = e.lastUpdate;
   e.lastUpdate = TODAY.toISOString().slice(0,16).replace('T',' ');
+  __emUpdating.add(no);
   renderAll();
   try{ await apiPost('update', 'emergencies', emToApi(e)); }
-  catch(err){ e.lastUpdate = before; alert('บันทึกอัปเดตสถานการณ์ไปยังฐานข้อมูลกลางไม่สำเร็จ: ' + err.message); renderAll(); }
+  catch(err){ e.lastUpdate = before; alert('บันทึกอัปเดตสถานการณ์ไปยังฐานข้อมูลกลางไม่สำเร็จ: ' + err.message); }
+  __emUpdating.delete(no);
+  renderAll();
 }
 async function endEm(no){
   if(!isAdmin()) return;
@@ -4550,13 +4866,22 @@ async function saveEm(){
     type: document.getElementById('ef2-type').value,
     loc: routeLabelPrefix('ef2-route') + loc, start: startVal.replace('T',' '), lastUpdate: startVal.replace('T',' '), status:'ongoing'
   };
+  const emSaveBtn = document.getElementById('em-form-save-btn');
+  const emCancelBtn = document.getElementById('em-form-cancel-btn');
+  const emSaveBtnOrigText = emSaveBtn ? emSaveBtn.textContent : '';
+  if(emSaveBtn){ emSaveBtn.disabled = true; emSaveBtn.textContent = 'กำลังบันทึก...'; }
+  if(emCancelBtn) emCancelBtn.disabled = true;
   try{
     const saved = await apiPost('add', 'emergencies', emToApi(e));
     emergencies.push(emFromApi(saved));
   }catch(err){
     alert('บันทึกเหตุฉุกเฉินไปยังฐานข้อมูลกลางไม่สำเร็จ: ' + err.message);
+    if(emSaveBtn){ emSaveBtn.disabled = false; emSaveBtn.textContent = emSaveBtnOrigText; }
+    if(emCancelBtn) emCancelBtn.disabled = false;
     return;
   }
+  if(emSaveBtn){ emSaveBtn.disabled = false; emSaveBtn.textContent = emSaveBtnOrigText; }
+  if(emCancelBtn) emCancelBtn.disabled = false;
   document.getElementById('em-form-overlay').classList.add('hidden');
   renderAll();
 }
@@ -4572,6 +4897,7 @@ function renderAll(){
   populateLogin();
   renderRoutes();
   renderPermits(); renderEnc(); renderRoutine(); renderEm();
+  renderJobCodeRef();
 }
 
 /* ============================================================

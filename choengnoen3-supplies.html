@@ -1644,8 +1644,8 @@ function receiveFormHtml(){
     ${itemModalRecvType==='fuel' ? fuelRecvFieldsHtml() : materialRecvFieldsHtml()}
     <div class="f-row"><label>หมายเหตุ (ถ้ามี)</label><input type="text" id="recv-note" placeholder="ไม่บังคับ"></div>
     <div class="toolbar" style="justify-content:flex-end;margin-top:6px;">
-      <button class="btn btn-ghost" onclick="closeItemModal()">ยกเลิก</button>
-      <button class="btn btn-primary" onclick="submitReceiveForm()">💾 บันทึกรับเข้า</button>
+      <button class="btn btn-ghost" id="recv-cancel-btn" onclick="closeItemModal()">ยกเลิก</button>
+      <button class="btn btn-primary" id="recv-save-btn" onclick="submitReceiveForm()">💾 บันทึกรับเข้า</button>
     </div>`;
 }
 function onRecvKindBtn(el){
@@ -1778,6 +1778,10 @@ async function submitReceiveForm(){
       entries.push({fuelType:r.fuelType, qty, price, total: qty*price});
     }
     if(!entries.length){ showAlertModal('กรุณากรอกปริมาณที่เบิกอย่างน้อย 1 ชนิด (ดีเซลหรือเบนซิน)'); return; }
+    const recvSaveBtn = document.getElementById('recv-save-btn'), recvCancelBtn = document.getElementById('recv-cancel-btn');
+    const recvSaveLabel = recvSaveBtn ? recvSaveBtn.textContent : '';
+    if(recvSaveBtn){ recvSaveBtn.disabled = true; recvSaveBtn.textContent = 'กำลังบันทึก...'; }
+    if(recvCancelBtn) recvCancelBtn.disabled = true;
     try{
       for(const en of entries){
         const noteParts = [];
@@ -1790,7 +1794,9 @@ async function submitReceiveForm(){
         fuelTransactions.push(fuelTxFromApi(saved));
       }
     }catch(err){
-      showAlertModal('บันทึกรับน้ำมันเข้าคลังไปยังฐานข้อมูลกลางไม่สำเร็จ: ' + err.message);
+      showAlertModal('บันทึกรับน้ำมันเข้าคลังไปยังฐานข้อมูลกลางไม่สำเร็จ: ' + err.message + '\nกรุณาตรวจสอบในบัญชีน้ำมันก่อนว่าบันทึกไปแล้วหรือยัง ก่อนลองบันทึกซ้ำ');
+      if(recvSaveBtn){ recvSaveBtn.disabled = false; recvSaveBtn.textContent = recvSaveLabel; }
+      if(recvCancelBtn) recvCancelBtn.disabled = false;
       renderAll();
       return;
     }
@@ -1813,6 +1819,10 @@ async function submitReceiveForm(){
     entries.push({code, qty, price, total: qty*price});
   }
   if(!entries.length){ showAlertModal('กรุณาเพิ่มรายการวัสดุอย่างน้อย 1 รายการ'); return; }
+  const recvSaveBtn = document.getElementById('recv-save-btn'), recvCancelBtn = document.getElementById('recv-cancel-btn');
+  const recvSaveLabel = recvSaveBtn ? recvSaveBtn.textContent : '';
+  if(recvSaveBtn){ recvSaveBtn.disabled = true; recvSaveBtn.textContent = 'กำลังบันทึก...'; }
+  if(recvCancelBtn) recvCancelBtn.disabled = true;
   try{
     for(const en of entries){
       const noteParts = [];
@@ -1825,7 +1835,9 @@ async function submitReceiveForm(){
       materialTransactions.push(matTxFromApi(saved));
     }
   }catch(err){
-    showAlertModal('บันทึกรับพัสดุเข้าคลังไปยังฐานข้อมูลกลางไม่สำเร็จ: ' + err.message);
+    showAlertModal('บันทึกรับพัสดุเข้าคลังไปยังฐานข้อมูลกลางไม่สำเร็จ: ' + err.message + '\nกรุณาตรวจสอบในตารางพัสดุคงคลังก่อนว่าบันทึกไปแล้วหรือยัง ก่อนลองบันทึกซ้ำ');
+    if(recvSaveBtn){ recvSaveBtn.disabled = false; recvSaveBtn.textContent = recvSaveLabel; }
+    if(recvCancelBtn) recvCancelBtn.disabled = false;
     renderAll();
     return;
   }
@@ -1873,8 +1885,8 @@ function newMaterialFormHtml(){
       <div class="f-row"><label>ยอดที่ควรจัดซื้อ (จุดสั่งซื้อ)</label><input type="number" min="0" step="0.01" id="nm-reorder" value="0"></div>
     </div>
     <div class="toolbar" style="justify-content:flex-end;margin-top:6px;">
-      <button class="btn btn-ghost" onclick="closeItemModal()">ยกเลิก</button>
-      <button class="btn btn-primary" onclick="submitNewMaterialForm()">💾 เพิ่มรายการ</button>
+      <button class="btn btn-ghost" id="nm-cancel-btn" onclick="closeItemModal()">ยกเลิก</button>
+      <button class="btn btn-primary" id="nm-save-btn" onclick="submitNewMaterialForm()">💾 เพิ่มรายการ</button>
     </div>`;
 }
 async function submitNewMaterialForm(){
@@ -1887,10 +1899,16 @@ async function submitNewMaterialForm(){
   if(!code || materials.some(m=>m.code===code)){ showAlertModal('เกิดข้อผิดพลาดภายในระบบ กรุณาปิดหน้าต่างนี้แล้วลองใหม่อีกครั้ง'); return; }
   if(!name){ showAlertModal('กรุณากรอกชื่อรายการวัสดุ'); return; }
   const m = {code, name, unit, accountType, stock:0, reorder};
+  const nmSaveBtn = document.getElementById('nm-save-btn'), nmCancelBtn = document.getElementById('nm-cancel-btn');
+  const nmSaveLabel = nmSaveBtn ? nmSaveBtn.textContent : '';
+  if(nmSaveBtn){ nmSaveBtn.disabled = true; nmSaveBtn.textContent = 'กำลังบันทึก...'; }
+  if(nmCancelBtn) nmCancelBtn.disabled = true;
   try{
     await apiPost('add', 'materials', materialToApi(m));
   }catch(err){
-    showAlertModal('เพิ่มรายการพัสดุไปยังฐานข้อมูลกลางไม่สำเร็จ: ' + err.message);
+    showAlertModal('เพิ่มรายการพัสดุไปยังฐานข้อมูลกลางไม่สำเร็จ: ' + err.message + '\nกรุณาตรวจสอบในตารางพัสดุคงคลังก่อนว่าบันทึกไปแล้วหรือยัง ก่อนลองบันทึกซ้ำ');
+    if(nmSaveBtn){ nmSaveBtn.disabled = false; nmSaveBtn.textContent = nmSaveLabel; }
+    if(nmCancelBtn) nmCancelBtn.disabled = false;
     return;
   }
   materials.push(m);
@@ -2027,7 +2045,7 @@ function openVehicleModal(id){
       <input type="number" step="1" min="0" class="edit-input" id="vm-maxkm" value="${v&&v.maxKmPerDay!=null?v.maxKmPerDay:''}" placeholder="300"></div>
     <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px;">
       ${v?`<button type="button" class="btn btn-danger" onclick="removeVehicle(${v.id})">ลบรายการนี้</button>`:''}
-      <button type="button" class="btn btn-primary" onclick="saveVehicleModal()">บันทึก</button>
+      <button type="button" class="btn btn-primary" id="veh-save-btn" onclick="saveVehicleModal()">บันทึก</button>
     </div>`;
   document.getElementById('veh-modal-overlay').classList.remove('hidden');
 }
@@ -2054,6 +2072,9 @@ async function saveVehicleModal(){
   if(!typeName){ showAlertModal('กรุณากรอกชื่อ/ประเภทเครื่องจักร-รถ'); return; }
   if(!code){ showAlertModal('กรุณากรอกรหัส/เลขทะเบียน'); return; }
   const newLabel = operator ? `${typeName} (${code}) — ${operator}` : `${typeName} (${code})`;
+  const vehSaveBtn = document.getElementById('veh-save-btn');
+  const vehSaveLabel = vehSaveBtn ? vehSaveBtn.textContent : '';
+  if(vehSaveBtn){ vehSaveBtn.disabled = true; vehSaveBtn.textContent = 'กำลังบันทึก...'; }
   try{
     if(id){
       const v = vehicles.find(x=>x.id===+id);
@@ -2070,7 +2091,8 @@ async function saveVehicleModal(){
       vehicles.push(vehicleFromApi(saved));
     }
   }catch(err){
-    showAlertModal('บันทึกทะเบียนเครื่องจักร/รถไปยังฐานข้อมูลกลางไม่สำเร็จ: ' + err.message);
+    showAlertModal('บันทึกทะเบียนเครื่องจักร/รถไปยังฐานข้อมูลกลางไม่สำเร็จ: ' + err.message + '\nกรุณาตรวจสอบในทะเบียนเครื่องจักร/รถก่อนว่าบันทึกไปแล้วหรือยัง ก่อนลองบันทึกซ้ำ');
+    if(vehSaveBtn){ vehSaveBtn.disabled = false; vehSaveBtn.textContent = vehSaveLabel; }
     return;
   }
   closeVehicleModal();
@@ -2215,7 +2237,7 @@ function openVehReqModal(id){
     <div id="vr-approver-hint" style="font-size:12px;color:var(--ink-400);margin-bottom:12px;"></div>
     <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px;">
       ${r?`<button type="button" class="btn btn-danger" onclick="removeVehReq(${r.id})">ลบรายการนี้</button>`:''}
-      <button type="button" class="btn btn-primary" onclick="saveVehReqModal()">บันทึก</button>
+      <button type="button" class="btn btn-primary" id="vr-save-btn" onclick="saveVehReqModal()">บันทึก</button>
     </div>`;
   document.getElementById('vehreq-modal-overlay').classList.remove('hidden');
   renderVrRouteChips();
@@ -2500,6 +2522,9 @@ function saveVehReqModal(){
   if(!requestDate){ showAlertModal('กรุณาระบุวันที่ขอใช้'); return; }
   const data = {requestDate, requesterName, requesterPosition, passengers, routeNos, purpose, dateFrom, dateTo, vehicleLabel, driverName, mileageStart, mileageEnd, approverName};
   const doSaveVehReq = async function(){
+    const vrSaveBtn = document.getElementById('vr-save-btn');
+    const vrSaveLabel = vrSaveBtn ? vrSaveBtn.textContent : '';
+    if(vrSaveBtn){ vrSaveBtn.disabled = true; vrSaveBtn.textContent = 'กำลังบันทึก...'; }
     try{
       if(id){
         const r = vehicleRequests.find(x=>x.id===+id);
@@ -2512,7 +2537,8 @@ function saveVehReqModal(){
         vehicleRequests.push(vehReqFromApi(saved));
       }
     }catch(err){
-      showAlertModal('บันทึกใบขอใช้รถไปยังฐานข้อมูลกลางไม่สำเร็จ: ' + err.message);
+      showAlertModal('บันทึกใบขอใช้รถไปยังฐานข้อมูลกลางไม่สำเร็จ: ' + err.message + '\nกรุณาตรวจสอบในตารางใบขอใช้รถก่อนว่าบันทึกไปแล้วหรือยัง ก่อนลองบันทึกซ้ำ');
+      if(vrSaveBtn){ vrSaveBtn.disabled = false; vrSaveBtn.textContent = vrSaveLabel; }
       return;
     }
     closeVehReqModal();
@@ -3137,6 +3163,9 @@ async function saveMaterialEdits(){
     }
     rows.push({m, adjustTx});
   });
+  const matSaveBtn0 = document.getElementById('mat-save-btn');
+  const matSaveLabel0 = matSaveBtn0 ? matSaveBtn0.textContent : '';
+  if(matSaveBtn0){ matSaveBtn0.disabled = true; matSaveBtn0.textContent = 'กำลังบันทึก...'; }
   try{
     for(const {m, adjustTx} of rows){
       await apiPost('update', 'materials', materialToApi(m));
@@ -3146,10 +3175,11 @@ async function saveMaterialEdits(){
       }
     }
   }catch(err){
-    showAlertModal('บันทึกการแก้ไขรายการพัสดุไปยังฐานข้อมูลกลางไม่สำเร็จ: ' + err.message);
+    showAlertModal('บันทึกการแก้ไขรายการพัสดุไปยังฐานข้อมูลกลางไม่สำเร็จ: ' + err.message + '\nกรุณาตรวจสอบในตารางพัสดุคงคลังก่อนว่าบันทึกไปแล้วหรือยัง ก่อนลองบันทึกซ้ำ');
   }
   matEditMode = false;
   const eb=document.getElementById('mat-edit-btn'), sb=document.getElementById('mat-save-btn');
+  if(sb){ sb.disabled = false; sb.textContent = matSaveLabel0; }
   if(eb) eb.classList.remove('hidden');
   if(sb) sb.classList.add('hidden');
   renderAll();
@@ -3797,7 +3827,7 @@ function openMachineryLogModal(vehicle, date){
     <div class="foot-note" style="margin:6px 0 0;padding:8px 0 0;border-top:1px solid var(--line);">น้ำมันเชื้อเพลิงที่เติมและมิเตอร์เลิกงานของวันนี้เชื่อมโยงจากตาราง พ.1-03 อัตโนมัติ — ดีเซล ${fmtNum(fuelForVehicleDate(vehicle,date,'ดีเซล'),1)} ล. · เบนซิน ${fmtNum(fuelForVehicleDate(vehicle,date,'เบนซิน'),1)} ล. · มิเตอร์เลิกงาน ${meterForVehicleDate(vehicle,date)!=null?meterForVehicleDate(vehicle,date):'—'}</div>
     <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px;">
       ${l?`<button type="button" class="btn btn-danger" onclick="removeMachineryLog(${l.id})">ลบรายการนี้</button>`:''}
-      <button type="button" class="btn btn-primary" onclick="saveMachineryLogModal()">บันทึก</button>
+      <button type="button" class="btn btn-primary" id="em-save-btn" onclick="saveMachineryLogModal()">บันทึก</button>
     </div>`;
   document.getElementById('ec1w-modal-overlay').classList.remove('hidden');
   validateRouteKm('em-route1','em-km1','em-msg1');
@@ -3826,6 +3856,9 @@ async function saveMachineryLogModal(){
     note:(document.getElementById('em-note').value||'').trim()
   };
   const existing = ec1wFindLog(vehicle, date);
+  const emSaveBtn = document.getElementById('em-save-btn');
+  const emSaveLabel = emSaveBtn ? emSaveBtn.textContent : '';
+  if(emSaveBtn){ emSaveBtn.disabled = true; emSaveBtn.textContent = 'กำลังบันทึก...'; }
   try{
     if(existing){
       Object.assign(existing, entry, {id:existing.id});
@@ -3835,7 +3868,8 @@ async function saveMachineryLogModal(){
       machineryLogs.push(machineryLogFromApi(saved));
     }
   }catch(err){
-    showAlertModal('บันทึก EC1-W ไปยังฐานข้อมูลกลางไม่สำเร็จ: ' + err.message);
+    showAlertModal('บันทึก EC1-W ไปยังฐานข้อมูลกลางไม่สำเร็จ: ' + err.message + '\nกรุณาตรวจสอบในตาราง EC1-W ก่อนว่าบันทึกไปแล้วหรือยัง ก่อนลองบันทึกซ้ำ');
+    if(emSaveBtn){ emSaveBtn.disabled = false; emSaveBtn.textContent = emSaveLabel; }
     return;
   }
   closeMachineryLogModal();
