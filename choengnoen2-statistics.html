@@ -4514,9 +4514,26 @@ document.addEventListener('click', function(e){
   if(!e.target.closest || !e.target.closest('.row-menu')) closeDwRowMenus();
 });
 /* ลบใบสั่งการรายวัน — ต้องลบธุรกรรมน้ำมัน/วัสดุที่เชื่อมโยงไว้ในระบบรองที่ 3 (พ.1-02/พ.1-03) ด้วยเสมอ ไม่เช่นนั้นตัวเลขจะยังค้างอยู่ในรายงานแม้ลบใบสั่งการนี้ไปแล้ว */
+/* สถานะล็อกเดือนของบัญชี พ.1-02/พ.1-03 (2569-09-19) — ใบสั่งการตัดสต็อกวัสดุ/น้ำมันเข้าบัญชีเหล่านั้นอัตโนมัติ
+   จึงต้องกันไม่ให้บันทึก/แก้/ลบใบสั่งการของเดือนที่ถูกล็อกแล้ว (ล็อก/ปลดล็อกทำที่หน้ารายงาน พ.1-02/03 ของระบบ 3) */
+let ledgerLocks = {};
+async function loadLedgerLocksFromApi(){
+  try{
+    (await apiGet('ledger_locks')).forEach(r=>{ ledgerLocks[r.monthKey] = true; });
+  }catch(err){
+    console.error('โหลดสถานะล็อกเดือนจากฐานข้อมูลกลางไม่สำเร็จ', err);
+  }
+}
+function blockIfMonthLocked(dateStr){
+  const mk = String(dateStr||'').slice(0,7);
+  if(!ledgerLocks[mk]) return false;
+  alert(`เดือนของวันที่ ${dateStr} ถูกล็อกบัญชีพัสดุ/น้ำมัน (พ.1-02/พ.1-03) แล้ว — บันทึก/แก้ไข/ลบใบสั่งการของเดือนนี้ไม่ได้\nหากจำเป็นต้องแก้ไข ให้เจ้าของระบบปลดล็อกเดือนนี้ที่หน้ารายงาน พ.1-02/พ.1-03 ในระบบพัสดุก่อน`);
+  return true;
+}
 function deleteDailyEntry(no){
   if(!isAdmin()) return;
   const d = dailyWorkOrders.find(x=>x.no===no); if(!d) return;
+  if(blockIfMonthLocked(d.date)) return;
   showConfirmModal(
     `ยืนยันลบใบสั่งการรายวัน\n${fmtDateShort(d.date)} (รหัสงาน ${d.code})?`,
     'รายการน้ำมัน/วัสดุที่เบิกตามใบสั่งการนี้ในระบบพัสดุ/น้ำมัน (พ.1-02/พ.1-03) จะถูกลบไปด้วย',
@@ -4668,6 +4685,8 @@ async function removeSubsys3TxBySource(no){
 }
 function saveDailyEntry(){
   if(!isAdmin()) return;
+  if(blockIfMonthLocked(document.getElementById('dw-date').value)) return;
+  if(__dwEditingNo!=null){ const old = dailyWorkOrders.find(x=>x.no===__dwEditingNo); if(old && blockIfMonthLocked(old.date)) return; }
   const code = document.getElementById('dw-job').value;
   if(!code){ alert('กรุณาเลือกรหัสงานจากรายการค้นหา'); return; }
   const kmStart = document.getElementById('dw-loc').value.trim();
@@ -4999,6 +5018,7 @@ renderAll();
   await loadEncroachmentsFromApi();
   await loadEmergenciesFromApi();
   await loadSubsys3RefDataFromApi();
+  await loadLedgerLocksFromApi();
   // เลข id ที่ backend สร้างให้ controlled_routes/field_crews เป็น timestamp (เช่น RTE-...) ไม่ใช่ตัวเลขล้วน
   // แต่โค้ดเดิมยังมีบางจุด (rf-id ในฟอร์ม, การเทียบ id) ที่คาดว่า __routesNextId/__crewNextId เป็นตัวเลขถัดไปสำหรับ
   // "รายการที่ยังไม่เคยส่ง backend" เท่านั้น (กรณี id เป็น undefined ตอนสร้างใหม่) — ตั้งค่าเริ่มต้นให้สูงกว่า id ตัวเลข

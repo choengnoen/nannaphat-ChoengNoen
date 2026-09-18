@@ -399,6 +399,21 @@
   .fc-bar-track{height:6px;border-radius:4px;background:rgba(255,255,255,.18);margin-top:14px;overflow:hidden;}
   .fc-bar-fill{height:100%;background:#fff;border-radius:4px;}
   .fc-bar-label{font-size:10.5px;color:rgba(255,255,255,.75);margin-top:6px;}
+  .fuel-kpi-wrap{padding:14px 20px 4px;display:flex;flex-direction:column;gap:10px;}
+  .fuel-kpi-row{display:grid;grid-template-columns:110px repeat(5,minmax(0,1fr));gap:10px;align-items:stretch;}
+  .fk-title{font-family:'Kanit';font-size:14px;font-weight:600;color:var(--navy-900);display:flex;align-items:center;}
+  .fk-card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 14px;}
+  .fk-card .fk-l{font-size:11.5px;color:var(--ink-400);}
+  .fk-card .fk-v{font-family:'Kanit';font-size:21px;font-weight:600;color:var(--navy-900);font-variant-numeric:tabular-nums;}
+  .fk-card .fk-v small{font-size:11.5px;font-weight:500;color:var(--ink-400);}
+  .fk-card .fk-s{font-size:11px;margin-top:1px;}
+  .fk-navy{background:var(--navy-900);border-color:var(--navy-900);}
+  .fk-navy .fk-l{color:rgba(255,255,255,.75);} .fk-navy .fk-v,.fk-navy .fk-v small{color:#fff;}
+  .fk-ok{background:var(--success-bg);border-color:transparent;} .fk-ok .fk-l,.fk-ok .fk-v,.fk-ok .fk-s{color:var(--success);}
+  .fk-watch{background:#fdf1de;border-color:transparent;} .fk-watch .fk-l,.fk-watch .fk-v,.fk-watch .fk-s{color:#a3660a;}
+  .fk-low{background:var(--danger-bg);border-color:transparent;} .fk-low .fk-l,.fk-low .fk-v,.fk-low .fk-s{color:var(--danger);}
+  #rep-fuel-grid-wrap td.daycell input[value]:not([value=""]){background:#f6faf7;font-weight:600;}
+  #rep-fuel-grid-wrap tbody tr:hover td{background-color:#f7f9fb;}
   .fc-reorder-row{font-size:11.5px;color:rgba(255,255,255,.75);margin-top:10px;display:flex;align-items:center;gap:6px;}
   .fc-reorder-input{width:70px;padding:3px 6px;border-radius:6px;border:1px solid rgba(255,255,255,.35);background:rgba(255,255,255,.12);color:#fff;font-family:'Sarabun';font-size:12px;}
   .fc-reorder-input::placeholder{color:rgba(255,255,255,.5);}
@@ -531,7 +546,8 @@
 
       <div class="sec-tabs no-print" id="sec-tabs">
         <div class="sec-tab active" data-sec="master">ทะเบียนพัสดุ / น้ำมันเชื้อเพลิง</div>
-        <div class="sec-tab" data-sec="report">พ.1-02 / พ.1-03</div>
+        <div class="sec-tab" data-sec="report">พ.1-02 วัสดุ</div>
+        <div class="sec-tab" data-sec="reportfuel">พ.1-03 น้ำมัน</div>
         <div class="sec-tab" data-sec="machinery">EC 1-W</div>
         <div class="sec-tab" data-sec="vehicles">ทะเบียนเครื่องจักร/ยานพาหนะ</div>
       </div>
@@ -599,6 +615,7 @@
                 <option value="4">เม.ย.</option><option value="5">พ.ค.</option><option value="6">มิ.ย.</option>
                 <option value="7" selected>ก.ค.</option><option value="8">ส.ค.</option><option value="9">ก.ย.</option>
               </select>
+              <span class="rep-lock-ctl" style="display:flex;align-items:center;gap:6px;flex:none;"></span>
             </div>
           </div>
           <div class="toolbar" style="padding:14px 20px 0;">
@@ -627,7 +644,10 @@
             <div class="foot-note" id="rep-mat-foot" style="display:none;background:transparent;border-top:none;">คลิกช่องตัวเลข เพื่อกรอก/แก้ไขจำนวนที่เบิกของวันนั้นๆตามใบเบิก-จ่ายพัสดุตัวจริง , การรับพัสดุเข้าคลังให้ใช้ปุ่ม "+ รับพัสดุ/น้ำมันเข้าคลัง" ที่แท็บทะเบียนพัสดุ</div>
           </div>
         </div>
+      </div>
 
+      <!-- ============ REPORT: พ.1-03 น้ำมัน (แท็บแยกจาก พ.1-02 ตั้งแต่ 2569-09-19) ============ -->
+      <div class="panel" id="panel-reportfuel">
         <div class="section">
           <div class="section-head">
             <h2><span class="section-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#f2a930" stroke-width="2"><path d="M6 3h8v18H6z"/><path d="M14 8h2a2 2 0 0 1 2 2v6a2 2 0 0 0 2 2"/><circle cx="17" cy="7" r="1.4"/></svg></span>
@@ -641,6 +661,7 @@
                 <option value="4">เม.ย.</option><option value="5">พ.ค.</option><option value="6">มิ.ย.</option>
                 <option value="7" selected>ก.ค.</option><option value="8">ส.ค.</option><option value="9">ก.ย.</option>
               </select>
+              <span class="rep-lock-ctl" style="display:flex;align-items:center;gap:6px;flex:none;"></span>
             </div>
           </div>
           <div class="toolbar" style="padding:14px 20px 0;">
@@ -664,6 +685,7 @@
             <button class="dc-btn dc-clear" onclick="discardDraftReport('fuel')">ล้างการแก้ไข</button>
             <button class="dc-btn dc-save" onclick="reviewDraftReport('fuel')">💾 บันทึก</button>
           </div>
+          <div id="rep-fuel-kpi" class="fuel-kpi-wrap"></div>
           <div id="rep-fuel-grid-wrap" class="grid-wrap"></div>
           <div class="legend-block" id="rep-fuel-foot-block">
             <button type="button" class="legend-dot-btn no-print" id="rep-fuel-foot-toggle" onclick="__toggleNote('rep-fuel-foot',this)" aria-expanded="false" title="แสดง/ซ่อนหมายเหตุ">⋮</button>
@@ -1371,15 +1393,20 @@ function cancelFuelReceiveEdit(){
   __fuelHistEditId = null;
   renderFuelHistoryModal();
 }
-function saveFuelReceiveEdit(id){
+/* แก้/ลบรายการรับน้ำมันในประวัติ — เดิมแก้แค่ในหน่วยความจำ (ไม่เรียก backend) รีเฟรชหน้าแล้วกลับเป็นค่าเดิม
+   แก้ 2569-09-19 ให้บันทึกลง fuel_transactions จริง ถ้าไม่สำเร็จคืนค่าเดิมกลับ */
+async function saveFuelReceiveEdit(id){
   if(!isAdmin()) return;
   const t = fuelTransactions.find(x=>x.id===id);
   if(!t) return;
+  if(blockIfMonthLocked(t.date)) return;
   const date = document.getElementById('fh-edit-date')?.value;
+  if(date && blockIfMonthLocked(date)) return;
   const ref = (document.getElementById('fh-edit-ref')?.value||'').trim();
   const liters = parseFloat(document.getElementById('fh-edit-liters')?.value);
   const price = parseFloat(document.getElementById('fh-edit-price')?.value) || 0;
   if(!date || isNaN(liters) || liters<=0){ showAlertModal('กรุณากรอกวันที่และปริมาณให้ถูกต้อง'); return; }
+  const before = Object.assign({}, t);
   t.date = date;
   t.liters = liters;
   t.ref = ref || undefined;
@@ -1389,13 +1416,30 @@ function saveFuelReceiveEdit(id){
   if(ref) noteParts.push('เลขที่ใบรับ '+ref);
   if(price) noteParts.push('ราคา '+fmtNum(price,2)+' บาท/หน่วย รวม '+fmtNum(liters*price,2)+' บาท');
   t.note = noteParts.length ? noteParts.join(' · ') : 'รับเข้าคลัง';
+  try{
+    await apiPost('update', 'fuel_transactions', fuelTxToApi(t));
+  }catch(err){
+    Object.assign(t, before);
+    showAlertModal('บันทึกการแก้ไขรายการรับน้ำมันไปยังฐานข้อมูลกลางไม่สำเร็จ: ' + err.message);
+    renderAll();
+    renderFuelHistoryModal();
+    return;
+  }
   __fuelHistEditId = null;
   renderAll();
   renderFuelHistoryModal();
 }
 function deleteFuelReceiveRow(id){
   if(!isAdmin()) return;
-  showConfirmModal('ยืนยันลบรายการ', 'ยืนยันลบรายการรับเข้านี้? การลบไม่สามารถย้อนกลับได้', 'ลบรายการ', function(){
+  const tx = fuelTransactions.find(t=>t.id===id);
+  if(tx && blockIfMonthLocked(tx.date)) return;
+  showConfirmModal('ยืนยันลบรายการ', 'ยืนยันลบรายการรับเข้านี้? การลบไม่สามารถย้อนกลับได้', 'ลบรายการ', async function(){
+    try{
+      await apiPost('delete', 'fuel_transactions', null, id);
+    }catch(err){
+      showAlertModal('ลบรายการรับน้ำมันในฐานข้อมูลกลางไม่สำเร็จ: ' + err.message);
+      return;
+    }
     fuelTransactions = fuelTransactions.filter(t=>t.id!==id);
     renderAll();
     renderFuelHistoryModal();
@@ -1796,6 +1840,7 @@ async function submitReceiveForm(){
   if(!isAdmin()) return;
   const ref = (document.getElementById('recv-ref')?.value||'').trim();
   const date = document.getElementById('recv-date')?.value || toLocalISODate(TODAY);
+  if(blockIfMonthLocked(date)) return;
   const supplier = (document.getElementById('recv-supplier')?.value||'').trim();
   const noteExtra = (document.getElementById('recv-note')?.value||'').trim();
 
@@ -2639,6 +2684,71 @@ function printVehReq(id){
    บัญชีเบิก-จ่ายน้ำมัน/พัสดุประจำวัน — ยอดยกมา / รับเข้า / รวมจ่าย / คงเหลือ (รายเดือน)
    รายการ "จ่าย" ส่วนใหญ่ถูกส่งเข้ามาอัตโนมัติจากใบสั่งการรายวันของระบบรองที่ 2 (งานสถิติและบริการประชาชน)
    ============================================================ */
+/* ล็อกเดือนของบัญชี พ.1-02/พ.1-03 (2569-09-19) — monthKey 'YYYY-MM' -> {lockedBy, lockedAt}
+   เดือนที่ล็อกแล้วแก้ตัวเลขรับ-จ่าย/เลขไมล์/ยอดยกมาไม่ได้ ผู้มีสิทธิ์แก้ไขล็อกได้ แต่ปลดล็อกได้เฉพาะเจ้าของระบบ */
+let ledgerLocks = {};
+async function loadLedgerLocksFromApi(){
+  try{
+    (await apiGet('ledger_locks')).forEach(r=>{ ledgerLocks[r.monthKey] = {lockedBy:r.lockedBy, lockedAt:r.lockedAt}; });
+  }catch(err){
+    console.error('โหลดสถานะล็อกเดือนจากฐานข้อมูลกลางไม่สำเร็จ', err);
+  }
+}
+function isMonthLocked(dateOrMk){ return !!ledgerLocks[String(dateOrMk||'').slice(0,7)]; }
+function isOwnerRole(){ const s = __getSharedSession(); return !!(s && s.role==='owner'); }
+function ledgerMonthLabel(mk){
+  const [y,m] = mk.split('-').map(Number);
+  return monthNamesTh[m-1]+' '+(y+543);
+}
+/* คืน true (และแจ้งเตือน) ถ้าเดือนของวันที่/เดือนที่ระบุถูกล็อกอยู่ — ใช้กั้นจุดเขียนข้อมูลทุกจุด */
+function blockIfMonthLocked(dateOrMk){
+  if(!isMonthLocked(dateOrMk)) return false;
+  showAlertModal(`เดือน${ledgerMonthLabel(String(dateOrMk).slice(0,7))} ถูกล็อกบัญชีแล้ว — แก้ไขไม่ได้\nหากจำเป็นต้องแก้ไข ให้เจ้าของระบบปลดล็อกเดือนนี้ที่หน้ารายงาน พ.1-02/พ.1-03 ก่อน`);
+  return true;
+}
+function renderLedgerLockControls(){
+  const mk = ledgerMonthKey('rep-ledger-fy','rep-ledger-month');
+  const lock = ledgerLocks[mk];
+  let html;
+  if(lock){
+    html = `<span class="pill pill-neutral" title="ล็อกโดย ${(lock.lockedBy||'').replace(/"/g,'&quot;')} เมื่อ ${String(lock.lockedAt||'').slice(0,10)}">🔒 ล็อกแล้ว</span>`
+      + (isOwnerRole() ? `<button class="btn btn-ghost btn-sm" onclick="toggleLedgerLock()">ปลดล็อก</button>` : '');
+  } else {
+    html = isAdmin() ? `<button class="btn btn-ghost btn-sm" onclick="toggleLedgerLock()">🔒 ล็อกเดือนนี้</button>` : '';
+  }
+  document.querySelectorAll('.rep-lock-ctl').forEach(el=>{ el.innerHTML = html; });
+}
+async function toggleLedgerLock(){
+  const mk = ledgerMonthKey('rep-ledger-fy','rep-ledger-month');
+  const locked = !!ledgerLocks[mk];
+  if(locked ? !isOwnerRole() : !isAdmin()) return;
+  const label = ledgerMonthLabel(mk);
+  if(!locked && (draftCountFor('mat')>0 || draftCountFor('fuel')>0)){
+    showAlertModal('ยังมีข้อมูลฉบับร่างที่ยังไม่ได้กดบันทึกในตาราง พ.1-02/พ.1-03 — กรุณาบันทึกหรือล้างการแก้ไขก่อนล็อกเดือน');
+    return;
+  }
+  showConfirmModal(
+    locked ? 'ปลดล็อกเดือน' : 'ล็อกเดือน',
+    locked ? `ยืนยันปลดล็อกเดือน${label}? หลังปลดล็อกจะแก้ไขตัวเลขย้อนหลังของเดือนนี้ได้อีกครั้ง`
+           : `ยืนยันล็อกบัญชีเดือน${label}? หลังล็อกแล้วจะแก้ไขตัวเลขรับ-จ่าย เลขไมล์ และยอดยกมาของเดือนนี้ไม่ได้ (เฉพาะเจ้าของระบบที่ปลดล็อกได้)`,
+    locked ? 'ปลดล็อก' : 'ล็อกเดือน',
+    async function(){
+      try{
+        if(locked){
+          await apiPost('delete', 'ledger_locks', null, mk);
+          delete ledgerLocks[mk];
+        } else {
+          const rec = {monthKey:mk, lockedBy:apiCurrentUsername(), lockedAt:new Date().toISOString()};
+          await apiPost('add', 'ledger_locks', rec);
+          ledgerLocks[mk] = {lockedBy:rec.lockedBy, lockedAt:rec.lockedAt};
+        }
+      }catch(err){
+        showAlertModal('บันทึกสถานะล็อกเดือนไปยังฐานข้อมูลกลางไม่สำเร็จ: ' + err.message);
+        return;
+      }
+      renderAll();
+    });
+}
 let fuelSettings = {};            // fuelType -> จุดสั่งซื้อขั้นต่ำ (ลิตร)
 async function loadFuelSettingsFromApi(){
   try{
@@ -3252,6 +3362,7 @@ async function saveMaterialEdits(){
     }
     rows.push({m, adjustTx});
   });
+  if(rows.some(r=>r.adjustTx) && blockIfMonthLocked(toLocalISODate(TODAY))) return;
   const matSaveBtn0 = document.getElementById('mat-save-btn');
   const matSaveLabel0 = matSaveBtn0 ? matSaveBtn0.textContent : '';
   if(matSaveBtn0){ matSaveBtn0.disabled = true; matSaveBtn0.textContent = 'กำลังบันทึก...'; }
@@ -3275,23 +3386,21 @@ async function saveMaterialEdits(){
 }
 function toggleMatOpeningEdit(){
   if(!isAdmin()) return;
+  if(!repMatEditMode && blockIfMonthLocked(ledgerMonthKey('rep-ledger-fy','rep-ledger-month'))) return;
   repMatEditMode = !repMatEditMode;
   const eb=document.getElementById('rep-mat-edit-btn'), sb=document.getElementById('rep-mat-save-btn');
   if(eb) eb.classList.toggle('hidden', repMatEditMode);
   if(sb) sb.classList.toggle('hidden', !repMatEditMode);
   renderReportMaterial(ledgerMonthKey('rep-ledger-fy','rep-ledger-month'));
 }
-function saveMatOpeningEdits(){
+async function saveMatOpeningEdits(){
   if(!isAdmin()) return;
   const mk = ledgerMonthKey('rep-ledger-fy','rep-ledger-month');
-  document.querySelectorAll('#rep-mat-grid-wrap input[data-open-code]').forEach(inp=>{
-    const v = inp.value.trim();
-    if(v!=='' && !isNaN(parseFloat(v))) materialOpeningOverride[inp.dataset.openCode+'|'+mk] = parseFloat(v);
-  });
-  document.querySelectorAll('#rep-mat-grid-wrap input[data-recv-code]').forEach(inp=>{
-    const v = inp.value.trim();
-    if(v!=='' && !isNaN(parseFloat(v))) materialReceivedOverride[inp.dataset.recvCode+'|'+mk] = parseFloat(v);
-  });
+  if(blockIfMonthLocked(mk)) return;
+  await __commitOverrideInputs('#rep-mat-grid-wrap', [
+    {sel:'data-open-code', dataKey:'openCode', kind:'matOpening', map:materialOpeningOverride, effective:c=>materialMonthSummary(c,mk).opening},
+    {sel:'data-recv-code', dataKey:'recvCode', kind:'matReceived', map:materialReceivedOverride, effective:c=>materialMonthSummary(c,mk).received}
+  ], mk);
   repMatEditMode = false;
   const eb=document.getElementById('rep-mat-edit-btn'), sb=document.getElementById('rep-mat-save-btn');
   if(eb) eb.classList.remove('hidden');
@@ -3300,28 +3409,90 @@ function saveMatOpeningEdits(){
 }
 function toggleFuelOpeningEdit(){
   if(!isAdmin()) return;
+  if(!repFuelEditMode && blockIfMonthLocked(ledgerMonthKey('rep-ledger-fy','rep-ledger-month'))) return;
   repFuelEditMode = !repFuelEditMode;
   const eb=document.getElementById('rep-fuel-edit-btn'), sb=document.getElementById('rep-fuel-save-btn');
   if(eb) eb.classList.toggle('hidden', repFuelEditMode);
   if(sb) sb.classList.toggle('hidden', !repFuelEditMode);
   renderReportFuel(ledgerMonthKey('rep-ledger-fy','rep-ledger-month'));
 }
-function saveFuelOpeningEdits(){
+/* บันทึกค่า "แก้ยอดยกมา/รับเข้า" (override) ลงตาราง ledger_overrides (2569-09-19 — เดิมเก็บในหน่วยความจำ
+   รีเฟรชแล้วหาย) kind = fuelOpening|fuelReceived|matOpening|matReceived — upsert ตาม kind+itemKey+monthKey
+   เขียนเฉพาะช่องที่ค่าต่างจากค่าที่ใช้อยู่จริง (กันการ "ตรึง" ยอดรับเข้าที่คำนวณอัตโนมัติไว้โดยไม่ตั้งใจ) */
+let ledgerOverrideIds = {};
+async function loadLedgerOverridesFromApi(){
+  try{
+    (await apiGet('ledger_overrides')).forEach(r=>{
+      const key = r.itemKey+'|'+r.monthKey;
+      const val = Number(r.value)||0;
+      if(r.kind==='fuelOpening') fuelOpeningOverride[key] = val;
+      else if(r.kind==='fuelReceived') fuelReceivedOverride[key] = val;
+      else if(r.kind==='matOpening') materialOpeningOverride[key] = val;
+      else if(r.kind==='matReceived') materialReceivedOverride[key] = val;
+      ledgerOverrideIds[r.kind+'|'+key] = r.id;
+    });
+  }catch(err){
+    console.error('โหลดค่าแก้ยอดยกมา/รับเข้าจากฐานข้อมูลกลางไม่สำเร็จ', err);
+  }
+}
+async function __saveLedgerOverride(kind, itemKey, mk, value){
+  const idKey = kind+'|'+itemKey+'|'+mk;
+  const existingId = ledgerOverrideIds[idKey];
+  const saved = await apiPost(existingId ? 'update' : 'add', 'ledger_overrides', {id:existingId, kind, itemKey, monthKey:mk, value});
+  if(!existingId && saved && saved.id) ledgerOverrideIds[idKey] = saved.id;
+}
+async function __commitOverrideInputs(wrapSel, attrs, mk){
+  // attrs: [{sel, dataKey, kind, map, effective:(item)=>number}]
+  const failed = [];
+  for(const a of attrs){
+    for(const inp of document.querySelectorAll(wrapSel+' input['+a.sel+']')){
+      const v = inp.value.trim();
+      if(v==='' || isNaN(parseFloat(v))) continue;
+      const num = parseFloat(v);
+      const item = inp.dataset[a.dataKey];
+      if(Math.abs(num - a.effective(item)) < 1e-9) continue;
+      try{
+        await __saveLedgerOverride(a.kind, item, mk, num);
+        a.map[item+'|'+mk] = num;
+      }catch(err){ failed.push(item+' ('+err.message+')'); }
+    }
+  }
+  if(failed.length) showAlertModal('บันทึกค่าแก้ยอดไปยังฐานข้อมูลกลางไม่สำเร็จบางรายการ: '+failed.join(', ')+'\nกรุณาลองใหม่อีกครั้ง');
+}
+async function saveFuelOpeningEdits(){
   if(!isAdmin()) return;
   const mk = ledgerMonthKey('rep-ledger-fy','rep-ledger-month');
-  document.querySelectorAll('#rep-fuel-grid-wrap input[data-open-fueltype]').forEach(inp=>{
-    const v = inp.value.trim();
-    if(v!=='' && !isNaN(parseFloat(v))) fuelOpeningOverride[inp.dataset.openFueltype+'|'+mk] = parseFloat(v);
-  });
-  document.querySelectorAll('#rep-fuel-grid-wrap input[data-recv-fueltype]').forEach(inp=>{
-    const v = inp.value.trim();
-    if(v!=='' && !isNaN(parseFloat(v))) fuelReceivedOverride[inp.dataset.recvFueltype+'|'+mk] = parseFloat(v);
-  });
+  if(blockIfMonthLocked(mk)) return;
+  await __commitOverrideInputs('#rep-fuel-grid-wrap', [
+    {sel:'data-open-fueltype', dataKey:'openFueltype', kind:'fuelOpening', map:fuelOpeningOverride, effective:ft=>fuelMonthSummary(ft,mk).opening},
+    {sel:'data-recv-fueltype', dataKey:'recvFueltype', kind:'fuelReceived', map:fuelReceivedOverride, effective:ft=>fuelMonthSummary(ft,mk).received}
+  ], mk);
   repFuelEditMode = false;
   const eb=document.getElementById('rep-fuel-edit-btn'), sb=document.getElementById('rep-fuel-save-btn');
   if(eb) eb.classList.remove('hidden');
   if(sb) sb.classList.add('hidden');
   renderAll();
+}
+/* แถบสรุปยอดด้านบนตาราง พ.1-03 (แบบ A, 2569-09-19) — ยกมา/รับเข้า/จ่าย/คงเหลือ/สถานะสต็อก ต่อชนิดน้ำมัน
+   ใช้ fuelMonthSummary() ชุดเดียวกับการ์ดในทะเบียนพัสดุ ตัวเลขจึงตรงกันเสมอ */
+function renderFuelKpiBand(mk, fuelTypes){
+  const el = document.getElementById('rep-fuel-kpi');
+  if(!el) return;
+  el.innerHTML = fuelTypes.map(ft=>{
+    const s = fuelMonthSummary(ft, mk);
+    const reorder = fuelSettings[ft] || 0;
+    const st = fuelStatus(s.closing, reorder);
+    const stCls = st==='low' ? 'fk-low' : st==='watch' ? 'fk-watch' : 'fk-ok';
+    const stTxt = st==='low' ? 'ต่ำกว่าจุดสั่งซื้อ' : st==='watch' ? 'ใกล้ถึงจุดสั่งซื้อ' : st==='ok' ? 'ปกติ' : 'ยังไม่ตั้งจุดสั่งซื้อ';
+    return `<div class="fuel-kpi-row">
+      <div class="fk-title">น้ำมัน${ft}</div>
+      <div class="fk-card"><div class="fk-l">ยอดยกมา</div><div class="fk-v">${fmtNum(s.opening,1)} <small>ล.</small></div></div>
+      <div class="fk-card"><div class="fk-l">รับเข้าเดือนนี้</div><div class="fk-v" style="color:var(--success);">+${fmtNum(s.received,1)} <small>ล.</small></div></div>
+      <div class="fk-card"><div class="fk-l">จ่ายออกเดือนนี้</div><div class="fk-v" style="color:var(--danger);">−${fmtNum(s.issued,1)} <small>ล.</small></div></div>
+      <div class="fk-card fk-navy"><div class="fk-l">คงเหลือ</div><div class="fk-v">${fmtNum(s.closing,1)} <small>ล.</small></div></div>
+      <div class="fk-card ${stCls}"><div class="fk-l">สถานะสต็อก</div><div class="fk-v" style="font-size:15px;">${stTxt}</div>${reorder?`<div class="fk-s">จุดสั่งซื้อ ${fmtNum(reorder,0)} ล.</div>`:''}</div>
+    </div>`;
+  }).join('');
 }
 function renderReportFuel(mk){
   const fuelFilter = document.querySelector('#rep-fuel-typetabs .tab.active')?.dataset.fueltab || 'ดีเซล';
@@ -3330,7 +3501,9 @@ function renderReportFuel(mk){
   const q = (document.getElementById('rep-fuel-search')?.value||'').trim().toLowerCase();
   const wrap = document.getElementById('rep-fuel-grid-wrap');
   if(!wrap) return;
-  const admin = isAdmin();
+  const admin = isAdmin() && !isMonthLocked(mk);
+  renderLedgerLockControls();
+  renderFuelKpiBand(mk, fuelTypes);
   const showMileage = document.getElementById('rep-fuel-showmileage')?.checked !== false;
   const days = workdaysInMonthArr(mk);
   const dayTotals = {}; days.forEach(d=>dayTotals[d.day]=0);
@@ -3476,7 +3649,8 @@ function setMatAcctTab(el){
 function renderReportMaterial(mk){
   const wrap = document.getElementById('rep-mat-grid-wrap');
   if(!wrap) return;
-  const admin = isAdmin();
+  const admin = isAdmin() && !isMonthLocked(mk);
+  renderLedgerLockControls();
   const q = (document.getElementById('rep-mat-search')?.value||'').trim().toLowerCase();
   const acctFilter = document.querySelector('#rep-mat-accttabs .tab.active')?.dataset.accttab || 'ในบัญชี';
   const onlyMoved = document.getElementById('rep-mat-onlymoved')?.checked;
@@ -3913,7 +4087,9 @@ function openMachineryLogModal(vehicle, date){
       <input type="checkbox" id="em-dayoff" ${dayOffChecked?'checked':''}> วันหยุด (/)</label></div>
     <div style="margin-bottom:6px;"><label ${lbl}>หมายเหตุ</label>
       <textarea class="edit-input" id="em-note" rows="2" placeholder="หมายเหตุเพิ่มเติม">${l&&l.note?l.note:''}</textarea></div>
-    <div class="foot-note" style="margin:6px 0 0;padding:8px 0 0;border-top:1px solid var(--line);">น้ำมันเชื้อเพลิงที่เติมและมิเตอร์เลิกงานของวันนี้เชื่อมโยงจากตาราง พ.1-03 อัตโนมัติ — ดีเซล ${fmtNum(fuelForVehicleDate(vehicle,date,'ดีเซล'),1)} ล. · เบนซิน ${fmtNum(fuelForVehicleDate(vehicle,date,'เบนซิน'),1)} ล. · มิเตอร์เลิกงาน ${meterForVehicleDate(vehicle,date)!=null?meterForVehicleDate(vehicle,date):'—'}</div>
+    ${(v && v.fuelType==='เบนซิน') ? '' : `<div style="margin-bottom:6px;"><label ${lbl}>มิเตอร์เลิกงาน (เลขไมล์) — ใช้ค่าเดียวกับแถว 📏 เลขไมล์ในตาราง พ.1-03</label>
+      <input class="edit-input" id="em-mileage" value="${(meterForVehicleDate(vehicle,date)!=null?String(meterForVehicleDate(vehicle,date)):'').replace(/"/g,'&quot;')}" placeholder="ตัวเลข หรือ เช่น ชำรุด"></div>`}
+    <div class="foot-note" style="margin:6px 0 0;padding:8px 0 0;border-top:1px solid var(--line);">น้ำมันเชื้อเพลิงที่เติมของวันนี้เชื่อมโยงจากใบสั่งการ/ตาราง พ.1-03 อัตโนมัติ (แก้ไขที่นั่น) — ดีเซล ${fmtNum(fuelForVehicleDate(vehicle,date,'ดีเซล'),1)} ล. · เบนซิน ${fmtNum(fuelForVehicleDate(vehicle,date,'เบนซิน'),1)} ล.</div>
     <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px;">
       ${l?`<button type="button" class="btn btn-danger" onclick="removeMachineryLog(${l.id})">ลบรายการนี้</button>`:''}
       <button type="button" class="btn btn-primary" id="em-save-btn" onclick="saveMachineryLogModal()">บันทึก</button>
@@ -3960,6 +4136,16 @@ async function saveMachineryLogModal(){
     showAlertModal('บันทึก EC1-W ไปยังฐานข้อมูลกลางไม่สำเร็จ: ' + err.message + '\nกรุณาตรวจสอบในตาราง EC1-W ก่อนว่าบันทึกไปแล้วหรือยัง ก่อนลองบันทึกซ้ำ');
     if(emSaveBtn){ emSaveBtn.disabled = false; emSaveBtn.textContent = emSaveLabel; }
     return;
+  }
+  const miEl = document.getElementById('em-mileage');
+  if(miEl){
+    const miRaw = miEl.value.trim();
+    const miKey = vehicle+'|'+date;
+    if(miRaw !== String(vehicleMileage[miKey]!=null ? vehicleMileage[miKey] : '')){
+      if(blockIfMonthLocked(date)){ closeMachineryLogModal(); renderAll(); return; }
+      if(miRaw==='') delete vehicleMileage[miKey]; else vehicleMileage[miKey] = miRaw;
+      await __saveMileageEntry(vehicle, date);
+    }
   }
   closeMachineryLogModal();
   renderAll();
@@ -4283,6 +4469,8 @@ renderAll();
   await loadVehiclesFromApi();
   await loadFuelTransactionsFromApi();
   await loadFuelSettingsFromApi();
+  await loadLedgerLocksFromApi();
+  await loadLedgerOverridesFromApi();
   await loadVehicleMileageFromApi();
   await loadMachineryLogsFromApi();
   await loadVehicleRequestsFromApi();
