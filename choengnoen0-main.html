@@ -59,6 +59,12 @@
   .user-menu-wrap{position:relative;}
   .user-menu-panel{position:absolute;top:calc(100% + 10px);right:0;background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:0 16px 34px -10px rgba(7,27,48,.3);padding:10px;min-width:230px;display:flex;flex-direction:column;gap:4px;z-index:60;}
   .user-menu-panel.hidden{display:none;}
+  .combo-dropdown{position:absolute;top:calc(100% + 4px);left:0;right:0;background:#fff;border:1px solid var(--line);border-radius:10px;box-shadow:0 12px 26px -8px rgba(7,27,48,.28);max-height:220px;overflow-y:auto;z-index:70;}
+  .combo-dropdown.hidden{display:none;}
+  .combo-option{padding:9px 13px;font-size:13.5px;color:var(--ink-900);cursor:pointer;}
+  .combo-option:hover{background:var(--paper-50);}
+  .combo-option.combo-empty{color:var(--ink-400);cursor:default;}
+  .combo-option.combo-empty:hover{background:transparent;}
   .user-menu-item{display:flex;align-items:center;gap:8px;padding:9px 10px;border:none;background:transparent;border-radius:9px;font-family:'Sarabun';font-size:13px;text-align:left;cursor:pointer;color:var(--ink-900);width:100%;}
   .user-menu-item:hover{background:var(--paper-50);}
   .user-menu-item.danger{color:var(--danger);}
@@ -140,6 +146,10 @@
   /* กรอบตาราง: เลื่อนแนวนอนได้บนจอเล็ก + thead ค้างด้านบนเมื่อเลื่อนแนวตั้งภายในกรอบ */
   .table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;}
   .table-wrap table{min-width:560px;}
+  .mat-scroll-wrap{max-height:320px;overflow-y:auto;}
+  .mat-filter-tabs{padding:0;border:none;background:transparent;margin-bottom:8px;}
+  .mat-filter-tabs .tab{padding:5px 11px;font-size:12px;border-radius:20px;background:var(--paper-100);border-bottom:none;}
+  .mat-filter-tabs .tab.active{background:var(--navy-900);color:#fff;}
   @media (max-width:760px){
     thead th{padding:8px 10px;font-size:10.5px;}
     tbody td{padding:8px 10px;font-size:13px;}
@@ -233,14 +243,6 @@
   .a-assignee.filled{border-style:solid;border-color:#d8e2ec;background:#eef3f8;color:var(--navy-800);}
   .tab-badge{display:inline-flex;align-items:center;justify-content:center;min-width:16px;height:16px;padding:0 4px;border-radius:9px;background:var(--danger);color:#fff;font-size:10px;font-weight:700;margin-left:6px;font-family:'Kanit';vertical-align:middle;}
 
-  /* approval hub */
-  .src-badge{font-family:'Kanit';font-size:10.5px;font-weight:600;padding:3px 9px;border-radius:5px;background:var(--paper-100);color:var(--ink-600);white-space:nowrap;}
-  .src-1{background:#e3edf6;color:var(--navy-700);}
-  .src-3{background:#fdefe3;color:var(--orange-600);}
-  .src-4{background:#fdf1de;color:#a3660a;}
-  .approved-tag{color:var(--success);font-weight:600;font-size:12.5px;}
-  .rejected-tag{color:var(--danger);font-weight:600;font-size:12.5px;}
-
   /* shortcut cards */
   .shortcut-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;padding:20px;}
   .shortcut-card{border:1px solid var(--line);border-radius:10px;padding:18px 16px;text-decoration:none;color:var(--ink-900);display:flex;flex-direction:column;gap:10px;transition:border-color .15s ease, transform .15s ease;}
@@ -306,10 +308,14 @@
           <div class="user-menu-panel hidden" id="user-menu-panel">
             <span id="login-badge" class="pill pill-neutral" style="text-align:center;display:none;"></span>
             <div id="login-box" style="display:flex;flex-direction:column;gap:8px;padding:4px 2px 2px;">
-              <div class="f-row" style="margin:0;">
-                <select id="login-username" style="width:100%;padding:10px 13px;" onkeydown="if(event.key==='Enter')doLogin()">
-                  <option value="">-- เลือกชื่อผู้ใช้ --</option>
-                </select>
+              <div class="f-row" style="margin:0;position:relative;">
+                <input type="text" id="login-username" autocomplete="off" placeholder="พิมพ์ชื่อผู้ใช้"
+                  style="width:100%;padding:10px 13px;"
+                  oninput="__renderLoginUsernameDropdown();document.getElementById('login-username-dropdown').classList.remove('hidden')"
+                  onfocus="__openLoginUsernameDropdown()"
+                  onblur="setTimeout(__closeLoginUsernameDropdown,150)"
+                  onkeydown="if(event.key==='Enter'){__closeLoginUsernameDropdown();doLogin();}else if(event.key==='Escape'){__closeLoginUsernameDropdown();}">
+                <div id="login-username-dropdown" class="combo-dropdown hidden"></div>
               </div>
               <div class="f-row" style="margin:0;position:relative;">
                 <input type="password" id="login-password" placeholder="รหัสผ่าน" autocomplete="current-password" style="padding-right:34px;" onkeydown="if(event.key==='Enter')doLogin()">
@@ -332,7 +338,6 @@
 
       <div class="sec-tabs no-print" id="sec-tabs">
         <div class="sec-tab active" data-sec="overview">ภาพรวม</div>
-        <div class="sec-tab" data-sec="approval">อนุมัติเอกสาร</div>
         <div class="sec-tab" data-sec="alerts">แจ้งเตือน / ติดตามงาน<span class="tab-badge hidden" id="alerts-tab-badge">0</span></div>
         <div class="sec-tab" data-sec="reports">รายงานสรุป</div>
         <div class="sec-tab" data-sec="users" id="sec-tab-users" style="display:none;">ตั้งค่า</div>
@@ -363,7 +368,12 @@
                 <h3 style="font-family:'Kanit';font-size:14px;margin:0;">วัสดุในบัญชี</h3>
                 <span class="foot-note" id="material-nai-stat" style="border-top:none;padding:0;"></span>
               </div>
-              <div class="table-wrap"><table>
+              <div class="tabs mat-filter-tabs" id="material-nai-tabs">
+                <div class="tab active" data-filter="all" onclick="setMaterialNaiFilter(this)">ทั้งหมด</div>
+                <div class="tab" data-filter="ok" onclick="setMaterialNaiFilter(this)">ปกติ</div>
+                <div class="tab" data-filter="low" onclick="setMaterialNaiFilter(this)">ต่ำกว่าจุดสั่งซื้อ</div>
+              </div>
+              <div class="table-wrap mat-scroll-wrap"><table>
                 <thead><tr><th>รหัส</th><th>รายการ</th><th>คงเหลือ</th><th>จุดสั่งซื้อ</th><th>สถานะ</th></tr></thead>
                 <tbody id="material-body-nai"></tbody>
               </table></div>
@@ -373,7 +383,7 @@
                 <h3 style="font-family:'Kanit';font-size:14px;margin:0;">วัสดุนอกบัญชี</h3>
                 <span class="foot-note" id="material-nok-stat" style="border-top:none;padding:0;"></span>
               </div>
-              <div class="table-wrap"><table>
+              <div class="table-wrap mat-scroll-wrap"><table>
                 <thead><tr><th>รหัส</th><th>รายการ</th><th>คงเหลือ</th><th>จุดสั่งซื้อ</th><th>สถานะ</th></tr></thead>
                 <tbody id="material-body-nok"></tbody>
               </table></div>
@@ -382,42 +392,6 @@
           <div class="legend-block" id="material-foot-block">
             <button type="button" class="legend-dot-btn no-print" id="material-foot-toggle" onclick="__toggleNote('material-foot',this)" aria-expanded="false" title="แสดง/ซ่อนหมายเหตุ">⋮</button>
             <div class="foot-note" id="material-foot" style="display:none;background:transparent;border-top:none;"></div>
-          </div>
-        </div>
-      </div>
-
-      <!-- ============ APPROVAL HUB ============ -->
-      <div class="panel" id="panel-approval">
-        <div class="section">
-          <div class="section-head">
-            <h2><span class="section-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#f2a930" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg></span>
-              การอนุมัติเอกสาร
-            </h2>
-            <div class="toolbar">
-              <select id="approval-fy-filter" onchange="renderApprovals()"></select>
-              <select id="approval-filter" onchange="renderApprovals()">
-                <option value="all">ทุกระบบ</option>
-                <option value="1">งานสารบรรณ (ระบบ 1)</option>
-                <option value="3">งานพัสดุ (ระบบ 3)</option>
-                <option value="4">งานบัญชี (ระบบ 4)</option>
-              </select>
-            </div>
-          </div>
-          <div class="tabs no-print" id="approval-status-tabs">
-            <div class="tab active" data-status="pending" onclick="setApprovalStatusFilter('pending')">รอการอนุมัติ</div>
-            <div class="tab" data-status="approved" onclick="setApprovalStatusFilter('approved')">อนุมัติแล้ว</div>
-            <div class="tab" data-status="all" onclick="setApprovalStatusFilter('all')">ทั้งหมด</div>
-          </div>
-          <div class="table-wrap"><table style="table-layout:fixed;">
-            <colgroup>
-              <col style="width:11%"><col style="width:13%"><col style="width:16%"><col style="width:31%"><col style="width:8%"><col style="width:21%">
-            </colgroup>
-            <thead><tr><th>ระบบต้นทาง</th><th>ประเภทคำขอ</th><th>ผู้ยื่นคำขอ</th><th>รายละเอียด</th><th>วันที่ยื่น</th><th>สถานะ</th></tr></thead>
-            <tbody id="approval-body"></tbody>
-          </table></div>
-          <div class="legend-block" id="approval-foot-block">
-            <button type="button" class="legend-dot-btn no-print" id="approval-foot-toggle" onclick="__toggleNote('approval-foot',this)" aria-expanded="false" title="แสดง/ซ่อนหมายเหตุ">⋮</button>
-            <div class="foot-note" id="approval-foot" style="display:none;background:transparent;border-top:none;">เมื่อกด "อนุมัติ" หรือ "ตีกลับ" ระบบจะบันทึกสถานะกลับไปยังระบบต้นทางและแจ้งเตือน</div>
           </div>
         </div>
       </div>
@@ -517,41 +491,6 @@
       </div>
 
     </div>
-  </div>
-</div>
-
-<!-- ============ REJECT REASON MODAL ============ -->
-<div id="reject-modal-overlay" class="modal-overlay hidden">
-  <div class="modal-box modal-box-sm">
-    <div class="modal-head">
-      <div class="modal-head-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></div>
-      <h3>ตีกลับคำขอ</h3>
-      <button type="button" class="modal-close" onclick="closeRejectModal()">✕</button>
-    </div>
-    <div class="modal-body">
-      <input type="hidden" id="reject-modal-key">
-      <div class="f-row">
-        <label>ระบุเหตุผลที่ตีกลับคำขอนี้</label>
-        <textarea id="reject-modal-reason" placeholder="เช่น เอกสารแนบไม่ครบ / ข้อมูลไม่ถูกต้อง" oninput="this.style.borderColor=''"></textarea>
-      </div>
-    </div>
-    <div class="modal-foot">
-      <button type="button" class="btn btn-ghost" onclick="closeRejectModal()">ยกเลิก</button>
-      <button type="button" class="btn btn-danger" onclick="confirmRejectModal()">ตีกลับคำขอ</button>
-    </div>
-  </div>
-</div>
-
-<!-- ============ APPROVAL DETAIL MODAL ============ -->
-<div id="approval-detail-modal-overlay" class="modal-overlay hidden">
-  <div class="modal-box modal-box-sm">
-    <div class="modal-head">
-      <div class="modal-head-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg></div>
-      <h3>รายละเอียดคำขออนุมัติ</h3>
-      <button type="button" class="modal-close" onclick="closeApprovalDetail()">✕</button>
-    </div>
-    <div class="modal-body" id="approval-detail-body"></div>
-    <div class="modal-foot" id="approval-detail-foot"></div>
   </div>
 </div>
 
@@ -927,8 +866,6 @@ const staffTotals = { "ข้าราชการ":0, "ลูกจ้างป
 const staffToday = { ปฏิบัติงาน:0, ลา:0, ไปราชการ:0 };
 let contractsNearExpiry = 0; // สัญญาจ้างลูกจ้างชั่วคราวใกล้ครบกำหนด (ภายใน 15 วัน)
 
-// --- รายการรออนุมัติรวมศูนย์ ---
-let approvals = [];
 let __alertState = {}; /* เช็คลิสต์ทำแล้ว/ผู้รับผิดชอบ ต่อรายการแจ้งเตือน — เก็บด้วย id: {doneFor:<วันครบกำหนดที่ทำเสร็จ>, assignee:<ชื่อ>} */
 
 /* ============================================================
@@ -1188,12 +1125,33 @@ function __toggleLoginPwVisibility(){
     ? '<path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"/><circle cx="12" cy="12" r="3"/>'
     : '<path d="M17.94 17.94A10.94 10.94 0 0 1 12 19c-7 0-11-7-11-7a21.6 21.6 0 0 1 5.06-5.94M9.9 4.24A10.4 10.4 0 0 1 12 5c7 0 11 7 11 7a21.6 21.6 0 0 1-2.16 3.19M14.12 14.12a3 3 0 1 1-4.24-4.24"/><path d="M1 1l22 22"/>';
 }
+/* ช่อง login-username เปลี่ยนจาก <select> เป็นช่องพิมพ์กรองรายชื่อ (combobox) ตามคำขอ —
+   __loginUsernameOptions เก็บรายชื่อผู้ใช้ทั้งหมดไว้กรอง, __renderLoginUsernameDropdown() กรองตามคำที่พิมพ์ */
+let __loginUsernameOptions = [];
 function __populateUsernameSuggestions(){
-  const sel = document.getElementById('login-username');
-  if(!sel) return;
-  const current = sel.value;
-  sel.innerHTML = '<option value="">-- เลือกชื่อผู้ใช้ --</option>' + users.map(u=>`<option value="${u.username}">${u.username}</option>`).join('');
-  if(current && users.some(u=>u.username===current)) sel.value = current;
+  __loginUsernameOptions = users.map(u=>u.username);
+}
+function __renderLoginUsernameDropdown(){
+  const input = document.getElementById('login-username');
+  const dd = document.getElementById('login-username-dropdown');
+  if(!input || !dd) return;
+  const q = input.value.trim().toLowerCase();
+  const matches = q ? __loginUsernameOptions.filter(u=>u.toLowerCase().includes(q)) : __loginUsernameOptions;
+  dd.innerHTML = matches.length
+    ? matches.map(u=>`<div class="combo-option" onmousedown="event.preventDefault();__selectLoginUsername('${u.replace(/'/g,"\\'")}')">${u}</div>`).join('')
+    : '<div class="combo-option combo-empty">ไม่พบชื่อผู้ใช้</div>';
+}
+function __openLoginUsernameDropdown(){
+  __renderLoginUsernameDropdown();
+  document.getElementById('login-username-dropdown').classList.remove('hidden');
+}
+function __closeLoginUsernameDropdown(){
+  document.getElementById('login-username-dropdown')?.classList.add('hidden');
+}
+function __selectLoginUsername(username){
+  document.getElementById('login-username').value = username;
+  __closeLoginUsernameDropdown();
+  document.getElementById('login-password').focus();
 }
 let currentUserName = '';
 const __SHARED_SESSION_KEY = 'saraban_shared_session';
@@ -1215,7 +1173,6 @@ async function initLogin(){
   renderUsers();
   __renderAvatar();
   __updateNavLinks();
-  renderApprovals();
 }
 async function doLogin(){
   const userInput = document.getElementById('login-username');
@@ -1252,7 +1209,6 @@ async function doLogin(){
   document.getElementById('sec-tab-users').style.display = isOwner() ? '' : 'none';
   __renderAvatar();
   __updateNavLinks();
-  renderApprovals();
   if(role==='staff'){ window.location.replace('choengnoen1-saraban.html'); return; }
   /* ตาราง "จัดการผู้ใช้งาน" เห็นได้เฉพาะ owner เท่านั้น — โหลดรายชื่อผู้ใช้ใหม่อีกรอบ (round trip ที่ 2)
      เฉพาะตอนจำเป็นจริงๆ แทนที่จะโหลดทุกครั้งไม่ว่า role ไหน ลดเวลารอของบัญชี "หมวด"/"เจ้าหน้าที่" ที่ไม่เห็นตารางนี้อยู่แล้ว */
@@ -1279,7 +1235,6 @@ function doLogout(){
   }
   __renderAvatar();
   __updateNavLinks();
-  renderApprovals();
 }
 
 document.querySelectorAll('.sec-tab').forEach(t=>t.addEventListener('click',()=>{
@@ -1298,7 +1253,6 @@ function renderOverviewStats(){
   const totalSpent = budgetCategories.reduce((s,c)=>s+budgetSpent[c],0);
   const remainPct = totalAlloc>0 ? Math.round((totalAlloc-totalSpent)/totalAlloc*100) : 0;
   const lowMat = materials.filter(m=>matStatus(m)==='low').length;
-  const pendingApprovals = approvals.filter(a=>a.status==='pending').length + __loadSharedLeaveRequests().filter(r=>r.status==='pending').length;
 
   document.getElementById('overview-stats').innerHTML = `
     <div class="ov-grid">
@@ -1329,15 +1283,6 @@ function renderOverviewStats(){
         </div>
         <div class="ov-metrics">
           <div class="ov-metric ${lowMat>0?'warn':''}"><div class="ov-metric-val">${lowMat}</div><div class="ov-metric-label">ต่ำกว่าจุดสั่งซื้อ จาก ${materials.length} รายการ</div></div>
-        </div>
-      </div>
-      <div class="ov-card ${pendingApprovals>0?'accent-orange':'accent-success'}">
-        <div class="ov-card-head">
-          <span class="ov-icon" style="background:${pendingApprovals>0?'var(--orange-600)':'var(--success)'};"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg></span>
-          <h3>การอนุมัติ</h3>
-        </div>
-        <div class="ov-metrics">
-          <div class="ov-metric ${pendingApprovals>0?'warn':'ok'}"><div class="ov-metric-val">${pendingApprovals}</div><div class="ov-metric-label">รายการรออนุมัติ รวมทุกระบบรอง</div></div>
         </div>
       </div>
     </div>
@@ -1390,58 +1335,38 @@ function renderBudgetDonut(){
     <div>${legend}</div>`;
 }
 
+/* ตัวกรอง "ทั้งหมด/ปกติ/ต่ำกว่าจุดสั่งซื้อ" มีเฉพาะตารางวัสดุในบัญชี — วัสดุนอกบัญชีไม่มีแนวคิดจุดสั่งซื้อ
+   ที่ต้องเฝ้าระวังแบบเดียวกัน จึงไม่ให้ตัวกรองนี้เพื่อไม่ชวนสับสน (แถวยังแสดงสถานะเป็น pill ได้ตามปกติ) */
+let materialNaiFilter = 'all';
+function setMaterialNaiFilter(el){
+  materialNaiFilter = el.dataset.filter;
+  document.querySelectorAll('#material-nai-tabs .tab').forEach(t=>t.classList.toggle('active', t===el));
+  renderMaterials();
+}
 function renderMaterials(){
   const rowHtml = m=>{
     const st = matStatus(m);
     const pill = st==='low' ? '<span class="pill pill-danger">ต่ำกว่าจุดสั่งซื้อ</span>' : (st==='watch' ? '<span class="pill pill-warn">ใกล้ถึงจุดสั่งซื้อ</span>' : '<span class="pill pill-ok">ปกติ</span>');
     return `<tr><td style="font-family:'Kanit';font-size:12px;color:var(--navy-900);">${m.code}</td><td>${m.name}</td><td>${matCurrentStock(m).toLocaleString('th-TH')} ${m.unit}</td><td>${m.reorder.toLocaleString('th-TH')} ${m.unit}</td><td>${pill}</td></tr>`;
   };
+  const emptyRow = '<tr><td colspan="5" style="text-align:center;color:var(--ink-400);padding:16px;">ไม่พบรายการ</td></tr>';
   const nai = materials.filter(m=>(m.accountType||'ในบัญชี')==='ในบัญชี');
   const nok = materials.filter(m=>m.accountType==='นอกบัญชี');
-  document.getElementById('material-body-nai').innerHTML = nai.map(rowHtml).join('');
-  document.getElementById('material-body-nok').innerHTML = nok.map(rowHtml).join('');
+  const naiShown = nai.filter(m=>{
+    if(materialNaiFilter==='low') return matStatus(m)==='low';
+    if(materialNaiFilter==='ok') return matStatus(m)!=='low';
+    return true;
+  });
+  document.getElementById('material-body-nai').innerHTML = naiShown.map(rowHtml).join('') || emptyRow;
+  document.getElementById('material-body-nok').innerHTML = nok.map(rowHtml).join('') || emptyRow;
   const lowNai = nai.filter(m=>matStatus(m)==='low').length;
   const lowNok = nok.filter(m=>matStatus(m)==='low').length;
   document.getElementById('material-nai-stat').textContent = `ทั้งหมด ${nai.length} รายการ · ต่ำกว่าจุดสั่งซื้อ ${lowNai} รายการ`;
-  document.getElementById('material-nok-stat').textContent = `ทั้งหมด ${nok.length} รายการ · ต่ำกว่าจุดสั่งซื้อ ${lowNok} รายการ`;
+  document.getElementById('material-nok-stat').textContent = `ทั้งหมด ${nok.length} รายการ`;
   const low = lowNai + lowNok;
   document.getElementById('material-foot').textContent = `${low} รายการต่ำกว่าจุดสั่งซื้อ จากทั้งหมด ${materials.length} รายการที่ติดตามบนแดชบอร์ดนี้ — ดูรายการทั้งหมดที่ระบบที่ 3`;
 }
 
-/* ============================================================
-   เชื่อมข้อมูลคำขอลาจากระบบสารบรรณ (ระบบ 1) เข้ามาในหน้าอนุมัติเอกสาร
-   ผ่าน localStorage ที่ใช้ร่วมกัน ('saraban_shared_leave_requests_v1')
-   หมายเหตุ: ใช้ได้เมื่อเปิดทั้งสองระบบจากโดเมน/เซิร์ฟเวอร์เดียวกัน — ถ้าเปิดไฟล์ผ่าน
-   file:// แยกกัน เบราว์เซอร์จะแยก localStorage ของแต่ละไฟล์ จะไม่ซิงก์กันอัตโนมัติ
-   ============================================================ */
-const __SHARED_LEAVE_KEY = 'saraban_shared_leave_requests_v1';
-function __loadSharedLeaveRequests(){
-  try{ return JSON.parse(localStorage.getItem(__SHARED_LEAVE_KEY)||'[]'); }catch(e){ return []; }
-}
-function __saveSharedLeaveRequests(list){
-  try{ localStorage.setItem(__SHARED_LEAVE_KEY, JSON.stringify(list)); }catch(e){ console.error('บันทึกสถานะคำขอลากลับไปยังระบบสารบรรณล้มเหลว', e); }
-}
-function __updateSharedLeaveStatus(id, status, rejectReason){
-  const list = __loadSharedLeaveRequests();
-  const item = list.find(x=>x.id===id);
-  if(!item) return;
-  item.status = status;
-  if(rejectReason!==undefined) item.rejectReason = rejectReason;
-  __saveSharedLeaveRequests(list);
-}
-function __leaveRowsForApproval(){
-  return __loadSharedLeaveRequests().filter(r=>r.status!=='cancelled').map(r=>({
-    __src:'leave', __id:r.id,
-    sys:1, sysName:'งานสารบรรณ',
-    type:'คำขอลา'+(r.type?(' ('+r.type+')'):''),
-    who:r.name,
-    detail:`ลา${r.type} ตั้งแต่ ${fmtDate(r.from)} ถึง ${fmtDate(r.to)}`,
-    reason:r.reason||'',
-    date:r.createdAt||r.from,
-    status:r.status,
-    rejectReason:r.rejectReason
-  }));
-}
 function fiscalYearOf(dateStr){
   if(!dateStr) return null;
   const d = new Date(dateStr+'T00:00:00');
@@ -1596,123 +1521,6 @@ function renderSummaryReport(){
   }
   document.getElementById('report-summary-body').innerHTML = s3Html;
 }
-/* ============================================================
-   APPROVAL HUB
-   ============================================================ */
-let approvalStatusFilter = 'pending';
-function setApprovalStatusFilter(status){
-  approvalStatusFilter = status;
-  document.querySelectorAll('#approval-status-tabs .tab').forEach(t=>{
-    t.classList.toggle('active', t.dataset.status===status);
-  });
-  renderApprovals();
-}
-let __approvalRowsByKey = {};
-function __populateApprovalFyFilter(allRows){
-  const sel = document.getElementById('approval-fy-filter');
-  if(!sel) return;
-  const cfy = currentFiscalYear();
-  const fys = new Set([cfy]);
-  allRows.forEach(a=>{ const fy = fiscalYearOf(a.date); if(fy) fys.add(fy); });
-  const sorted = Array.from(fys).sort((a,b)=>b-a);
-  const hadSelection = sel.value;
-  const isFirstPopulate = !sel.dataset.populated;
-  sel.innerHTML = sorted.map(fy=>`<option value="${fy}">ปีงบประมาณ ${fy}</option>`).join('');
-  if(!isFirstPopulate && hadSelection && sorted.includes(Number(hadSelection))) sel.value = hadSelection;
-  else sel.value = String(cfy);
-  sel.dataset.populated = '1';
-}
-function renderApprovals(){
-  const filter = document.getElementById('approval-filter').value;
-  const nativeRows = approvals.map((a,i)=>Object.assign({},a,{__src:'native',__idx:i}));
-  const allRows = nativeRows.concat(__leaveRowsForApproval());
-  __populateApprovalFyFilter(allRows);
-  const fyFilter = document.getElementById('approval-fy-filter').value;
-  const rows = allRows
-    .filter(a => filter==='all' || String(a.sys)===filter)
-    .filter(a => approvalStatusFilter==='all' || a.status===approvalStatusFilter)
-    .filter(a => String(fiscalYearOf(a.date))===fyFilter);
-  __approvalRowsByKey = {};
-  const dis = isAdmin() ? '' : 'disabled';
-  document.getElementById('approval-body').innerHTML = rows.map(a=>{
-    const key = a.__src==='native' ? ('n'+a.__idx) : ('l'+a.__id);
-    __approvalRowsByKey[key] = a;
-    let statusCell = `<button class="pill pill-warn" style="cursor:pointer;border:none;font:inherit;" ${dis} onclick="event.stopPropagation();setApprovalRow('${key}','approved')">รออนุมัติ</button>`;
-    if(a.status==='approved') statusCell = '<span class="approved-tag">✓ อนุมัติแล้ว</span>';
-    if(a.status==='rejected') statusCell = '<span class="rejected-tag">✕ ตีกลับแล้ว</span>';
-    const actions = a.status==='pending'
-      ? `<button class="btn btn-danger btn-sm" ${dis} onclick="event.stopPropagation();rejectApprovalRow('${key}')">ตีกลับ</button>`
-      : '';
-    return `<tr ondblclick="openApprovalDetail('${key}')" style="cursor:pointer;" title="ดับเบิลคลิกเพื่อดูรายละเอียด">
-      <td><span class="src-badge src-${a.sys}">${a.sysName}</span></td>
-      <td>${a.type}</td>
-      <td style="white-space:nowrap;">${a.who}</td>
-      <td>${a.detail}</td>
-      <td>${fmtDate(a.date)}</td>
-      <td><div style="display:flex;align-items:center;gap:8px;flex-wrap:nowrap;white-space:nowrap;">${statusCell}${actions}</div></td>
-    </tr>`;
-  }).join('') || '<tr><td colspan="6" style="text-align:center;color:var(--ink-400);padding:20px;">ไม่มีรายการในหมวดนี้</td></tr>';
-}
-function __approvalDetailRow(label, value){
-  if(!value) return '';
-  return `<div style="margin-bottom:12px;"><div style="font-size:12px;color:var(--ink-400);margin-bottom:2px;">${label}</div><div style="font-size:14px;color:var(--ink-900);white-space:pre-wrap;">${value}</div></div>`;
-}
-function openApprovalDetail(key){
-  const a = __approvalRowsByKey[key];
-  if(!a) return;
-  let statusText = a.status==='approved' ? '✓ อนุมัติแล้ว' : (a.status==='rejected' ? '✕ ตีกลับแล้ว' : 'รออนุมัติ');
-  document.getElementById('approval-detail-body').innerHTML =
-    __approvalDetailRow('ระบบต้นทาง', a.sysName) +
-    __approvalDetailRow('ประเภทคำขอ', a.type) +
-    __approvalDetailRow('ผู้ยื่นคำขอ', a.who) +
-    __approvalDetailRow('รายละเอียด', a.detail) +
-    __approvalDetailRow('เหตุผล', a.reason) +
-    __approvalDetailRow('วันที่ยื่น', fmtDate(a.date)) +
-    __approvalDetailRow('สถานะ', statusText) +
-    __approvalDetailRow('เหตุผลที่ตีกลับ', a.rejectReason);
-  const dis = isAdmin() ? '' : 'disabled';
-  const footBtns = a.status==='pending'
-    ? `<button type="button" class="btn btn-danger" ${dis} onclick="rejectApprovalRow('${key}')">ตีกลับ</button>
-       <button type="button" class="btn btn-primary" ${dis} onclick="setApprovalRow('${key}','approved');closeApprovalDetail();">อนุมัติ</button>`
-    : '';
-  document.getElementById('approval-detail-foot').innerHTML = `<button type="button" class="btn btn-ghost" onclick="closeApprovalDetail()">ปิด</button>${footBtns}`;
-  document.getElementById('approval-detail-modal-overlay').classList.remove('hidden');
-}
-function closeApprovalDetail(){
-  document.getElementById('approval-detail-modal-overlay').classList.add('hidden');
-}
-function setApprovalRow(key,status){
-  if(!isAdmin()) return;
-  if(key[0]==='n'){ approvals[Number(key.slice(1))].status=status; }
-  else { __updateSharedLeaveStatus(key.slice(1), status); }
-  renderApprovals(); renderOverviewStats();
-}
-function rejectApprovalRow(key){
-  if(!isAdmin()) return;
-  document.getElementById('reject-modal-key').value = key;
-  document.getElementById('reject-modal-reason').value = '';
-  document.getElementById('reject-modal-overlay').classList.remove('hidden');
-  setTimeout(()=>document.getElementById('reject-modal-reason').focus(), 50);
-}
-function closeRejectModal(){
-  document.getElementById('reject-modal-overlay').classList.add('hidden');
-}
-function confirmRejectModal(){
-  const key = document.getElementById('reject-modal-key').value;
-  const reason = document.getElementById('reject-modal-reason').value.trim();
-  if(!reason){
-    const ta = document.getElementById('reject-modal-reason');
-    ta.style.borderColor = 'var(--danger)';
-    ta.focus();
-    return;
-  }
-  if(key[0]==='n'){ const i=Number(key.slice(1)); approvals[i].status='rejected'; approvals[i].rejectReason=reason; }
-  else { __updateSharedLeaveStatus(key.slice(1), 'rejected', reason); }
-  renderApprovals(); renderOverviewStats();
-  closeRejectModal();
-  closeApprovalDetail();
-}
-
 /* ============================================================
    ALERT / SLA PANEL
    ============================================================ */
@@ -1929,7 +1737,6 @@ function renderAll(){
   renderBudgetMini();
   renderBudgetDonut();
   renderMaterials();
-  renderApprovals();
   renderAlerts();
 }
 
@@ -1944,10 +1751,9 @@ function __collectState(){
   // (ค่าที่เห็นในแดชบอร์ดดึงสดจาก "ระบบที่ 3" ผ่าน __loadLiveData() แทน — ดูด้านล่าง)
   // users ตัดออกจาก localStorage แล้ว (2569-09-17) — ย้ายไปอยู่ฐานข้อมูลกลางแท็บ "users" แทน
   // เพื่อให้บัญชีที่เพิ่มใช้ล็อกอินได้จากทุกเครื่อง ดูฟังก์ชัน loadUsersFromApi()
-  return { approvals, alertState: __alertState };
+  return { alertState: __alertState };
 }
 function __applyState(saved){
-  if(saved.approvals){ approvals.length=0; approvals.push(...saved.approvals); }
   if(saved.alertState){ __alertState = saved.alertState; }
 }
 function __loadPersistedState(){
@@ -1994,7 +1800,7 @@ const __ALL_SUB_LABELS = {
   subsystem3: {"staff":"บุคลากร","materials":"วัสดุคงคลัง","requisitions":"ใบเบิก","fuelRecords":"บันทึกน้ำมันเชื้อเพลิง","machineryLogs":"บันทึกการใช้เครื่องจักร"},
   subsystem4: {"laborRoster":"บัญชีค่าแรง","otRequests":"คำขอ OT","utilityBills":"ค่าสาธารณูปโภค","attendanceCache":"ข้อมูลเวลาทำงาน","budgetAllocation":"งบประมาณ","miscSpending":"รายจ่ายเบ็ดเตล็ด","waterMeterLog":"มิเตอร์น้ำประปา","districtReports":"รายงานไปแขวง"}
 };
-const __MAIN_XLS_LABELS = {"materials":"วัสดุ","approvals":"รายการอนุมัติ","users":"ผู้ใช้งาน","alertState":"เช็คลิสต์แจ้งเตือน"};
+const __MAIN_XLS_LABELS = {"materials":"วัสดุ","users":"ผู้ใช้งาน","alertState":"เช็คลิสต์แจ้งเตือน"};
 
 function __exportBackup(){
   const bundle = {
@@ -2139,19 +1945,10 @@ function __updateNavLinks(){
 }
 window.addEventListener('storage', function(e){
   if(e.key==='saraban_shared_session' || e.key===__PROFILE_KEY){ __renderAvatar(); }
-  if(e.key===__SHARED_LEAVE_KEY){ renderApprovals(); renderOverviewStats(); }
   // ระบบย่อยที่ 1-4 อัปเดตข้อมูล (จากแท็บอื่นที่เปิดค้างไว้) → โหลดสดแล้ว render ทั้งหน้าใหม่
   if(Object.values(__ALL_SUB_KEYS).includes(e.key)){ renderAll(); }
 });
 __renderAvatar();
-let __lastLeaveSnapshot = JSON.stringify(__loadSharedLeaveRequests());
-setInterval(function(){
-  const snap = JSON.stringify(__loadSharedLeaveRequests());
-  if(snap !== __lastLeaveSnapshot){
-    __lastLeaveSnapshot = snap;
-    renderApprovals(); renderOverviewStats();
-  }
-}, 4000);
 // สำรอง: บาง browser ไม่ยิง 'storage' event ตอนแก้ไขข้อมูลจากแท็บของระบบย่อยที่เปิดพร้อมกัน
 // (เช่น Safari บางเวอร์ชัน) จึงเช็คซ้ำเป็นระยะด้วย เผื่อไว้ให้ตัวเลขไม่ค้าง
 let __lastSubSnapshot = JSON.stringify(Object.keys(__ALL_SUB_KEYS).map(k=>localStorage.getItem(__ALL_SUB_KEYS[k])));

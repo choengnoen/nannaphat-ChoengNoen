@@ -745,9 +745,12 @@ const LEAVE_TYPE_CODE = {'ป่วย':'ป','กิจ':'ก','พักผ่
 function loadRealLeaveRequests(){
   try{ return JSON.parse(localStorage.getItem(__SHARED_LEAVE_KEY)||'[]'); }catch(e){ return []; }
 }
-// คืนรหัสลาของพนักงานคนนี้ในวันที่ dateISO ถ้ามีคำขอลาที่ "อนุมัติแล้ว" ครอบคลุมวันนั้น (ไม่นับ pending/rejected/cancelled)
+// คืนรหัสลาของพนักงานคนนี้ในวันที่ dateISO ถ้ามีคำขอลาที่ยื่นเข้าระบบครอบคลุมวันนั้น
+// (ตัดการกรองสถานะ "อนุมัติแล้ว" ออก — งานเอกสารลาจริงต้องผ่านการลงนามบนใบลาด้วยปากกาอยู่แล้ว
+// การมีสถานะอนุมัติดิจิทัลแยกต่างหากไม่มีความหมายในทางปฏิบัติ ถือว่าคำขอลาที่ยื่นเข้าระบบ = ลาจริงทั้งหมด
+// ยกเว้น cancelled ซึ่งหมายถึงยกเลิกคำขอนั้นไปแล้วจริงๆ)
 function leaveCodeForDay(approvedLeaves, name, dateISO){
-  const hit = approvedLeaves.find(r=>r.name===name && r.status==='approved' && dateISO>=r.from && dateISO<=r.to);
+  const hit = approvedLeaves.find(r=>r.name===name && r.status!=='cancelled' && dateISO>=r.from && dateISO<=r.to);
   return hit ? (LEAVE_TYPE_CODE[hit.type] || null) : null;
 }
 let attendanceCache = {}; // cycleKey -> {name -> [codes...]} — แคชในหน่วยความจำระหว่างเปิดหน้านี้เท่านั้น (ไม่บันทึกลง localStorage เพราะข้อมูลต้นทางที่ระบบที่ 1 เปลี่ยนแปลงได้ตลอด)
@@ -849,12 +852,14 @@ let laborSentStatus = {};
    ต้องใช้ id จริง (no ยังคงเป็นเลขที่เอกสารที่ frontend คีย์เอง ส่งขึ้น backend ตรงๆ ได้เลย) */
 function otFromApi(row){
   return { __backendId:row.id, no:row.no, name:row.staffName, team:row.team||'', date:row.workDate,
-    time:row.time||'', task:row.reason, amount:Number(row.amount)||0, status:row.status||'pending',
+    time:row.time||'', task:row.reason, amount:Number(row.amount)||0,
+    /* ข้อมูลเก่า (ก่อนตัดขั้นตอนอนุมัติดิจิทัลออก) อาจมี status เป็น pending/approved/rejected ค้างอยู่ — แปลงเป็น awaiting_work ทั้งหมด */
+    status:['pending','approved','rejected'].includes(row.status) ? 'awaiting_work' : (row.status||'awaiting_work'),
     approvedOn:row.approvedDate||undefined, reportedOn:row.reportDate||undefined };
 }
 function otToApi(o){
   return { id:o.__backendId, no:o.no, staffName:o.name, team:o.team||'', workDate:o.date, time:o.time||'',
-    reason:o.task, amount:o.amount||0, status:o.status||'pending', approvedDate:o.approvedOn, reportDate:o.reportedOn };
+    reason:o.task, amount:o.amount||0, status:o.status||'awaiting_work', approvedDate:o.approvedOn, reportDate:o.reportedOn };
 }
 /* ข้อมูล OT จริงย้ายไปอยู่ที่ Google Sheets แท็บ "ot_requests" แล้ว
    หน้านี้โหลดจาก API ตอนเปิดหน้าเสมอ ดูฟังก์ชัน loadOtRequestsFromApi() ด้านล่าง */
@@ -1187,7 +1192,7 @@ function utilitySpendOf(cycleKey){
    (cycleKey) เหมือนหมวดอื่นทั้งหมด ทำให้สลับ dropdown รอบบิลแล้วตัวเลขไม่เปลี่ยน —
    ตอนนี้กรองด้วย workDate (o.date) ให้อยู่ในรอบเดียวกับ cycleKey เหมือนหมวดอื่น */
 function budgetSpentOf(cat, cycleKey){
-  if(cat==="งบดำเนินงาน") return otRequests.filter(o=>o.status!=='rejected' && (o.date||'').slice(0,7)===cycleKey).reduce((s,o)=>s+(o.amount||0),0);
+  if(cat==="งบดำเนินงาน") return otRequests.filter(o=>(o.date||'').slice(0,7)===cycleKey).reduce((s,o)=>s+(o.amount||0),0);
   if(cat==="ค่าวัสดุ") return materialSpendingOf(cycleKey);
   if(cat==="ค่าสาธารณูปโภค") return utilitySpendOf(cycleKey);
   if(cat==="งบซ่อมบำรุง") return laborSpendOf(cycleKey);
@@ -1345,25 +1350,23 @@ function printPaymentEvidence(){
 /* ============================================================
    OT
    ============================================================ */
+/* ตัดขั้นตอน "อนุมัติดิจิทัล" ออกทั้งระบบ (งานเอกสารจริงต้องลงนามด้วยปากกาบนใบ "ขออนุมัติ..."
+   ที่พิมพ์จาก printOTApproval() อยู่แล้ว — การกดอนุมัติในหน้าจอไม่มีความหมายจริงในทางปฏิบัติ)
+   เหลือ 3 สถานะ: awaiting_work (ยื่นคำขอแล้ว รอปฏิบัติงาน) → awaiting_report (ปฏิบัติงานแล้ว รอรายงานผล) → reported */
 function otStatusPill(st){
-  if(st==='pending') return '<span class="pill pill-warn">รออนุมัติ</span>';
-  if(st==='approved') return '<span class="pill pill-in">อนุมัติแล้ว — รอปฏิบัติงาน</span>';
+  if(st==='awaiting_work') return '<span class="pill pill-in">รอปฏิบัติงาน</span>';
   if(st==='awaiting_report') return '<span class="pill pill-warn">รอรายงานผล/แนบหลักฐาน</span>';
   if(st==='reported') return '<span class="pill pill-ok">เบิกจ่ายเรียบร้อย</span>';
-  if(st==='rejected') return '<span class="pill pill-danger">ไม่อนุมัติ</span>';
   return '';
 }
 function otSteps(o){
-  const steps = ['ยื่นขออนุมัติ','หัวหน้าหมวดอนุมัติ','ปฏิบัติงาน','รายงานผล+แนบหลักฐาน'];
+  const steps = ['ยื่นคำขอทำงานล่วงเวลา','ปฏิบัติงาน','รายงานผล+แนบหลักฐาน'];
   let doneUpto = 0;
-  if(o.status==='pending') doneUpto=0;
-  if(o.status==='approved') doneUpto=1;
+  if(o.status==='awaiting_work') doneUpto=1;
   if(o.status==='awaiting_report') doneUpto=2;
   if(o.status==='reported') doneUpto=3;
-  if(o.status==='rejected') doneUpto=-1;
   return '<div class="steps">'+steps.map((s,i)=>{
     let cls = i<doneUpto?'done':i===doneUpto?'now':'';
-    if(o.status==='rejected') cls = i===0?'done':'';
     return `<span class="step ${cls}">${i+1}. ${s}</span>`;
   }).join('')+'</div>';
 }
@@ -1386,8 +1389,7 @@ function renderOT(){
 }
 function otActionButtons(o,i){
   if(!isAdmin()) return '';
-  if(o.status==='pending') return `<button class="btn btn-ok btn-sm" onclick="approveOT(${i})">อนุมัติ</button> <button class="btn btn-danger btn-sm" onclick="rejectOT(${i})">ไม่อนุมัติ</button>`;
-  if(o.status==='approved') return `<button class="btn btn-primary btn-sm" onclick="startAwaitOT(${i})">ปฏิบัติงานแล้ว</button>`;
+  if(o.status==='awaiting_work') return `<button class="btn btn-primary btn-sm" onclick="startAwaitOT(${i})">ปฏิบัติงานแล้ว</button> <button class="btn btn-ghost btn-sm" onclick="printOTApproval(${i})">🖨️ ใบขออนุมัติ</button>`;
   if(o.status==='awaiting_report') return `<button class="btn btn-primary btn-sm" onclick="reportOT(${i})">บันทึกรายงานผล+จ่ายเงิน</button> <button class="btn btn-ghost btn-sm" onclick="printOTApproval(${i})">🖨️ ใบขออนุมัติ</button>`;
   if(o.status==='reported') return `<button class="btn btn-ghost btn-sm" onclick="printOTReport(${i})">🖨️ รายงานผล+หลักฐานจ่ายเงิน</button>`;
   return '';
@@ -1403,24 +1405,9 @@ async function __saveOtStatus(i, before){
   }
   renderAll();
 }
-/* แก้บั๊กเดิม: กด "อนุมัติ" แล้วข้าม status 'approved' ไปที่ 'awaiting_report' ตรงๆ ทำให้ปุ่ม
-   "ปฏิบัติงานแล้ว" (startAwaitOT, เปลี่ยน 'approved'->'awaiting_report') ไม่มีทางถูกกดถึงได้เลย
-   ตอนนี้ approveOT ตั้ง status เป็น 'approved' ตามลำดับขั้นตอนจริงแล้ว */
-function approveOT(i){
-  const before = {status:otRequests[i].status, approvedOn:otRequests[i].approvedOn};
-  otRequests[i].status='approved'; otRequests[i].approvedOn = TODAY.toISOString().slice(0,10);
-  renderAll();
-  __saveOtStatus(i, before);
-}
-function rejectOT(i){
-  const before = {status:otRequests[i].status};
-  otRequests[i].status='rejected';
-  renderAll();
-  __saveOtStatus(i, before);
-}
 function startAwaitOT(i){
-  const before = {status:otRequests[i].status};
-  otRequests[i].status='awaiting_report';
+  const before = {status:otRequests[i].status, approvedOn:otRequests[i].approvedOn};
+  otRequests[i].status='awaiting_report'; otRequests[i].approvedOn = TODAY.toISOString().slice(0,10);
   renderAll();
   __saveOtStatus(i, before);
 }
@@ -1447,7 +1434,7 @@ async function submitOT(){
   const task = document.getElementById('ot-task').value;
   const amount = parseFloat(document.getElementById('ot-amount').value)||0;
   if(!name||!date||!time||!task){ alert('กรุณากรอกข้อมูลให้ครบถ้วน'); return; }
-  const rec = {no:`บช.OT-0${otCounter++}/2569`, name, team:'', date, time, task, amount, status:'pending'};
+  const rec = {no:`บช.OT-0${otCounter++}/2569`, name, team:'', date, time, task, amount, status:'awaiting_work'};
   const saveBtn = document.getElementById('ot-submit-btn');
   const cancelBtn = document.getElementById('ot-cancel-btn');
   const originalLabel = saveBtn ? saveBtn.textContent : '';

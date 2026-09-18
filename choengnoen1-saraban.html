@@ -554,32 +554,22 @@
             </div>
           </div>
           <div class="lr-grid">
-            <div>
-              <h3 style="font-size:14px;color:var(--navy-900);margin:0 0 6px;">คำขอลาที่รอการอนุมัติ</h3>
-              <div class="lr-count-line"><span id="lr-last-updated" class="pill pill-neutral" style="font-size:11px;font-weight:500;"></span></div>
-              <div class="table-wrap"><table class="lr-tbl">
-                <colgroup><col class="c-name"><col class="c-type"><col class="c-range"><col class="c-status"><col class="c-actions"></colgroup>
-                <thead><tr><th>ผู้ลา</th><th>ประเภท</th><th>ช่วงวันที่</th><th>สถานะ</th><th></th></tr></thead>
-                <tbody id="lr-list-body-pending"></tbody>
-              </table></div>
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:6px;">
+              <h3 style="font-size:14px;color:var(--navy-900);margin:0;">รายการลา</h3>
+              <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                <span id="lr-last-updated" class="pill pill-neutral" style="font-size:11px;font-weight:500;"></span>
+                <select id="lr-approved-fy" onchange="renderLeaveRequestList()"></select>
+                <div class="search-box" style="min-width:170px;">🔍 <input id="lr-approved-search" placeholder="ค้นหาชื่อผู้ลา" oninput="renderLeaveRequestList()"></div>
+              </div>
             </div>
-            <div>
-              <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:6px;">
-                <h3 style="font-size:14px;color:var(--navy-900);margin:0;">คำขอลาที่อนุมัติแล้ว</h3>
-                <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-                  <select id="lr-approved-fy" onchange="renderLeaveRequestList()"></select>
-                  <div class="search-box" style="min-width:170px;">🔍 <input id="lr-approved-search" placeholder="ค้นหาชื่อผู้ลา" oninput="renderLeaveRequestList()"></div>
-                </div>
-              </div>
-              <div class="table-wrap table-wrap-scroll" style="max-height:50vh;"><table class="lr-tbl">
-                <colgroup><col class="c-name"><col class="c-type"><col class="c-range"><col class="c-status"><col class="c-actions"></colgroup>
-                <thead><tr><th>ผู้ลา</th><th>ประเภท</th><th>ช่วงวันที่</th><th>สถานะ</th><th></th></tr></thead>
-                <tbody id="lr-list-body-approved"></tbody>
-              </table></div>
-              <div class="legend-block" id="leave-approved-foot-block">
-                <button type="button" class="legend-dot-btn no-print" id="leave-approved-foot-toggle" onclick="__toggleNote('leave-approved-foot',this)" aria-expanded="false" title="แสดง/ซ่อนหมายเหตุ">⋮</button>
-                <div class="foot-note" id="leave-approved-foot" style="display:none;background:transparent;border-top:none;">การลางาน:&nbsp;<br>1. ลาพักผ่อน / ลากิจ / ไปราชการ ต้องยื่นล่วงหน้าอย่างน้อย 3 วัน&nbsp;&nbsp;<br>2. ลาป่วย ยื่นภายใน 3 วันหลังกลับมาปฏิบัติงานได้<br>3. เจ้าหน้าที่ลบรายการได้เฉพาะคำขอที่ยังไม่อนุมัติ (กรอกผิดพลาด) , คำขอที่อนุมัติแล้วต้องใช้ปุ่ม "ใบขอยกเลิกวันลา" เท่านั้น<br>4. พิมพ์ใบลาได้หลังจากบันทึกข้อมูลการลาแล้วเท่านั้น โดยกดปุ่ม "🖶 พิมพ์ใบลา" ที่รายการในตาราง<br>5. การลาต่อเนื่องหลายวัน ระบบจะไม่นับวันเสาร์-อาทิตย์และวันหยุดนักขัตฤกษ์เป็นวันลา (ดู/แก้ไขรายการวันหยุดได้ที่ปุ่ม "🗓 วันหยุดนักขัตฤกษ์")</div>
-              </div>
+            <div class="table-wrap table-wrap-scroll" style="max-height:65vh;"><table class="lr-tbl">
+              <colgroup><col class="c-name"><col class="c-type"><col class="c-range"><col class="c-status"><col class="c-actions"></colgroup>
+              <thead><tr><th>ผู้ลา</th><th>ประเภท</th><th>ช่วงวันที่</th><th>สถานะ</th><th></th></tr></thead>
+              <tbody id="lr-list-body"></tbody>
+            </table></div>
+            <div class="legend-block" id="leave-approved-foot-block">
+              <button type="button" class="legend-dot-btn no-print" id="leave-approved-foot-toggle" onclick="__toggleNote('leave-approved-foot',this)" aria-expanded="false" title="แสดง/ซ่อนหมายเหตุ">⋮</button>
+              <div class="foot-note" id="leave-approved-foot" style="display:none;background:transparent;border-top:none;">การลางาน:&nbsp;<br>1. ลาพักผ่อน / ลากิจ / ไปราชการ ต้องยื่นล่วงหน้าอย่างน้อย 3 วัน&nbsp;&nbsp;<br>2. ลาป่วย ยื่นภายใน 3 วันหลังกลับมาปฏิบัติงานได้<br>3. คำขอลาที่ยื่นเข้าระบบแล้วถือเป็นข้อมูลลาจริง (ผ่านการลงนามในใบลาตามระเบียบแล้ว) — การลบรายการต้องมีสิทธิ์ผู้ดูแลระบบ หากลาไปแล้วต้องการยกเลิกให้ใช้ปุ่ม "ใบขอยกเลิกวันลา" เท่านั้น<br>4. พิมพ์ใบลาได้หลังจากบันทึกข้อมูลการลาแล้วเท่านั้น โดยกดปุ่ม "🖶 พิมพ์ใบลา" ที่รายการในตาราง<br>5. การลาต่อเนื่องหลายวัน ระบบจะไม่นับวันเสาร์-อาทิตย์และวันหยุดนักขัตฤกษ์เป็นวันลา (ดู/แก้ไขรายการวันหยุดได้ที่ปุ่ม "🗓 วันหยุดนักขัตฤกษ์")</div>
             </div>
           </div>
         </div>
@@ -1057,11 +1047,13 @@ async function loadComplaintsFromApi(){
   }
 }
 
-/* leaveHistory ไม่ใช่ตารางแยกอีกต่อไป — คำนวณสดจาก leaveRequests ที่ status==='approved'
-   ทุกครั้งที่ต้องใช้ (ดูรายละเอียด REGISTRY_LEAVE_TYPES ด้านล่าง) แทนการเก็บเป็นอาร์เรย์แยก */
+/* leaveHistory ไม่ใช่ตารางแยกอีกต่อไป — คำนวณสดจาก leaveRequests ทุกครั้งที่ต้องใช้
+   (ดูรายละเอียด REGISTRY_LEAVE_TYPES ด้านล่าง) แทนการเก็บเป็นอาร์เรย์แยก
+   ตัดการกรอง status==='approved' ออก (2569-09-18) — งานเอกสารลาจริงต้องผ่านการลงนามด้วยปากกา
+   บนใบลาอยู่แล้ว ถือว่าคำขอลาที่ยื่นเข้าระบบ = ลาจริงทั้งหมด ยกเว้นที่ถูกยกเลิกไปแล้ว (cancelled) */
 function computeLeaveHistory(){
   return leaveRequests
-    .filter(r=>r.status==='approved' && REGISTRY_LEAVE_TYPES.includes(r.type))
+    .filter(r=>r.status!=='cancelled' && REGISTRY_LEAVE_TYPES.includes(r.type))
     .map(r=>({fy:fiscalYearOf(r.from), name:r.name, type:r.type, from:r.from, to:r.to}));
 }
 
@@ -2308,7 +2300,8 @@ function __resetLeaveForm(){
 }
 function __canCancelLeave(r){
   // แสดงปุ่ม "ใบขอยกเลิกวันลา" ได้เฉพาะช่วงก่อนวันลาหยุดจะมาถึง (from date ยังไม่ถึงวันนี้)
-  if(r.status!=='approved' || !r.from) return false;
+  // ตัดการกรอง status==='approved' ออก (2569-09-18) — ทุกคำขอลาที่ยื่นเข้าระบบถือเป็นลาจริงแล้ว
+  if(r.status==='cancelled' || !r.from) return false;
   const todayISO = TODAY.toISOString().slice(0,10);
   return r.from > todayISO;
 }
@@ -2316,18 +2309,12 @@ function __leaveRowHTML(r,i){
   return `
     <tr>
       <td class="p-name">${r.name}</td><td>${r.type}</td><td>${fmtDate(r.from)} – ${fmtDate(r.to)}</td>
-      <td>${
-        r.status==='cancelled' ? '<span class="pill pill-neutral">ยกเลิกแล้ว</span>' :
-        r.status==='approved' ? '<span class="pill pill-ok">อนุมัติแล้ว</span>' :
-        r.status==='rejected' ? '<span class="pill pill-danger">ไม่อนุมัติ</span>' :
-        '<span class="pill pill-warn">รอการพิจารณา</span>'
-      }</td>
+      <td>${r.status==='cancelled' ? '<span class="pill pill-neutral">ยกเลิกแล้ว</span>' : '<span class="pill pill-ok">บันทึกแล้ว</span>'}</td>
       <td class="lr-actions-cell">
         <button class="btn btn-ghost btn-sm" onclick="printLeaveForm(${i})">🖶 พิมพ์ใบลา</button>
         ${__canCancelLeave(r) ? `<button class="btn btn-ghost btn-sm" onclick="printCancelForm(${i})">🖶 ใบขอยกเลิกวันลา</button>` : ''}
-        ${r.status!=='approved' ? `<button class="btn btn-ghost btn-sm" onclick="openEditLeave(${i})" title="แก้ไขคำขอลานี้">✏️ แก้ไข</button>` : ''}
-        ${r.status!=='approved' ? `<button class="btn btn-danger btn-sm" onclick="deleteLeaveRequest(${i})" title="ลบคำขอลานี้ (สำหรับกรอกผิดพลาด)">🗑 ลบ</button>` : ''}
-        ${r.status==='rejected' && r.rejectReason ? `<span class="p-sub" title="${r.rejectReason}">เหตุผล: ${r.rejectReason}</span>` : ''}
+        <button class="btn btn-ghost btn-sm" onclick="openEditLeave(${i})" title="แก้ไขคำขอลานี้">✏️ แก้ไข</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteLeaveRequest(${i})" title="ลบคำขอลานี้">🗑 ลบ</button>
       </td>
     </tr>`;
 }
@@ -2336,7 +2323,7 @@ function __populateLrApprovedFyFilter(){
   if(!sel) return;
   const cfy = fiscalYearOf(TODAY.toISOString().slice(0,10));
   const fys = new Set([cfy]);
-  leaveRequests.forEach(r=>{ if(r.status==='approved' && r.from){ const fy = fiscalYearOf(r.from); if(fy) fys.add(fy); } });
+  leaveRequests.forEach(r=>{ if(r.status!=='cancelled' && r.from){ const fy = fiscalYearOf(r.from); if(fy) fys.add(fy); } });
   const sorted = Array.from(fys).sort((a,b)=>b-a);
   const hadSelection = sel.value;
   const isFirstPopulate = !sel.dataset.populated;
@@ -2345,18 +2332,18 @@ function __populateLrApprovedFyFilter(){
   else sel.value = String(cfy);
   sel.dataset.populated = '1';
 }
+/* รวมสองตาราง "รอการอนุมัติ"/"อนุมัติแล้ว" เดิมเป็นตารางเดียว (2569-09-18) — ตัดสถานะอนุมัติดิจิทัล
+   ออกทั้งระบบ ทุกคำขอลาที่ยื่นเข้าระบบถือเป็นข้อมูลลาจริงเสมอ (ยกเว้นที่ถูกยกเลิก) */
 function renderLeaveRequestList(){
-  const pendingRows = leaveRequests.map((r,i)=>({r,i})).filter(({r})=>r.status!=='approved');
   __populateLrApprovedFyFilter();
   const fyFilter = document.getElementById('lr-approved-fy').value;
   const searchEl = document.getElementById('lr-approved-search');
   const q = searchEl ? searchEl.value.trim().toLowerCase() : '';
-  const approvedRows = leaveRequests.map((r,i)=>({r,i})).filter(({r})=>r.status==='approved' && (!q || r.name.toLowerCase().includes(q)) && String(fiscalYearOf(r.from))===fyFilter)
+  const rows = leaveRequests.map((r,i)=>({r,i}))
+    .filter(({r})=>(!q || r.name.toLowerCase().includes(q)) && String(fiscalYearOf(r.from))===fyFilter)
     .sort((a,b)=> (b.r.from||'').localeCompare(a.r.from||'') || (b.r.to||'').localeCompare(a.r.to||''));
-  document.getElementById('lr-list-body-pending').innerHTML = pendingRows.map(({r,i})=>__leaveRowHTML(r,i)).join('')
-    || `<tr><td colspan="5" style="text-align:center;color:var(--ink-400);padding:16px;">ไม่มีคำขอลาที่รอการอนุมัติ</td></tr>`;
-  document.getElementById('lr-list-body-approved').innerHTML = approvedRows.map(({r,i})=>__leaveRowHTML(r,i)).join('')
-    || `<tr><td colspan="5" style="text-align:center;color:var(--ink-400);padding:16px;">${q ? 'ไม่พบรายการที่ตรงกับคำค้นหา' : 'ยังไม่มีคำขอลาที่อนุมัติแล้วในปีงบประมาณนี้'}</td></tr>`;
+  document.getElementById('lr-list-body').innerHTML = rows.map(({r,i})=>__leaveRowHTML(r,i)).join('')
+    || `<tr><td colspan="5" style="text-align:center;color:var(--ink-400);padding:16px;">${q ? 'ไม่พบรายการที่ตรงกับคำค้นหา' : 'ยังไม่มีการบันทึกข้อมูลการลาในปีงบประมาณนี้'}</td></tr>`;
   __renderLrLastUpdated();
 }
 // แสดงสถานะว่ามีการบันทึก/อัปเดตข้อมูลการลาล่าสุดเมื่อวันที่เท่าไร (ดูจาก recordedDate ของทุกคำขอลา)
@@ -2371,9 +2358,13 @@ function __renderLrLastUpdated(){
   const latest = dates.reduce((a,b)=> a>b ? a : b);
   el.textContent = `📌 อัปเดตล่าสุด ${fmtDate(latest)}`;
 }
+/* ทุกคำขอลาที่ยื่นเข้าระบบถือเป็นข้อมูลลาจริงแล้ว (2569-09-18 — ตัดสถานะอนุมัติดิจิทัลออกทั้งระบบ)
+   จึงใช้ขั้นตอนลบแบบเข้มงวด (ต้องเป็นแอดมิน + คำเตือนเรื่องผลต่อทะเบียนคุมลา) กับทุกรายการเสมอ
+   ไม่มีการแยกกรณี "ยังไม่อนุมัติ" อีกต่อไป */
 function deleteLeaveRequest(i){
   const r = leaveRequests[i];
   if(!r) return;
+  if(!isAdmin()) return;
   const doDelete = async ()=>{
     try{
       await apiPost('delete', 'leave_requests', null, r.id);
@@ -2385,47 +2376,19 @@ function deleteLeaveRequest(i){
     __saveSharedLeaveRequests();
     renderAll();
   };
-  if(r.status==='approved'){
-    // รายการอนุมัติแล้ว: ต้องเป็นแอดมินเท่านั้น และใช้เฉพาะกรณีกรอกผิดพลาด/รายการซ้ำ
-    // การยกเลิกวันลาตามปกติ (พนักงานเปลี่ยนแผน) ให้ใช้ปุ่ม "ใบขอยกเลิกวันลา" แทน ไม่ใช่การลบทิ้ง
-    if(!isAdmin()) return;
-    showConfirm({
-      title:'ลบรายการลาที่อนุมัติแล้ว',
-      message:`ยืนยันลบรายการลาที่อนุมัติแล้วของ <b>"${r.name}"</b><br><b>${r.type} ${fmtDate(r.from)} – ${fmtDate(r.to)}</b><br>ทิ้งทั้งหมด?`,
-      warn:'ใช้สำหรับกรณีกรอกผิดพลาดหรือรายการซ้ำเท่านั้น หากพนักงานต้องการยกเลิกวันลาตามปกติ กรุณาใช้ปุ่ม "ใบขอยกเลิกวันลา" แทน\nการลบไม่สามารถย้อนกลับได้ และจะลบสถิติการลาที่เกี่ยวข้องออกจากทะเบียนคุมลา (จ.3-03) ด้วย',
-      onConfirm:doDelete
-    });
-  } else {
-    showConfirm({
-      title:'ลบคำขอลา',
-      message:`ยืนยันลบคำขอลาของ <b>"${r.name}"</b><br><b>${r.type} ${fmtDate(r.from)} – ${fmtDate(r.to)}</b>?`,
-      warn:'ใช้สำหรับกรณีกรอกผิดพลาดเท่านั้น การลบไม่สามารถย้อนกลับได้',
-      onConfirm:doDelete
-    });
-  }
-}
-async function setReqStatus(i,st){
-  if(!isAdmin()) return;
-  const r = leaveRequests[i];
-  if(!r) return;
-  const before = r.status;
-  r.status = st;
-  try{
-    await apiPost('update', 'leave_requests', r);
-  }catch(err){
-    r.status = before;
-    alert('บันทึกสถานะคำขอลาไปยังฐานข้อมูลกลางไม่สำเร็จ: ' + err.message);
-    return;
-  }
-  __saveSharedLeaveRequests();
-  renderAll();
+  showConfirm({
+    title:'ลบรายการลา',
+    message:`ยืนยันลบรายการลาของ <b>"${r.name}"</b><br><b>${r.type} ${fmtDate(r.from)} – ${fmtDate(r.to)}</b><br>ทิ้งทั้งหมด?`,
+    warn:'ใช้สำหรับกรณีกรอกผิดพลาดหรือรายการซ้ำเท่านั้น หากพนักงานต้องการยกเลิกวันลาตามปกติ กรุณาใช้ปุ่ม "ใบขอยกเลิกวันลา" แทน\nการลบไม่สามารถย้อนกลับได้ และจะลบสถิติการลาที่เกี่ยวข้องออกจากทะเบียนคุมลา (จ.3-03) ด้วย',
+    onConfirm:doDelete
+  });
 }
 
 let __editLeaveIndex = null;
 function openEditLeave(i){
   if(!isAdmin()) return;
   const r = leaveRequests[i];
-  if(!r || r.status==='approved') return;
+  if(!r || r.status==='cancelled') return;
   __editLeaveIndex = i;
   document.getElementById('el-name-tag').textContent = r.name;
   document.getElementById('el-type').value = r.type;
@@ -3003,42 +2966,14 @@ function __loadSharedLeaveRequests(){
 function __saveSharedLeaveRequests(){
   try{ localStorage.setItem(__SHARED_LEAVE_KEY, JSON.stringify(leaveRequests)); }catch(e){ console.error('ซิงก์ข้อมูลคำขอลาไปยังระบบหลักล้มเหลว', e); }
 }
-// ดึงสถานะล่าสุด (ที่อาจถูกอนุมัติ/ตีกลับจากระบบหลัก) กลับมาไว้ในชุดข้อมูลของหน้านี้
-// และสะท้อนสถานะนั้นกลับไปบันทึกที่ฐานข้อมูลกลางด้วย (เพราะระบบหลักยังไม่เชื่อม API โดยตรง)
-// หมายเหตุ: "rejectReason" เป็นฟิลด์ที่ใช้เฉพาะฝั่ง localStorage bridge นี้เท่านั้น — ตาราง
-// leave_requests ใน Google Sheets ยังไม่มีคอลัมน์นี้ จึงยังไม่ถูกบันทึกไปที่ฐานข้อมูลกลาง
-function __syncLeaveStatusFromShared(){
-  const shared = __loadSharedLeaveRequests();
-  if(!shared.length) return false;
-  const byId = {};
-  shared.forEach(s=>{ if(s.id) byId[s.id]=s; });
-  let changed = false;
-  leaveRequests.forEach(r=>{
-    const s = r.id && byId[r.id];
-    if(s && (s.status!==r.status || s.rejectReason!==r.rejectReason)){
-      r.status = s.status;
-      r.rejectReason = s.rejectReason;
-      changed = true;
-      apiPost('update', 'leave_requests', r).catch(err=>{
-        console.error('ซิงก์สถานะคำขอลาไปยังฐานข้อมูลกลางล้มเหลว', err);
-      });
-    }
-  });
-  return changed;
-}
 /* ประวัติการลาย้อนหลัง ปีงบประมาณ 2569 (ชุดที่ 1+2 รวม 241 รายการ) ที่เคยฝังเป็นอาร์เรย์อยู่ตรงนี้
    ย้ายไปนำเข้าที่ Google Sheets แท็บ "leave_requests" แล้วผ่าน seedLeaveRequestsOnce() ใน Code.gs
    (ไฟล์ seedLeaveRequestsOnce.gs.txt ในโฟลเดอร์เดียวกัน) หน้านี้โหลดข้อมูลทั้งหมดจาก API แทน */
 
-/* หมายเหตุ: __syncLeaveStatusFromShared() และ __saveSharedLeaveRequests() เรียกครั้งแรกหลัง
-   leaveRequests โหลดจาก API เสร็จแล้วเท่านั้น (ดูท้ายไฟล์) ไม่งั้นจะเขียนอาร์เรย์ว่างทับ
-   saraban_shared_leave_requests_v1 ที่ระบบหลักอาจกำลังใช้งานอยู่ */
-window.addEventListener('storage', function(e){
-  if(e.key===__SHARED_LEAVE_KEY){
-    if(__syncLeaveStatusFromShared()) renderAll();
-  }
-});
-setInterval(function(){ if(__syncLeaveStatusFromShared()) renderLeaveRequestList(); }, 4000);
+/* หมายเหตุ: __saveSharedLeaveRequests() ยังคงไว้ — ระบบที่ 4 (การเงิน) ยังอ่านค่าจาก
+   saraban_shared_leave_requests_v1 โดยตรงเพื่อคำนวณบัญชีลงเวลา ง.3-12 (ดู leaveCodeForDay()
+   ใน choengnoen4-finance.html) ตัดเฉพาะกลไกดึงสถานะอนุมัติกลับเข้ามา (__syncLeaveStatusFromShared,
+   เดิมไว้รับผลจากหน้า "การอนุมัติเอกสาร" ที่ถูกตัดออกไปแล้ว) ออกเท่านั้น */
 /* ============ จบส่วนเชื่อมข้อมูลกับระบบหลัก ============ */
 
 /* ============ แสดง/ซ่อนแถบหมายเหตุท้ายตาราง (ปุ่ม ⋮) ============ */
@@ -3075,7 +3010,6 @@ renderAll();
     await loadControlledRoutesCacheFromApi();
     await loadComplaintsFromApi();
   }
-  __syncLeaveStatusFromShared();
   __saveSharedLeaveRequests();
   renderAll();
 })();
