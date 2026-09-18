@@ -102,6 +102,7 @@
   .hist-badge{font-size:10.5px;font-weight:600;padding:2px 8px;border-radius:20px;white-space:nowrap;}
   .hist-badge-in{background:var(--success-bg);color:var(--success);}
   .hist-badge-out{background:var(--danger-bg);color:var(--danger);}
+  .hist-badge-adjust{background:#fdf1de;color:#a3660a;}
   .hist-entry-date{color:var(--ink-600);white-space:nowrap;}
   .hist-entry-note{color:var(--ink-400);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
   .hist-entry-qty{font-weight:600;white-space:nowrap;}
@@ -398,6 +399,9 @@
   .fc-bar-track{height:6px;border-radius:4px;background:rgba(255,255,255,.18);margin-top:14px;overflow:hidden;}
   .fc-bar-fill{height:100%;background:#fff;border-radius:4px;}
   .fc-bar-label{font-size:10.5px;color:rgba(255,255,255,.75);margin-top:6px;}
+  .fc-reorder-row{font-size:11.5px;color:rgba(255,255,255,.75);margin-top:10px;display:flex;align-items:center;gap:6px;}
+  .fc-reorder-input{width:70px;padding:3px 6px;border-radius:6px;border:1px solid rgba(255,255,255,.35);background:rgba(255,255,255,.12);color:#fff;font-family:'Sarabun';font-size:12px;}
+  .fc-reorder-input::placeholder{color:rgba(255,255,255,.5);}
   .fc-hist-btn{margin-top:12px;width:100%;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.28);color:#fff;border-radius:8px;padding:8px 10px;font-family:'Sarabun';font-size:12.5px;font-weight:600;cursor:pointer;text-align:center;}
   .fc-hist-btn:hover{background:rgba(255,255,255,.24);}
   .fuel-summary-head{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:16px;flex-wrap:wrap;}
@@ -540,7 +544,7 @@
               ทะเบียนพัสดุ / น้ำมันเชื้อเพลิง
             </h2>
             <div class="toolbar">
-              <button class="btn btn-primary" id="mat-add-btn" onclick="openItemModal()">+ รายการเบิก</button>
+              <button class="btn btn-primary" id="mat-add-btn" onclick="openItemModal()">+ รับพัสดุ/น้ำมันเข้าคลัง</button>
             </div>
           </div>
           <div class="toolbar" style="padding:14px 20px 0;">
@@ -620,7 +624,7 @@
           <div id="rep-mat-grid-wrap" class="grid-wrap"></div>
           <div class="legend-block" id="rep-mat-foot-block">
             <button type="button" class="legend-dot-btn no-print" id="rep-mat-foot-toggle" onclick="__toggleNote('rep-mat-foot',this)" aria-expanded="false" title="แสดง/ซ่อนหมายเหตุ">⋮</button>
-            <div class="foot-note" id="rep-mat-foot" style="display:none;background:transparent;border-top:none;">คลิกช่องตัวเลข เพื่อกรอก/แก้ไขจำนวนที่เบิกของวันนั้นๆตามใบเบิก-จ่ายพัสดุตัวจริง , การรับพัสดุเข้าคลังให้ใช้ปุ่ม "+ รายการเบิก" ที่แท็บทะเบียนพัสดุ</div>
+            <div class="foot-note" id="rep-mat-foot" style="display:none;background:transparent;border-top:none;">คลิกช่องตัวเลข เพื่อกรอก/แก้ไขจำนวนที่เบิกของวันนั้นๆตามใบเบิก-จ่ายพัสดุตัวจริง , การรับพัสดุเข้าคลังให้ใช้ปุ่ม "+ รับพัสดุ/น้ำมันเข้าคลัง" ที่แท็บทะเบียนพัสดุ</div>
           </div>
         </div>
 
@@ -663,7 +667,7 @@
           <div id="rep-fuel-grid-wrap" class="grid-wrap"></div>
           <div class="legend-block" id="rep-fuel-foot-block">
             <button type="button" class="legend-dot-btn no-print" id="rep-fuel-foot-toggle" onclick="__toggleNote('rep-fuel-foot',this)" aria-expanded="false" title="แสดง/ซ่อนหมายเหตุ">⋮</button>
-            <div class="foot-note" id="rep-fuel-foot" style="display:none;background:transparent;border-top:none;">คลิกช่องตัวเลข (สำหรับผู้มีสิทธิ์แก้ไข) เพื่อกรอก/แก้ไขจำนวนลิตรที่เบิกของวันนั้นๆตามใบสั่งจ่ายน้ำมันตัวจริง — การรับน้ำมันเข้าคลังให้ใช้ปุ่ม "+ รายการเบิก" ที่แท็บทะเบียนพัสดุ (แท็บย่อยน้ำมันเชื้อเพลิง)</div>
+            <div class="foot-note" id="rep-fuel-foot" style="display:none;background:transparent;border-top:none;">คลิกช่องตัวเลข (สำหรับผู้มีสิทธิ์แก้ไข) เพื่อกรอก/แก้ไขจำนวนลิตรที่เบิกของวันนั้นๆตามใบสั่งจ่ายน้ำมันตัวจริง — การรับน้ำมันเข้าคลังให้ใช้ปุ่ม "+ รับพัสดุ/น้ำมันเข้าคลัง" ที่แท็บทะเบียนพัสดุ (แท็บย่อยน้ำมันเชื้อเพลิง)</div>
           </div>
         </div>
       </div>
@@ -1181,6 +1185,24 @@ function renderMaterials(){
   }
   document.getElementById('mat-foot').textContent = `ยอดคงเหลือคำนวณจากบัญชี พ.1-02`;
 }
+/* จุดสั่งซื้อขั้นต่ำของน้ำมัน (2569-09-18) — เดิมมีแค่ของวัสดุ (matStatus) น้ำมันไม่มีการเตือน
+   สต็อกต่ำเลยทั้งที่หมดแล้วกระทบงานหน้างานทันที เร่งด่วนกว่าวัสดุหลายชนิดด้วยซ้ำ */
+function fuelStatus(closing, reorder){
+  if(!reorder) return null; // ยังไม่ได้ตั้งจุดสั่งซื้อ — ไม่มีเกณฑ์ให้เทียบ
+  return closing<=reorder ? 'low' : (closing<=reorder*1.3 ? 'watch' : 'ok');
+}
+async function saveFuelReorderPoint(ft, rawValue){
+  if(!isAdmin()) return;
+  const value = rawValue==='' ? 0 : Math.max(0, Number(rawValue)||0);
+  try{
+    await apiPost(fuelSettings[ft]!==undefined ? 'update' : 'add', 'fuel_settings', {fuelType:ft, reorderPoint:value});
+    fuelSettings[ft] = value;
+  }catch(err){
+    console.error('บันทึกจุดสั่งซื้อน้ำมันไปยังฐานข้อมูลกลางไม่สำเร็จ', err);
+    showAlertModal('บันทึกจุดสั่งซื้อน้ำมันไปยังฐานข้อมูลกลางไม่สำเร็จ: ' + err.message);
+  }
+  renderMasterFuel();
+}
 function renderMasterFuel(){
   const cardsEl = document.getElementById('master-fuel-cards');
   if(!cardsEl) return;
@@ -1193,10 +1215,17 @@ function renderMasterFuel(){
     const s = fuelMonthSummary(ft, mk);
     const usedPct = s.opening>0 ? Math.min(100, Math.round((s.issued/s.opening)*100)) : (s.issued>0 ? 100 : 0);
     const cls = ft==='เบนซิน' ? 'fuel-card benzine' : 'fuel-card';
+    const reorder = fuelSettings[ft] || 0;
+    const st = fuelStatus(s.closing, reorder);
+    const statusPill = st==='low' ? '<span class="pill pill-danger">ต่ำกว่าจุดสั่งซื้อ</span>' : st==='watch' ? '<span class="pill pill-warn">ใกล้ถึงจุดสั่งซื้อ</span>' : st==='ok' ? '<span class="pill pill-ok">ปกติ</span>' : '';
+    const reorderCell = isAdmin()
+      ? `<input type="number" min="0" step="1" class="fc-reorder-input" value="${reorder||''}" placeholder="ยังไม่ตั้ง" onblur="saveFuelReorderPoint('${ft}', this.value)" onkeydown="if(event.key==='Enter')this.blur()">`
+      : `<span>${reorder ? fmtNum(reorder,0) : 'ยังไม่ตั้ง'}</span>`;
     return `<div class="${cls}">
       <div class="fc-top">
         <div class="fc-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${icons[ft]}</svg></div>
         <div class="fc-title">น้ำมัน${ft}</div>
+        ${statusPill}
         <button type="button" class="hist-icon-btn" style="margin-left:auto;" title="ดูประวัติเบิก-จ่าย" onclick="openItemHistoryModal('fuel','${ft}')">🕘</button>
       </div>
       <div class="fc-value-row"><span class="fc-value">${fmtNum(s.closing,1)}</span><span class="fc-unit">ลิตร คงเหลือ</span></div>
@@ -1207,6 +1236,7 @@ function renderMasterFuel(){
       </div>
       <div class="fc-bar-track"><div class="fc-bar-fill" style="width:${usedPct}%"></div></div>
       <div class="fc-bar-label">ใช้ไปแล้ว ${usedPct}% ของยอดยกมาในเดือนนี้</div>
+      <div class="fc-reorder-row">จุดสั่งซื้อ ${reorderCell} ลิตร</div>
     </div>`;
   }).join('');
   const monthLabelEl = document.getElementById('fuel-month-label');
@@ -1303,7 +1333,7 @@ function fuelHistoryReceivesHtml(){
     if(__fuelHistEditId===t.id){
       return `<tr class="fh-row-edit">
         <td><input type="date" id="fh-edit-date" value="${t.date||''}"></td>
-        <td><input type="text" id="fh-edit-ref" value="${t.ref||''}" placeholder="เลขที่ใบเบิก"></td>
+        <td><input type="text" id="fh-edit-ref" value="${t.ref||''}" placeholder="เลขที่ใบรับ"></td>
         <td><input type="number" step="0.01" class="no-spin" id="fh-edit-liters" value="${t.liters||''}"></td>
         <td><input type="number" step="0.01" class="no-spin" id="fh-edit-price" value="${t.unitPrice||''}" placeholder="บาท/ลิตร"></td>
         <td style="white-space:nowrap;">
@@ -1324,7 +1354,7 @@ function fuelHistoryReceivesHtml(){
     </tr>`;
   }).join('');
   return `<div class="table-wrap"><table>
-    <thead><tr><th>วันที่รับเข้า</th><th>เลขที่ใบเบิก</th><th class="num">ปริมาณ (ล.)</th><th class="num">ราคา/ลิตร</th><th></th></tr></thead>
+    <thead><tr><th>วันที่รับเข้า</th><th>เลขที่ใบรับ</th><th class="num">ปริมาณ (ล.)</th><th class="num">ราคา/ลิตร</th><th></th></tr></thead>
     <tbody>${body}</tbody>
   </table></div>
   ${admin ? '' : `<div class="legend-block" id="fuel-recv-foot-block">
@@ -1356,7 +1386,7 @@ function saveFuelReceiveEdit(id){
   t.unitPrice = price || undefined;
   t.totalPrice = price ? liters*price : undefined;
   const noteParts = [];
-  if(ref) noteParts.push('ใบเบิกเลขที่ '+ref);
+  if(ref) noteParts.push('เลขที่ใบรับ '+ref);
   if(price) noteParts.push('ราคา '+fmtNum(price,2)+' บาท/หน่วย รวม '+fmtNum(liters*price,2)+' บาท');
   t.note = noteParts.length ? noteParts.join(' · ') : 'รับเข้าคลัง';
   __fuelHistEditId = null;
@@ -1463,8 +1493,8 @@ function renderItemHistoryModal(){
     const issuedTxs = s.txs.filter(t=>t.kind==='issue').slice().sort((a,b)=>a.date.localeCompare(b.date));
     const receiveLines = receivedIsOverride
       ? (s.received!==0 ? [{date:null, html:`<div class="hist-entry"><span class="hist-badge hist-badge-in">รับเข้า</span><span class="hist-entry-date">—</span><span class="hist-entry-note">ยอดรวมทั้งเดือน (ปรับยอดรวม)</span><span class="hist-entry-qty hist-qty-in">+${fmtNum(s.received,1)} ${unit}</span></div>`}] : [])
-      : receivedTxs.map(t=>({date:t.date, html:`<div class="hist-entry"><span class="hist-badge hist-badge-in">รับเข้า</span><span class="hist-entry-date">${fmtDate(t.date)}</span><span class="hist-entry-note">${(t.ref?'เลขที่ใบเบิก '+t.ref+' — ':'')+(t.note||'')}</span><span class="hist-entry-qty hist-qty-in">+${fmtNum(__histKind==='fuel'?t.liters:t.qty,1)} ${unit}</span></div>`}));
-    const issueLines = issuedTxs.map(t=>({date:t.date, html:`<div class="hist-entry"><span class="hist-badge hist-badge-out">เบิกจ่าย</span><span class="hist-entry-date">${fmtDate(t.date)}</span><span class="hist-entry-note">${t.vehicle?vehicleShortName(t.vehicle)+' — ':''}${t.note||''}</span><span class="hist-entry-qty hist-qty-out">−${fmtNum(__histKind==='fuel'?t.liters:t.qty,1)} ${unit}</span></div>`}));
+      : receivedTxs.map(t=>({date:t.date, html:`<div class="hist-entry"><span class="hist-badge ${isAdjustmentTx(t)?'hist-badge-adjust':'hist-badge-in'}">${isAdjustmentTx(t)?'🔧 ปรับยอด':'รับเข้า'}</span><span class="hist-entry-date">${fmtDate(t.date)}</span><span class="hist-entry-note">${(t.ref?'เลขที่ใบรับ '+t.ref+' — ':'')+(t.note||'').replace(ADJUSTMENT_NOTE_PREFIX,'')}</span><span class="hist-entry-qty hist-qty-in">+${fmtNum(__histKind==='fuel'?t.liters:t.qty,1)} ${unit}</span></div>`}));
+    const issueLines = issuedTxs.map(t=>({date:t.date, html:`<div class="hist-entry"><span class="hist-badge ${isAdjustmentTx(t)?'hist-badge-adjust':'hist-badge-out'}">${isAdjustmentTx(t)?'🔧 ปรับยอด':'เบิกจ่าย'}</span><span class="hist-entry-date">${fmtDate(t.date)}</span><span class="hist-entry-note">${(t.vehicle?vehicleShortName(t.vehicle)+' — ':'')+(t.note||'').replace(ADJUSTMENT_NOTE_PREFIX,'')}</span><span class="hist-entry-qty hist-qty-out">−${fmtNum(__histKind==='fuel'?t.liters:t.qty,1)} ${unit}</span></div>`}));
     const entryLines = receiveLines.concat(issueLines).sort((a,b)=> (a.date||'').localeCompare(b.date||'')).map(e=>e.html).join('');
     return `<div class="hist-month-block">
       <div class="hist-month-head"><span class="hist-month-name">${monthLabel}</span><span class="hist-month-range">ยกมา ${fmtNum(s.opening,1)} → คงเหลือ ${fmtNum(s.closing,1)} ${unit}</span></div>
@@ -1542,7 +1572,7 @@ function fuelRecvRowHtml(key,label,icon){
     <div class="fuel-recv-row">
       <div class="frv-label">${icon} ${label}</div>
       <div class="three-col">
-        <div class="f-row"><label>ปริมาณที่เบิก (ลิตร)</label><input type="number" min="0" step="0.01" class="no-spin" id="recv-fuel-${key}-qty" oninput="onRecvCalc()"></div>
+        <div class="f-row"><label>ปริมาณที่รับ (ลิตร)</label><input type="number" min="0" step="0.01" class="no-spin" id="recv-fuel-${key}-qty" oninput="onRecvCalc()"></div>
         <div class="f-row"><label>ราคาต่อหน่วย (บาท)</label><input type="number" min="0" step="0.01" id="recv-fuel-${key}-price" oninput="onRecvCalc()"></div>
         <div class="f-row"><label>ราคารวม (บาท)</label><input type="text" id="recv-fuel-${key}-total" readonly></div>
       </div>
@@ -1551,7 +1581,7 @@ function fuelRecvRowHtml(key,label,icon){
 function fuelRecvFieldsHtml(){
   return `
     <div class="f-row">
-      <label>รายการที่เบิก (น้ำมันเชื้อเพลิง)</label>
+      <label>รายการที่รับ (น้ำมันเชื้อเพลิง)</label>
     </div>
     <div class="fuel-recv-block">
       ${fuelRecvRowHtml('d','ดีเซล','🛢️')}
@@ -1570,7 +1600,7 @@ function matRecvRowHtml(row, idx){
       <div class="f-row">${recvItemFieldHtml(rid)}</div>
       <div class="two-col">
         <div class="f-row"><label>หน่วยนับ</label><input type="text" id="recv-unit-${rid}" readonly></div>
-        <div class="f-row"><label>ปริมาณที่เบิก</label><input type="number" min="0" step="0.01" class="no-spin" id="recv-qty-${rid}" oninput="onRecvCalc(${rid})"></div>
+        <div class="f-row"><label>ปริมาณที่รับ</label><input type="number" min="0" step="0.01" class="no-spin" id="recv-qty-${rid}" oninput="onRecvCalc(${rid})"></div>
       </div>
       <div class="two-col">
         <div class="f-row"><label>ราคาวัสดุต่อหน่วย (บาท)</label><input type="number" min="0" step="0.01" id="recv-price-${rid}" oninput="onRecvCalc(${rid})"></div>
@@ -1581,7 +1611,7 @@ function matRecvRowHtml(row, idx){
 function materialRecvFieldsHtml(){
   recvMatRows = [newRecvMatRow()];
   return `
-    <label>รายการที่เบิก (วัสดุ)</label>
+    <label>รายการที่รับ (วัสดุ)</label>
     <div class="mat-recv-block" id="recv-mat-rows">
       ${recvMatRows.map((r,i)=>matRecvRowHtml(r,i)).join('')}
     </div>
@@ -1628,7 +1658,7 @@ function updateRecvMatGrandTotal(){
     const price = parseFloat(document.getElementById('recv-price-'+r.rid)?.value)||0;
     sum += qty*price;
   });
-  el.textContent = sum ? ('รวมทั้งใบเบิก: '+fmtNum(sum,2)+' บาท') : '';
+  el.textContent = sum ? ('รวมทั้งใบรับ: '+fmtNum(sum,2)+' บาท') : '';
 }
 function receiveFormHtml(){
   const todayStr = toLocalISODate(TODAY);
@@ -1638,9 +1668,10 @@ function receiveFormHtml(){
       ${recvKindToggleHtml()}
     </div>
     <div class="two-col">
-      <div class="f-row"><label>เลขที่ใบเบิก</label><input type="text" id="recv-ref"></div>
-      <div class="f-row"><label>วันที่เบิก</label><input type="date" id="recv-date" value="${todayStr}"></div>
+      <div class="f-row"><label>เลขที่ใบรับ/ใบส่งของ</label><input type="text" id="recv-ref"></div>
+      <div class="f-row"><label>วันที่รับ</label><input type="date" id="recv-date" value="${todayStr}"></div>
     </div>
+    <div class="f-row"><label>ผู้ขาย/หน่วยงานที่ส่งของ (ถ้ามี)</label><input type="text" id="recv-supplier" placeholder="ไม่บังคับ"></div>
     ${itemModalRecvType==='fuel' ? fuelRecvFieldsHtml() : materialRecvFieldsHtml()}
     <div class="f-row"><label>หมายเหตุ (ถ้ามี)</label><input type="text" id="recv-note" placeholder="ไม่บังคับ"></div>
     <div class="toolbar" style="justify-content:flex-end;margin-top:6px;">
@@ -1651,11 +1682,13 @@ function receiveFormHtml(){
 function onRecvKindBtn(el){
   const prevRef = document.getElementById('recv-ref')?.value || '';
   const prevDate = document.getElementById('recv-date')?.value || '';
+  const prevSupplier = document.getElementById('recv-supplier')?.value || '';
   itemModalRecvType = el.dataset.kind;
   const body = document.getElementById('item-modal-body');
   if(body) body.innerHTML = receiveFormHtml();
   const refEl = document.getElementById('recv-ref'); if(refEl) refEl.value = prevRef;
   const dateEl = document.getElementById('recv-date'); if(dateEl && prevDate) dateEl.value = prevDate;
+  const supplierEl = document.getElementById('recv-supplier'); if(supplierEl) supplierEl.value = prevSupplier;
   resetRecvItemField();
 }
 function resetRecvItemField(){
@@ -1763,6 +1796,7 @@ async function submitReceiveForm(){
   if(!isAdmin()) return;
   const ref = (document.getElementById('recv-ref')?.value||'').trim();
   const date = document.getElementById('recv-date')?.value || toLocalISODate(TODAY);
+  const supplier = (document.getElementById('recv-supplier')?.value||'').trim();
   const noteExtra = (document.getElementById('recv-note')?.value||'').trim();
 
   if(itemModalRecvType==='fuel'){
@@ -1777,7 +1811,7 @@ async function submitReceiveForm(){
       const price = parseFloat(document.getElementById('recv-fuel-'+r.key+'-price')?.value) || 0;
       entries.push({fuelType:r.fuelType, qty, price, total: qty*price});
     }
-    if(!entries.length){ showAlertModal('กรุณากรอกปริมาณที่เบิกอย่างน้อย 1 ชนิด (ดีเซลหรือเบนซิน)'); return; }
+    if(!entries.length){ showAlertModal('กรุณากรอกปริมาณที่รับอย่างน้อย 1 ชนิด (ดีเซลหรือเบนซิน)'); return; }
     const recvSaveBtn = document.getElementById('recv-save-btn'), recvCancelBtn = document.getElementById('recv-cancel-btn');
     const recvSaveLabel = recvSaveBtn ? recvSaveBtn.textContent : '';
     if(recvSaveBtn){ recvSaveBtn.disabled = true; recvSaveBtn.textContent = 'กำลังบันทึก...'; }
@@ -1785,7 +1819,8 @@ async function submitReceiveForm(){
     try{
       for(const en of entries){
         const noteParts = [];
-        if(ref) noteParts.push('ใบเบิกเลขที่ '+ref);
+        if(ref) noteParts.push('เลขที่ใบรับ '+ref);
+        if(supplier) noteParts.push('ผู้ขาย/ผู้ส่ง: '+supplier);
         if(en.price) noteParts.push('ราคา '+fmtNum(en.price,2)+' บาท/หน่วย รวม '+fmtNum(en.total,2)+' บาท');
         if(noteExtra) noteParts.push(noteExtra);
         const note = noteParts.length ? noteParts.join(' · ') : 'รับเข้าคลัง';
@@ -1814,7 +1849,7 @@ async function submitReceiveForm(){
     if(!code && !hasQty) continue; // แถวว่างทั้งหมด ข้ามไป
     if(!code){ showAlertModal('กรุณาเลือกรายการวัสดุให้ครบทุกแถวที่กรอกปริมาณ'); return; }
     const qty = parseFloat(qtyRaw);
-    if(isNaN(qty) || qty<=0){ showAlertModal('กรุณากรอกปริมาณที่เบิกให้ถูกต้องในทุกแถว'); return; }
+    if(isNaN(qty) || qty<=0){ showAlertModal('กรุณากรอกปริมาณที่รับให้ถูกต้องในทุกแถว'); return; }
     const price = parseFloat(document.getElementById('recv-price-'+r.rid)?.value) || 0;
     entries.push({code, qty, price, total: qty*price});
   }
@@ -1826,7 +1861,8 @@ async function submitReceiveForm(){
   try{
     for(const en of entries){
       const noteParts = [];
-      if(ref) noteParts.push('ใบเบิกเลขที่ '+ref);
+      if(ref) noteParts.push('เลขที่ใบรับ '+ref);
+      if(supplier) noteParts.push('ผู้ขาย/ผู้ส่ง: '+supplier);
       if(en.price) noteParts.push('ราคา '+fmtNum(en.price,2)+' บาท/หน่วย รวม '+fmtNum(en.total,2)+' บาท');
       if(noteExtra) noteParts.push(noteExtra);
       const note = noteParts.length ? noteParts.join(' · ') : 'รับเข้าคลัง';
@@ -2002,9 +2038,10 @@ function renameVehicleLabel(oldLabel, newLabel){
   Object.keys(vehicleMileage).forEach(key=>{
     const parts = key.split('|'); // vehicle|date
     if(parts[0]===oldLabel){
-      const val = vehicleMileage[key];
+      const newKey = newLabel+'|'+parts.slice(1).join('|');
+      vehicleMileage[newKey] = vehicleMileage[key];
       delete vehicleMileage[key];
-      vehicleMileage[newLabel+'|'+parts.slice(1).join('|')]=val;
+      if(vehicleMileageIds[key]!==undefined){ vehicleMileageIds[newKey] = vehicleMileageIds[key]; delete vehicleMileageIds[key]; }
     }
   });
 }
@@ -2602,7 +2639,51 @@ function printVehReq(id){
    บัญชีเบิก-จ่ายน้ำมัน/พัสดุประจำวัน — ยอดยกมา / รับเข้า / รวมจ่าย / คงเหลือ (รายเดือน)
    รายการ "จ่าย" ส่วนใหญ่ถูกส่งเข้ามาอัตโนมัติจากใบสั่งการรายวันของระบบรองที่ 2 (งานสถิติและบริการประชาชน)
    ============================================================ */
+let fuelSettings = {};            // fuelType -> จุดสั่งซื้อขั้นต่ำ (ลิตร)
+async function loadFuelSettingsFromApi(){
+  try{
+    (await apiGet('fuel_settings')).forEach(r=>{ fuelSettings[r.fuelType] = Number(r.reorderPoint)||0; });
+  }catch(err){
+    console.error('โหลดจุดสั่งซื้อน้ำมันจากฐานข้อมูลกลางไม่สำเร็จ', err);
+  }
+}
 let vehicleMileage = {};          // key `${vehicle label}|${date}` -> เลขไมล์ (ตัวเลขหรือข้อความ เช่น "ชำรุด")
+let vehicleMileageIds = {};       // key เดียวกัน -> id จริงในตาราง vehicle_mileage_log (ไว้ update/delete ให้ตรงแถว)
+/* โหลดเลขไมล์จากฐานข้อมูลกลาง (2569-09-18 — แก้บั๊กเดิมที่เลขไมล์เก็บไว้ในหน่วยความจำ
+   เบราว์เซอร์เท่านั้น หายทุกครั้งที่รีเฟรชหน้า) ค่าจาก backend จะทับค่า seed ของเดือน ก.ค.
+   ด้านล่างเฉพาะ key ที่มีข้อมูลจริงแล้วเท่านั้น — key ที่ยังไม่เคยย้ายเข้า backend ยังเห็น seed อยู่ */
+async function loadVehicleMileageFromApi(){
+  try{
+    const rows = await apiGet('vehicle_mileage_log');
+    rows.forEach(r=>{
+      const key = r.vehicleId+'|'+r.date;
+      vehicleMileage[key] = r.mileage;
+      vehicleMileageIds[key] = r.id;
+    });
+  }catch(err){
+    console.error('โหลดเลขไมล์จากฐานข้อมูลกลางไม่สำเร็จ', err);
+  }
+}
+async function __saveMileageEntry(vehicle, date){
+  const key = vehicle+'|'+date;
+  const value = vehicleMileage[key];
+  const existingId = vehicleMileageIds[key];
+  try{
+    if(value===undefined){
+      if(existingId){
+        await apiPost('delete','vehicle_mileage_log', null, existingId);
+        delete vehicleMileageIds[key];
+      }
+      return;
+    }
+    const rec = { id: existingId, vehicleId: vehicle, date: date, mileage: value };
+    const saved = await apiPost(existingId ? 'update' : 'add', 'vehicle_mileage_log', rec);
+    if(!existingId && saved && saved.id) vehicleMileageIds[key] = saved.id;
+  }catch(err){
+    console.error('บันทึกเลขไมล์ไปยังฐานข้อมูลกลางไม่สำเร็จ', err);
+    showAlertModal('บันทึกเลขไมล์ไปยังฐานข้อมูลกลางไม่สำเร็จ: ' + err.message + '\nกรุณาลองกรอกใหม่อีกครั้ง');
+  }
+}
 let fuelOpeningOverride = {};     // key `${fuelType}|${monthKey}` -> ลิตร (ตั้งยอดยกมาเองสำหรับเดือนที่ไม่มีข้อมูลก่อนหน้า)
 let fuelReceivedOverride = {};    // key `${fuelType}|${monthKey}` -> ลิตร (ตั้งยอดรับเข้ารวมของเดือนเองแทนการรวมจากรายการรับเข้าทีละครั้ง)
 // ยอดยกมาเดือน ก.ค. 2569 = ยอดคงเหลือปิดบัญชี มิ.ย. 2569 จากไฟล์จริงของผู้ใช้ (ดีเซล 918.00, เบนซิน 470.00)
@@ -2819,6 +2900,9 @@ function onMileageInput(el){
 }
 function onMileageBlur(el){
   onGridCellBlur(el);
+  // บันทึกเลขไมล์ไปยังฐานข้อมูลกลางตอนเลิกโฟกัสช่อง (ก่อนหน้านี้เก็บไว้ในหน่วยความจำเบราว์เซอร์
+  // เท่านั้น หายทุกครั้งที่รีเฟรชหน้า — ดู loadVehicleMileageFromApi()/__saveMileageEntry() ด้านบน)
+  __saveMileageEntry(el.dataset.miVehicle, el.dataset.miDate);
   // รีเฟรชแถวเลขไมล์เพื่อตรวจสอบความถูกต้อง (ลดลงจากวันก่อนหน้า / เพิ่มขึ้นผิดปกติ) หลังพิมพ์เสร็จ
   const mk = ledgerMonthKey('rep-fuel-ledger-fy','rep-fuel-ledger-month');
   if(mk) renderReportFuel(mk);
@@ -3136,6 +3220,11 @@ function toggleMaterialEdit(){
   if(sb) sb.classList.toggle('hidden', !matEditMode);
   renderMaterials();
 }
+/* แท็กแยกรายการ "ปรับยอด" (แก้ไขจำนวนให้ตรงกับที่นับจริง) ออกจากรายการรับเข้า/เบิกจ่ายจริง (2569-09-18)
+   — เดิมทั้งสองแบบถูกบันทึกเป็น material_transactions ปนกันโดยไม่มีป้ายกำกับ ทำให้ดูประวัติ/รายงาน
+   พ.1-02 แล้วแยกไม่ออกว่าตัวเลขวันนั้นเป็นการเบิกจ่ายจริงหรือแค่แก้ยอดจากนับสต็อกผิด */
+const ADJUSTMENT_NOTE_PREFIX = '[ปรับยอด] ';
+function isAdjustmentTx(t){ return !!(t && t.note && t.note.indexOf(ADJUSTMENT_NOTE_PREFIX)===0); }
 async function saveMaterialEdits(){
   if(!isAdmin()) return;
   const rows = [];
@@ -3157,7 +3246,7 @@ async function saveMaterialEdits(){
         const delta = newVal - currentStock(m);
         if(Math.abs(delta) > 1e-9){
           adjustTx = {date:toLocalISODate(TODAY), itemCode:m.code,
-            kind: delta>0?'receive':'issue', qty:Math.abs(delta), note:'ปรับปรุงยอดคงเหลือให้ตรงกับยอดนับจริง (แก้ไขโดยผู้ดูแลระบบ)'};
+            kind: delta>0?'receive':'issue', qty:Math.abs(delta), note:ADJUSTMENT_NOTE_PREFIX+'ปรับปรุงยอดคงเหลือให้ตรงกับยอดนับจริง (แก้ไขโดยผู้ดูแลระบบ)'};
         }
       }
     }
@@ -3264,7 +3353,7 @@ function renderReportFuel(mk){
     recvTxsThisMonth.forEach(t=>{ const d=+t.date.slice(8,10); recvByDay[d]=(recvByDay[d]||0)+(t.liters||0); });
     const recvDayCells = days.map((d,i)=>{
       const v0 = recvByDay[d.day];
-      const titleParts = v0 ? recvTxsThisMonth.filter(t=>+t.date.slice(8,10)===d.day).map(t=>t.ref?`ใบเบิกเลขที่ ${t.ref}: ${fmtNum(t.liters,1)} ล.`:`รับเข้า ${fmtNum(t.liters,1)} ล.`).join('; ') : '';
+      const titleParts = v0 ? recvTxsThisMonth.filter(t=>+t.date.slice(8,10)===d.day).map(t=>t.ref?`เลขที่ใบรับ ${t.ref}: ${fmtNum(t.liters,1)} ล.`:`รับเข้า ${fmtNum(t.liters,1)} ล.`).join('; ') : '';
       return `<td class="daycell${d.hol?' hol':''}${v0?' recv-cell':''}" data-di="${i}"${titleParts?` title="${titleParts.replace(/"/g,'&quot;')}"`:''}><span>${v0!=null?fmtNum(v0,1):''}</span></td>`;
     }).join('');
     // ผ่าน 1 รอบก่อนเพื่อรวมยอดเบิกจริง+ฉบับร่างของทุกคันในประเภทน้ำมันนี้ ก่อนสร้างแถวสรุปหัวกลุ่ม (ให้ยอด "รวมเดือนนี้/คงเหลือ" หัวกลุ่มพรีวิวรวมฉบับร่างด้วย)
@@ -4193,6 +4282,8 @@ renderAll();
   await loadMaterialTransactionsFromApi();
   await loadVehiclesFromApi();
   await loadFuelTransactionsFromApi();
+  await loadFuelSettingsFromApi();
+  await loadVehicleMileageFromApi();
   await loadMachineryLogsFromApi();
   await loadVehicleRequestsFromApi();
   await loadControlledRoutesCacheFromApi();

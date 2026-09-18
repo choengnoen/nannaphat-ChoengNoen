@@ -938,6 +938,10 @@
               <div class="qty-pending-row" style="margin:-4px 0 4px;">
                 <label style="display:flex;align-items:center;gap:6px;cursor:pointer;"><input type="checkbox" id="dw-qty-pending" onchange="onDwQtyPendingToggle()"> ยังไม่ทราบปริมาณงาน (รอหัวหน้าหมวด/ช่างระบุภายหลัง — เสมียนไม่ต้องประมาณเอง)</label>
               </div>
+              <div id="dw-uc-suggest-row" class="hidden" style="margin:-2px 0 4px;">
+                <button type="button" class="btn btn-ghost btn-sm" onclick="suggestDwFromUnitCost()">💡 เติมวัสดุ/เครื่องจักรจากสูตรมาตรฐาน</button>
+                <span id="dw-uc-suggest-note" style="font-size:11.5px;color:var(--ink-400);margin-left:6px;"></span>
+              </div>
             </div>
 
             <div class="dw-acc open" id="dw-acc-labor">
@@ -1563,7 +1567,8 @@ function nextEncReport(){
 const THAI_MONTHS_FULL = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
 function fmtNum(n,dec){ dec = dec===undefined?2:dec; return (n||0).toLocaleString('en-US',{minimumFractionDigits:dec,maximumFractionDigits:dec}); }
 function monthLabel(m){ return m ? THAI_MONTHS_FULL[m-1] : '—'; }
-let bmmJobs = [{"code": "21112", "unit": "ตร.ม.", "name": "งานฉาบ"}, {"code": "21113", "unit": "ตร.ม.", "name": "งานปรับระดับ"}, {"code": "21114", "unit": "ตร.ม.", "name": "งานปะซ่อม"}, {"code": "21132", "unit": "ตร.ม.", "name": "งานกวาดเกลี่ย"}, {"code": "21201", "unit": "ตร.ม.", "name": "งานซ่อมทางเท้า ทางเชื่อม เกาะแบ่งถนน และทางจักรยาน"}, {"code": "21311", "unit": "ตร.ม.", "name": "งานทางระบายน้ำ"}, {"code": "21311", "unit": "ม.", "name": "งานทางระบายน้ำ"}, {"code": "21312", "unit": "แห่ง", "name": "งานท่อระบายน้ำ"}, {"code": "21321", "unit": "ตร.ม.", "name": "งานสะพาน"}, {"code": "21321", "unit": "แห่ง", "name": "งานสะพาน"}, {"code": "21411", "unit": "แห่ง", "name": "งานป้ายจราจร"}, {"code": "21412", "unit": "ตร.ม.", "name": "งานตีเส้นและทำเครื่องหมายจราจร"}, {"code": "21421", "unit": "ต้น", "name": "งานบำรุงรักษา หลักนำทาง หลักกิโลเมตร หลักเขตทาง และหมุดหลักฐานอื่นๆ"}, {"code": "21422", "unit": "ม.", "name": "งานบำรุงรักษา ราวกันอันตราย กำแพงกันอันตราย รั้วเขตทาง แผงกั้น อุปกรณ์ดูดซับแรงกระแทก และราวกันอันตรายประเภทอื่นๆ"}, {"code": "21423", "unit": "อัน", "name": "งานบำรุงรักษาสิ่งอำนวยความปลอดภัยอื่น ๆ"}, {"code": "21432", "unit": "แห่ง", "name": "งานไฟสัญญาณจราจร"}, {"code": "21521", "unit": "ตร.ม.", "name": "งานตัดหญ้า"}, {"code": "21522", "unit": "ตร.ม.", "name": "ถางป่า"}, {"code": "21530", "unit": "ต้น", "name": "งานบำรุงรักษาต้นไม้"}, {"code": "21550", "unit": "แห่ง", "name": "งานที่พักผู้โดยสารและผู้เดินทาง"}, {"code": "21570", "unit": "ตร.ม.", "name": "งานทำความสะอาด"}, {"code": "21650", "unit": "กิจกรรม", "name": "งานอำนวยความสะดวกและปลอดภัย"}, {"code": "21660", "unit": "กิจกรรม", "name": "งานบริหารอำนวยการเพื่อสนับสนุนการปฏิบัติกิจกรรมงานบำรุงปกติ"}];
+/* bmmJobs (array คงที่ 23 รายการ) ลบออกแล้ว (2569-09-18) — ทุกจุดที่เคยอ่านจากตัวนี้เปลี่ยนไปอ่าน
+   jobCodeReference ตรงๆ ผ่าน findJob()/leafJobCodes() แทนแล้ว (ดูคอมเมนต์ที่ findJob() ด้านล่าง) */
 /* แปลง bmm_plan_actual ระหว่างรูปแบบภายใน (fy/qty รวมเป็นค่าเดียว) กับคอลัมน์ Sheet
    (fiscalYear/planQty+actualQty แยกคอลัมน์) — no เป็นเลขลำดับ local เท่านั้น (ไม่ได้ส่งขึ้น
    backend) เก็บ __backendId ไว้คู่กันสำหรับ update/delete แทน เพราะ no ถูกใช้อ้างอิงเป็น
@@ -1664,7 +1669,15 @@ async function loadUnitCostRecordsFromApi(){
     alert('โหลดข้อมูลค่างานต่อหน่วยจากฐานข้อมูลกลางไม่สำเร็จ: ' + err.message + '\nกรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ตแล้วรีเฟรชหน้าใหม่');
   }
 }
-function findJob(code){ return bmmJobs.find(j=>j.code===code); }
+/* แก้บั๊ก (2569-09-18): findJob() เดิมอ่านจาก bmmJobs (array คงที่ 23 รายการฝังในโค้ด) ไม่ sync กับ
+   jobCodeReference (ฐานข้อมูลจริงจาก backend ที่แก้ไขได้ผ่านแท็บ "ข้อมูลอ้างอิงงาน") — รหัสงานที่เพิ่มใหม่
+   ผ่านแท็บนั้นจะไม่มีวันถูกค้นเจอในฟอร์มจ่ายงาน/บันทึกแผนผล/ตารางสูตร เปลี่ยนมาอ่านจาก jobCodeReference ตรงๆ
+   (ทางเดียวกับที่ openUcForm()'s presetCode branch ทำอยู่แล้ว) — leafJobCodes() กรองเฉพาะรหัสที่ไม่มีรหัสย่อย
+   สังกัดอยู่ใต้ตัวเอง (ไม่ใช่หัวข้อหมวดหมู่) เพราะหัวข้อหมวดหมู่ไม่ใช่รหัสงานที่คีย์ข้อมูลจริงได้ */
+function leafJobCodes(){
+  return jobCodeReference.filter(j=>!jobCodeReference.some(r=>r.parent===j.code));
+}
+function findJob(code){ return jobCodeReference.find(j=>j.code===code); }
 function bmmBudget(e){ return (e.material||0)+(e.labor||0)+(e.rent||0)+(e.fuel||0)+(e.service||0)+(e.contract||0); }
 function bmmUnitCost(e){ const q=e.qty||0; return q ? (bmmBudget(e)/q) : 0; }
 function bmmPeriodLabel(e){
@@ -3525,15 +3538,14 @@ function bulkAddCrew(){
 
 /* ---- ใบสั่งการรายวัน ---- */
 /* ช่องรหัสงานแบบพิมพ์ค้นหา (typeahead) — พิมพ์คำในชื่องานหรือรหัสงาน แล้วเลือกได้ทันทีโดยไม่ต้องไล่ดูใน select ยาวๆ
-   bmmJobs มีหลายแถวต่อรหัสงานเดียวกันเมื่อรหัสนั้นมีหลายหน่วยนับ (ใช้แยกหน่วยตอนคีย์เข้า BMM) แต่ในช่องค้นหานี้ไม่ต้องการให้รหัสเดียวกันขึ้นซ้ำ
-   เพราะมีช่อง "หน่วย" แยกให้เลือกอยู่แล้วด้านล่าง — จึงกรองให้เหลือรหัสงานละ 1 รายการก่อนแสดงผล */
+   อ่านจาก jobCodeReference ผ่าน leafJobCodes() (2569-09-18 — เดิมอ่านจาก bmmJobs array คงที่ที่ไม่ sync
+   กับรหัสงานที่เพิ่ม/แก้ไขผ่านแท็บ "ข้อมูลอ้างอิงงาน") — jobCodeReference มีแถวเดียวต่อรหัสงาน (หน่วยหลายหน่วย
+   เก็บเป็นข้อความคั่นจุลภาคในฟิลด์เดียว) จึงไม่ต้อง dedup ซ้ำแบบที่ bmmJobs เคยต้องทำ */
 function renderDwJobSuggest(){
   const box = document.getElementById('dw-job-suggest');
   const q = (document.getElementById('dw-job-search').value||'').trim().toLowerCase();
-  let matches = bmmJobs;
-  if(q) matches = bmmJobs.filter(j=> j.code.toLowerCase().includes(q) || j.name.toLowerCase().includes(q));
-  const seen = new Set();
-  matches = matches.filter(j=>{ if(seen.has(j.code)) return false; seen.add(j.code); return true; });
+  let matches = leafJobCodes();
+  if(q) matches = matches.filter(j=> j.code.toLowerCase().includes(q) || j.name.toLowerCase().includes(q));
   matches = matches.slice(0,30);
   if(!matches.length){
     box.innerHTML = `<div style="padding:9px 12px;color:var(--ink-400);font-size:13px;">ไม่พบรหัสงานที่ตรงกับคำค้น</div>`;
@@ -3543,12 +3555,69 @@ function renderDwJobSuggest(){
   box.classList.remove('hidden');
 }
 function selectDwJob(code, unit){
-  const job = bmmJobs.find(j=>j.code===code) || findJob(code);
+  const job = findJob(code);
   document.getElementById('dw-job').value = code;
   document.getElementById('dw-job-search').value = job ? `${job.code} — ${job.name}` : code;
   hideDwJobSuggest();
   populateDwUnitOptions(code, unit);
   checkDwJobConflict();
+  refreshDwUcSuggestRow(code);
+}
+/* แสดง/ซ่อนปุ่ม "เติมวัสดุ/เครื่องจักรจากสูตรมาตรฐาน" ตามว่ารหัสงานที่เลือกมีสูตร unit_cost_records
+   อยู่แล้วหรือไม่ (2569-09-18 — ฟีเจอร์ใหม่ แก้ปัญหาที่เสมียนต้องกรอกวัสดุ/เครื่องจักรของทุกใบด้วยมือ
+   ทั้งที่มีสูตรมาตรฐานเก็บไว้ในระบบอยู่แล้วจากแท็บ "ข้อมูลอ้างอิงงาน") */
+function refreshDwUcSuggestRow(code){
+  const row = document.getElementById('dw-uc-suggest-row');
+  const note = document.getElementById('dw-uc-suggest-note');
+  if(!row) return;
+  const matches = unitCostRecords.filter(r=>r.code===code);
+  row.classList.toggle('hidden', matches.length===0);
+  if(note) note.textContent = matches.length>1 ? `(พบ ${matches.length} สูตรสำหรับรหัสนี้ — จะใช้สูตรแรก ตรวจสอบก่อนบันทึก)` : '';
+}
+/* เติมรายการวัสดุ/เครื่องจักรในฟอร์มจ่ายงานจากสูตรมาตรฐาน (unit_cost_records) — เพิ่มเป็นแถวใหม่เสมอ
+   (ไม่ลบแถวเดิมที่กรอกไว้แล้ว) ให้เสมียนตรวจสอบ/ลบ/ปรับจำนวนเองได้ก่อนบันทึกจริง ไม่ใช่การล็อกอัตโนมัติ
+   ปริมาณวัสดุ = อัตราการใช้ต่อหน่วยงาน (useRate) × ปริมาณงานที่กรอกไว้วันนี้ (dw-qty)
+   ปริมาณน้ำมัน/ค่าเช่าเครื่องจักร ใช้ตัวเลขจากสูตรตรงๆ (ตัวแทนการทำงาน 1 วันเต็ม) ไม่ scale ตามปริมาณงาน
+   เพราะสูตรเก็บเป็นอัตราต่อวันของเครื่องจักร ไม่ใช่ต่อหน่วยงานเหมือนวัสดุ — ปรับเองได้ถ้าวันนี้ทำไม่เต็มวัน
+   ไม่เติมแรงงาน (laborRows) เพราะสูตรเก็บเป็น "ประเภท+จำนวนคน" ไม่ใช่ชื่อพนักงานจริง แมปเข้าชื่อคนที่ต้องเลือก
+   ในฟอร์มนี้ไม่ได้ตรงไปตรงมา ปล่อยให้เสมียนเลือกคนเองเหมือนเดิม */
+function suggestDwFromUnitCost(){
+  const code = document.getElementById('dw-job').value;
+  if(!code){ alert('กรุณาเลือกรหัสงานก่อน'); return; }
+  const qty = +document.getElementById('dw-qty').value || 0;
+  if(qty<=0){ alert('กรุณากรอกปริมาณงานที่ทำก่อน ระบบจะได้คำนวณจำนวนวัสดุที่ต้องใช้ตามจริง'); return; }
+  const rec = unitCostRecords.find(r=>r.code===code);
+  if(!rec){ alert('ยังไม่มีสูตรมาตรฐานสำหรับรหัสงานนี้ในระบบ (ดูที่แท็บ "ข้อมูลอ้างอิงงาน")'); return; }
+  let addedMat = 0, addedVeh = 0, skippedVeh = 0;
+  (rec.materialRows||[]).forEach(row=>{
+    if(!row.code) return;
+    const m = getMaterialsX().find(x=>x.code===row.code);
+    if(!m) return; // วัสดุนี้ถูกลบออกจากทะเบียนไปแล้วตั้งแต่ตอนตั้งสูตร ข้ามไป
+    const idx = __dwPartCount;
+    addDwPartRow();
+    selectDwPart(idx, row.code);
+    const qtyEl = document.getElementById('dw-part-qty-'+idx);
+    if(qtyEl){ qtyEl.value = (Number(row.useRate)||0) * qty; }
+    addedMat++;
+  });
+  (rec.vehicleRows||[]).forEach(row=>{
+    if(!row.vehId) return;
+    const v = getVehiclesX().find(x=>x.id===row.vehId);
+    if(!v){ skippedVeh++; return; } // เครื่องจักรนี้ถูกลบ/แก้ id ไปแล้วตั้งแต่ตอนตั้งสูตร ข้ามไป
+    const idx = __dwVehCount;
+    addDwVehicleRow();
+    selectDwVeh(idx, row.vehId);
+    const litersEl = document.getElementById('dw-veh-liters-'+idx);
+    if(litersEl && row.liters){ litersEl.value = row.liters; }
+    addedVeh++;
+  });
+  sortDwVehicleRows();
+  suggestMaterialCost();
+  suggestFuelCost();
+  suggestRentCost();
+  let msg = `เติมจากสูตรมาตรฐานแล้ว: วัสดุ ${addedMat} รายการ, เครื่องจักร ${addedVeh} รายการ — ตรวจสอบและปรับจำนวนได้ก่อนบันทึก`;
+  if(skippedVeh) msg += `\n(ข้าม ${skippedVeh} รายการเครื่องจักรในสูตร เพราะไม่พบในทะเบียนเครื่องจักรปัจจุบันแล้ว)`;
+  alert(msg);
 }
 /* ช่อง "หน่วย" ถัดจากปริมาณงานที่ทำ — อ้างอิงจากช่อง "หน่วยนับ" ของรหัสงานที่เลือกใน jobCodeReference
    รหัสงานหนึ่งอาจมีหน่วยนับได้มากกว่า 1 หน่วย (คั่นด้วยจุลภาคในข้อมูล) จึงแสดงเป็น dropdown ให้เลือก
@@ -3570,8 +3639,8 @@ function hideDwJobSuggest(){ document.getElementById('dw-job-suggest').classList
 function renderBfJobSuggest(){
   const box = document.getElementById('bf-job-suggest');
   const q = (document.getElementById('bf-job-search').value||'').trim().toLowerCase();
-  let matches = bmmJobs;
-  if(q) matches = bmmJobs.filter(j=> j.code.toLowerCase().includes(q) || j.name.toLowerCase().includes(q));
+  let matches = leafJobCodes();
+  if(q) matches = matches.filter(j=> j.code.toLowerCase().includes(q) || j.name.toLowerCase().includes(q));
   matches = matches.slice(0,30);
   if(!matches.length){
     box.innerHTML = `<div style="padding:9px 12px;color:var(--ink-400);font-size:13px;">ไม่พบรหัสงานที่ตรงกับคำค้น</div>`;
@@ -3581,7 +3650,7 @@ function renderBfJobSuggest(){
   box.classList.remove('hidden');
 }
 function selectBfJob(code, unit){
-  const job = bmmJobs.find(j=>j.code===code && j.unit===unit) || findJob(code);
+  const job = findJob(code);
   document.getElementById('bf-job').value = code;
   document.getElementById('bf-job-search').value = job ? `${job.code} — ${job.name} (${job.unit})` : code;
   hideBfJobSuggest();
@@ -3954,9 +4023,10 @@ function openUcForm(no, presetCode){
     document.getElementById('uc-job-search').value = `${rec.code} — ${rec.jobName}`;
     document.getElementById('uc-unit-label').value = rec.unit||'';
   } else if(presetCode){
-    /* เปิดจากแท็บ "ข้อมูลอ้างอิงงาน" — pre-fill ด้วยรหัสงานที่เลือกอยู่ ใช้ jobCodeReference (ข้อมูลจริงจาก backend)
-       แทน bmmJobs (array คงที่ที่ค้นหารหัสงานทั่วไปในไฟล์นี้ใช้ — อาจไม่มีรหัสที่เพิ่มใหม่ล่าสุด) */
-    const job = jobCodeReference.find(j=>j.code===presetCode);
+    /* เปิดจากแท็บ "ข้อมูลอ้างอิงงาน" — pre-fill ด้วยรหัสงานที่เลือกอยู่ ใช้ findJob() ซึ่งอ่านจาก
+       jobCodeReference (ข้อมูลจริงจาก backend) ตรงๆ แล้วทั้งฟอร์ม (2569-09-18 — เดิม findJob() เคย
+       อ่านจาก bmmJobs array คงที่ที่ไม่ sync กับข้อมูลจริง ตอนนี้แก้ให้ทุกจุดอ่านจากที่เดียวกันแล้ว) */
+    const job = findJob(presetCode);
     document.getElementById('uc-job').value = presetCode;
     document.getElementById('uc-job-search').value = job ? `${job.code} — ${job.name}` : presetCode;
     document.getElementById('uc-unit-label').value = job ? (job.unit||'') : '';
@@ -3989,10 +4059,8 @@ function closeUcForm(){
 function renderUcJobSuggest(){
   const box = document.getElementById('uc-job-suggest');
   const q = (document.getElementById('uc-job-search').value||'').trim().toLowerCase();
-  let matches = bmmJobs;
-  if(q) matches = bmmJobs.filter(j=> j.code.toLowerCase().includes(q) || j.name.toLowerCase().includes(q));
-  const seen = new Set();
-  matches = matches.filter(j=>{ if(seen.has(j.code)) return false; seen.add(j.code); return true; });
+  let matches = leafJobCodes();
+  if(q) matches = matches.filter(j=> j.code.toLowerCase().includes(q) || j.name.toLowerCase().includes(q));
   matches = matches.slice(0,30);
   box.innerHTML = matches.length ? matches.map(j=>`<div style="padding:8px 12px;font-size:13px;cursor:pointer;border-bottom:1px solid var(--paper-100);" onmousedown="selectUcJob('${j.code}')"><b>${j.code}</b> — ${j.name} (${j.unit})</div>`).join('')
     : `<div style="padding:9px 12px;color:var(--ink-400);font-size:13px;">ไม่พบรหัสงานที่ตรงกับคำค้น</div>`;
@@ -4000,7 +4068,7 @@ function renderUcJobSuggest(){
 }
 function hideUcJobSuggest(){ document.getElementById('uc-job-suggest')?.classList.add('hidden'); }
 function selectUcJob(code){
-  const job = bmmJobs.find(j=>j.code===code);
+  const job = findJob(code);
   document.getElementById('uc-job').value = code;
   document.getElementById('uc-job-search').value = job ? `${job.code} — ${job.name}` : code;
   document.getElementById('uc-unit-label').value = job ? job.unit : '';
@@ -4232,10 +4300,7 @@ async function saveUcEntry(){
   if(!isAdmin()) return;
   const code = document.getElementById('uc-job').value;
   if(!code){ alert('กรุณาเลือกรหัสงานก่อนบันทึก'); return; }
-  /* ชื่องาน: ลองหาจาก jobCodeReference (ข้อมูลจริงจาก backend) ก่อน แล้วค่อย fallback ไป bmmJobs
-     (array คงที่เก่าที่ใช้ค้นหารหัสงานในฟอร์มนี้อยู่ — อาจไม่มีรหัสที่เพิ่มใหม่ล่าสุดผ่านแท็บข้อมูลอ้างอิงงาน) */
-  const jcJob = jobCodeReference.find(j=>j.code===code);
-  const job = jcJob || bmmJobs.find(j=>j.code===code);
+  const job = findJob(code); // อ่านจาก jobCodeReference ตรงๆ (2569-09-18 — findJob() แก้ให้ไม่ใช้ bmmJobs อีกแล้ว)
   const fy = +document.getElementById('uc-fy').value || 2569;
   const qtyPerDay = +document.getElementById('uc-qtyday').value || 0;
   const variantLabel = document.getElementById('uc-variant-label').value.trim();
@@ -4496,6 +4561,7 @@ function toggleDailyForm(){
   document.getElementById('dw-qty-pending').checked = false;
   document.getElementById('dw-unit').innerHTML = '<option value="">-</option>';
   document.getElementById('dw-unit').disabled = true;
+  document.getElementById('dw-uc-suggest-row')?.classList.add('hidden');
   document.getElementById('dw-part-items').innerHTML = '';
   __dwPartCount = 0;
   document.getElementById('dw-vehicle-items').innerHTML = '';
@@ -4532,6 +4598,7 @@ function editDailyEntry(no){
   const job = findJob(rec.code);
   document.getElementById('dw-job-search').value = job ? `${job.code} — ${job.name}` : rec.code;
   populateDwUnitOptions(rec.code, rec.unit);
+  refreshDwUcSuggestRow(rec.code);
   hideDwJobSuggest();
 
   const routeSel = document.getElementById('dw-route');
