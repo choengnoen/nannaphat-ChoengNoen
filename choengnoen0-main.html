@@ -73,24 +73,27 @@
   .user-menu-panel #login-badge .um-position{display:block;font-weight:500;opacity:.85;}
 
   /* หน้าเข้าสู่ระบบเต็มจอ — โทน B4: เทาถนนยางมะตอย + เหลืองเส้นจราจร */
-  /* สไตล์/ขนาดเดียวกับหน้าเข้าระบบของระบบอุบัติเหตุและโจรกรรม: แสงสว่างมุมซ้ายบน ไล่ลงเข้มเกือบดำ, การ์ดกว้าง ~530px */
-  .login-gate{position:fixed;inset:0;z-index:1000;display:flex;align-items:center;justify-content:center;padding:24px 16px;overflow-y:auto;background:radial-gradient(ellipse 75% 65% at 12% 0%,#4b5563 0%,rgba(75,85,99,0) 70%),linear-gradient(180deg,#1f2937 0%,#111827 60%,#0b0f17 100%);}
+  /* ค่าขนาด/ระยะทุกตัวคัดลอกตรงจาก .auth-gate/.auth-card ของระบบอุบัติเหตุ (accident-choengnoen) เพื่อให้การ์ดขนาดและตำแหน่งตรงกัน 100% —
+     ต่างกันแค่สี: พื้นเทาถนน (แทนน้ำเงินกรม) และปุ่มเหลืองอำพัน (แทนส้ม) */
+  .login-gate{position:fixed;inset:0;z-index:1000;display:flex;align-items:center;justify-content:center;padding:18px;overflow:auto;background:radial-gradient(1100px 520px at 15% -10%,#4b5563 0%,#111827 60%);}
   .login-gate.hidden{display:none;}
-  .lg-card{position:relative;background:#fff;border-radius:14px;padding:31px 28px 27px;width:100%;max-width:410px;box-shadow:0 24px 60px -18px rgba(0,0,0,.6);}
-  .lg-logo{display:block;width:71px;height:71px;border-radius:50%;margin:0 auto 10px;object-fit:cover;}
-  .lg-title{font-family:'Kanit';font-weight:700;font-size:22px;color:#111827;text-align:center;line-height:1.3;}
-  .lg-sub{font-size:12.5px;color:#8792a0;text-align:center;margin-top:3px;}
-  .lg-head{font-family:'Kanit';font-weight:600;font-size:16.5px;color:#111827;margin:24px 0 2px;}
-  .lg-label{display:block;font-size:13px;font-weight:500;color:#374151;margin:12px 0 6px;}
-  .lg-input{width:100%;height:36px;padding:0 32px 0 11px;border:1px solid #dfe2e6;border-radius:8px;background:#fff;font-family:'Sarabun';font-size:13.5px;color:#1f2937;outline:none;transition:border-color .15s,box-shadow .15s;}
-  .lg-input:focus{border-color:#f59e0b;box-shadow:0 0 0 3px rgba(245,158,11,.22);}
-  .lg-caret{position:absolute;right:11px;top:50%;transform:translateY(-50%);font-size:9px;color:#9ca3af;pointer-events:none;}
-  .lg-eye{position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;padding:4px;line-height:0;color:#6b7280;}
-  .lg-btn{width:100%;height:41px;margin-top:14px;border:none;border-radius:8px;background:linear-gradient(90deg,#fbbf24,#f59e0b);color:#1f2937;font-family:'Kanit';font-weight:600;font-size:13.5px;cursor:pointer;box-shadow:0 8px 18px -8px rgba(245,158,11,.75);transition:filter .15s,transform .1s;}
-  .lg-btn:hover{filter:brightness(1.05);}
-  .lg-btn:active{transform:scale(.99);}
+  .lg-card{background:#fff;border-radius:18px;padding:30px 28px 26px;width:100%;max-width:410px;box-shadow:0 16px 40px -14px rgba(0,0,0,.45);text-align:center;font-size:15px;line-height:1.55;}
+  .lg-logo{display:block;width:72px;height:72px;margin:0 auto 6px;border-radius:50%;object-fit:cover;}
+  .lg-title{font-family:'Kanit';font-weight:700;font-size:22px;color:#111827;margin:4px 0 2px;}
+  .lg-sub{font-size:13px;color:#8792a0;margin:0 0 18px;}
+  .lg-head{font-family:'Kanit';font-weight:700;font-size:16px;color:#182430;margin:0 0 12px;text-align:left;}
+  #login-box{text-align:left;}
+  .lg-label{display:block;font-size:12.5px;font-weight:600;color:#4d5a66;margin:0 0 5px;}
+  .lg-field{margin-bottom:12px;}
+  .lg-field + .lg-field{margin-bottom:14px;}
+  .lg-input{width:100%;padding:8px 32px 8px 10px;border:1px solid #dfe2dd;border-radius:8px;background:#fff;font-family:'Sarabun';font-size:14.5px;line-height:1.3;color:#182430;outline:none;transition:border-color .15s,box-shadow .15s;}
+  .lg-input:focus{border-color:#f59e0b;box-shadow:0 0 0 3px rgba(245,158,11,.18);}
+  .lg-caret{position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:12px;line-height:1.3;color:#8792a0;pointer-events:none;}
+  .lg-eye{position:absolute;right:4px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;padding:4px 8px;line-height:0;color:#4d5a66;}
+  .lg-btn{display:flex;align-items:center;justify-content:center;width:100%;padding:9px 17px;border:1px solid transparent;border-radius:10px;background:linear-gradient(135deg,#fbbf24,#f59e0b);color:#1f2937;font-family:'Kanit';font-weight:600;font-size:14px;line-height:normal;cursor:pointer;box-shadow:0 4px 12px -2px rgba(245,158,11,.4);transition:filter .15s,transform .1s;}
+  .lg-btn:hover{filter:brightness(1.06);}
+  .lg-btn:active{transform:translateY(1px);}
   .lg-btn:disabled{opacity:.7;cursor:wait;}
-  @media (max-width:480px){ .lg-card{padding:26px 18px 22px;} }
 
   .content{padding:26px 30px 60px;max-width:none;}
   .page-head{margin-bottom:16px;}
@@ -309,9 +312,10 @@
     <div class="lg-sub">หมวดทางหลวงเชิงเนิน · แขวงทางหลวงระยอง</div>
     <div class="lg-head">เข้าสู่ระบบ</div>
     <div id="login-box">
+      <div class="lg-field">
       <label class="lg-label" for="login-username">ชื่อผู้ใช้งาน</label>
       <div style="position:relative;">
-        <input type="text" id="login-username" class="lg-input" autocomplete="off" placeholder="— เลือกหรือพิมพ์ชื่อของคุณ —"
+        <input type="text" id="login-username" class="lg-input" autocomplete="off" placeholder="— เลือกชื่อของคุณ —"
           oninput="__renderLoginUsernameDropdown();document.getElementById('login-username-dropdown').classList.remove('hidden')"
           onfocus="__openLoginUsernameDropdown()"
           onblur="setTimeout(__closeLoginUsernameDropdown,150)"
@@ -319,12 +323,15 @@
         <span class="lg-caret" aria-hidden="true">▾</span>
         <div id="login-username-dropdown" class="combo-dropdown hidden"></div>
       </div>
+      </div>
+      <div class="lg-field">
       <label class="lg-label" for="login-password">รหัสผ่าน</label>
       <div style="position:relative;">
-        <input type="password" id="login-password" class="lg-input" placeholder="รหัสผ่าน" autocomplete="current-password" style="padding-right:34px;" onkeydown="if(event.key==='Enter')doLogin()">
+        <input type="password" id="login-password" class="lg-input" placeholder="รหัสผ่าน" autocomplete="current-password" style="padding-right:38px;" onkeydown="if(event.key==='Enter')doLogin()">
         <button type="button" id="login-pw-toggle" onclick="__toggleLoginPwVisibility()" title="แสดง/ซ่อนรหัสผ่าน" class="lg-eye">
           <svg id="login-pw-eye-icon" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"/><circle cx="12" cy="12" r="3"/></svg>
         </button>
+      </div>
       </div>
       <button id="login-submit-btn" class="lg-btn" onclick="doLogin()">เข้าสู่ระบบ</button>
     </div>
