@@ -73,21 +73,21 @@
   .user-menu-panel #login-badge .um-position{display:block;font-weight:500;opacity:.85;}
 
   /* หน้าเข้าสู่ระบบเต็มจอ — โทน B4: เทาถนนยางมะตอย + เหลืองเส้นจราจร */
-  .login-gate{position:fixed;inset:0;z-index:1000;display:flex;align-items:center;justify-content:center;padding:24px 16px;overflow-y:auto;background:radial-gradient(ellipse at 50% 0%,#4b5563 0%,#374151 45%,#1f2937 100%);}
+  /* สไตล์/ขนาดเดียวกับหน้าเข้าระบบของระบบอุบัติเหตุและโจรกรรม: แสงสว่างมุมซ้ายบน ไล่ลงเข้มเกือบดำ, การ์ดกว้าง ~530px */
+  .login-gate{position:fixed;inset:0;z-index:1000;display:flex;align-items:center;justify-content:center;padding:24px 16px;overflow-y:auto;background:radial-gradient(ellipse 75% 65% at 12% 0%,#4b5563 0%,rgba(75,85,99,0) 70%),linear-gradient(180deg,#1f2937 0%,#111827 60%,#0b0f17 100%);}
   .login-gate.hidden{display:none;}
-  .lg-lane{position:absolute;top:0;bottom:0;left:50%;width:6px;margin-left:-3px;background:repeating-linear-gradient(to bottom,rgba(251,191,36,.22) 0 46px,transparent 46px 92px);pointer-events:none;}
-  .lg-card{position:relative;background:#fff;border-radius:18px;padding:34px 36px 32px;width:100%;max-width:440px;box-shadow:0 30px 60px -20px rgba(0,0,0,.55);border-top:5px solid #f59e0b;}
-  .lg-logo{display:block;width:92px;height:92px;border-radius:50%;margin:0 auto 12px;object-fit:cover;}
-  .lg-title{font-family:'Kanit';font-weight:700;font-size:26px;color:#1f2937;text-align:center;line-height:1.3;}
-  .lg-sub{font-size:14px;color:#6b7280;text-align:center;margin-top:2px;}
-  .lg-head{font-family:'Kanit';font-weight:600;font-size:19px;color:#1f2937;margin:26px 0 6px;}
-  .lg-label{display:block;font-size:14px;font-weight:500;color:#374151;margin:12px 0 6px;}
-  .lg-input{width:100%;height:46px;padding:0 38px 0 14px;border:1px solid #d1d5db;border-radius:10px;background:#f9fafb;font-family:'Sarabun';font-size:15px;color:#1f2937;outline:none;transition:border-color .15s,box-shadow .15s,background .15s;}
-  .lg-input:focus{border-color:#f59e0b;background:#fff;box-shadow:0 0 0 3px rgba(245,158,11,.22);}
-  .lg-caret{position:absolute;right:14px;top:50%;transform:translateY(-50%);font-size:12px;color:#9ca3af;pointer-events:none;}
+  .lg-card{position:relative;background:#fff;border-radius:18px;padding:40px 36px 34px;width:100%;max-width:533px;box-shadow:0 24px 60px -18px rgba(0,0,0,.6);}
+  .lg-logo{display:block;width:92px;height:92px;border-radius:50%;margin:0 auto 14px;object-fit:cover;}
+  .lg-title{font-family:'Kanit';font-weight:700;font-size:28px;color:#111827;text-align:center;line-height:1.3;}
+  .lg-sub{font-size:15px;color:#8792a0;text-align:center;margin-top:4px;}
+  .lg-head{font-family:'Kanit';font-weight:600;font-size:21px;color:#111827;margin:30px 0 4px;}
+  .lg-label{display:block;font-size:15.5px;font-weight:500;color:#374151;margin:16px 0 8px;}
+  .lg-input{width:100%;height:47px;padding:0 38px 0 14px;border:1px solid #dfe2e6;border-radius:10px;background:#fff;font-family:'Sarabun';font-size:16px;color:#1f2937;outline:none;transition:border-color .15s,box-shadow .15s;}
+  .lg-input:focus{border-color:#f59e0b;box-shadow:0 0 0 3px rgba(245,158,11,.22);}
+  .lg-caret{position:absolute;right:14px;top:50%;transform:translateY(-50%);font-size:11px;color:#9ca3af;pointer-events:none;}
   .lg-eye{position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;padding:4px;line-height:0;color:#6b7280;}
-  .lg-btn{width:100%;height:50px;margin-top:22px;border:none;border-radius:10px;background:#f59e0b;color:#1f2937;font-family:'Kanit';font-weight:600;font-size:17px;cursor:pointer;box-shadow:0 8px 18px -8px rgba(245,158,11,.7);transition:background .15s,transform .1s;}
-  .lg-btn:hover{background:#fbbf24;}
+  .lg-btn{width:100%;height:53px;margin-top:18px;border:none;border-radius:10px;background:linear-gradient(90deg,#fbbf24,#f59e0b);color:#1f2937;font-family:'Kanit';font-weight:600;font-size:17px;cursor:pointer;box-shadow:0 10px 22px -10px rgba(245,158,11,.75);transition:filter .15s,transform .1s;}
+  .lg-btn:hover{filter:brightness(1.05);}
   .lg-btn:active{transform:scale(.99);}
   .lg-btn:disabled{opacity:.7;cursor:wait;}
   @media (max-width:480px){ .lg-card{padding:28px 20px 24px;} .lg-title{font-size:22px;} }
@@ -300,10 +300,9 @@
 </head>
 <body>
 
-<!-- หน้าเข้าสู่ระบบแบบเต็มจอ (โทน B4 เทาถนน + เหลืองเส้นจราจร) — บังทั้งหน้าจนกว่าจะล็อกอิน
+<!-- หน้าเข้าสู่ระบบแบบเต็มจอ (โทน B4 เทาถนน + ปุ่มเหลือง) — บังทั้งหน้าจนกว่าจะล็อกอิน
      ช่องกรอกใช้ id เดิม (login-username / login-password / login-submit-btn) doLogin() จึงทำงานเหมือนเดิม -->
 <div class="login-gate" id="login-gate">
-  <div class="lg-lane" aria-hidden="true"></div>
   <div class="lg-card">
     <img class="lg-logo" id="login-gate-logo" alt="ตรากรมทางหลวง">
     <div class="lg-title">งานบริหารหมวด</div>
