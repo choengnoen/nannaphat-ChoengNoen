@@ -72,6 +72,26 @@
   .user-menu-panel #login-badge{display:block;white-space:normal;text-align:center;line-height:1.5;padding:8px 10px;margin-bottom:2px;}
   .user-menu-panel #login-badge .um-position{display:block;font-weight:500;opacity:.85;}
 
+  /* หน้าเข้าสู่ระบบเต็มจอ — โทน B4: เทาถนนยางมะตอย + เหลืองเส้นจราจร */
+  .login-gate{position:fixed;inset:0;z-index:1000;display:flex;align-items:center;justify-content:center;padding:24px 16px;overflow-y:auto;background:radial-gradient(ellipse at 50% 0%,#4b5563 0%,#374151 45%,#1f2937 100%);}
+  .login-gate.hidden{display:none;}
+  .lg-lane{position:absolute;top:0;bottom:0;left:50%;width:6px;margin-left:-3px;background:repeating-linear-gradient(to bottom,rgba(251,191,36,.22) 0 46px,transparent 46px 92px);pointer-events:none;}
+  .lg-card{position:relative;background:#fff;border-radius:18px;padding:34px 36px 32px;width:100%;max-width:440px;box-shadow:0 30px 60px -20px rgba(0,0,0,.55);border-top:5px solid #f59e0b;}
+  .lg-logo{display:block;width:92px;height:92px;border-radius:50%;margin:0 auto 12px;object-fit:cover;}
+  .lg-title{font-family:'Kanit';font-weight:700;font-size:26px;color:#1f2937;text-align:center;line-height:1.3;}
+  .lg-sub{font-size:14px;color:#6b7280;text-align:center;margin-top:2px;}
+  .lg-head{font-family:'Kanit';font-weight:600;font-size:19px;color:#1f2937;margin:26px 0 6px;}
+  .lg-label{display:block;font-size:14px;font-weight:500;color:#374151;margin:12px 0 6px;}
+  .lg-input{width:100%;height:46px;padding:0 38px 0 14px;border:1px solid #d1d5db;border-radius:10px;background:#f9fafb;font-family:'Sarabun';font-size:15px;color:#1f2937;outline:none;transition:border-color .15s,box-shadow .15s,background .15s;}
+  .lg-input:focus{border-color:#f59e0b;background:#fff;box-shadow:0 0 0 3px rgba(245,158,11,.22);}
+  .lg-caret{position:absolute;right:14px;top:50%;transform:translateY(-50%);font-size:12px;color:#9ca3af;pointer-events:none;}
+  .lg-eye{position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;padding:4px;line-height:0;color:#6b7280;}
+  .lg-btn{width:100%;height:50px;margin-top:22px;border:none;border-radius:10px;background:#f59e0b;color:#1f2937;font-family:'Kanit';font-weight:600;font-size:17px;cursor:pointer;box-shadow:0 8px 18px -8px rgba(245,158,11,.7);transition:background .15s,transform .1s;}
+  .lg-btn:hover{background:#fbbf24;}
+  .lg-btn:active{transform:scale(.99);}
+  .lg-btn:disabled{opacity:.7;cursor:wait;}
+  @media (max-width:480px){ .lg-card{padding:28px 20px 24px;} .lg-title{font-size:22px;} }
+
   .content{padding:26px 30px 60px;max-width:none;}
   .page-head{margin-bottom:16px;}
   .page-head h1{font-size:22px;font-weight:600;margin:0 0 4px;color:var(--navy-900);display:flex;align-items:center;gap:10px;}
@@ -280,6 +300,42 @@
 </head>
 <body>
 
+<!-- หน้าเข้าสู่ระบบแบบเต็มจอ (โทน B4 เทาถนน + เหลืองเส้นจราจร) — บังทั้งหน้าจนกว่าจะล็อกอิน
+     ช่องกรอกใช้ id เดิม (login-username / login-password / login-submit-btn) doLogin() จึงทำงานเหมือนเดิม -->
+<div class="login-gate" id="login-gate">
+  <div class="lg-lane" aria-hidden="true"></div>
+  <div class="lg-card">
+    <img class="lg-logo" id="login-gate-logo" alt="ตรากรมทางหลวง">
+    <div class="lg-title">งานบริหารหมวด</div>
+    <div class="lg-sub">หมวดทางหลวงเชิงเนิน · แขวงทางหลวงระยอง</div>
+    <div class="lg-head">เข้าสู่ระบบ</div>
+    <div id="login-box">
+      <label class="lg-label" for="login-username">ชื่อผู้ใช้งาน</label>
+      <div style="position:relative;">
+        <input type="text" id="login-username" class="lg-input" autocomplete="off" placeholder="— เลือกหรือพิมพ์ชื่อของคุณ —"
+          oninput="__renderLoginUsernameDropdown();document.getElementById('login-username-dropdown').classList.remove('hidden')"
+          onfocus="__openLoginUsernameDropdown()"
+          onblur="setTimeout(__closeLoginUsernameDropdown,150)"
+          onkeydown="if(event.key==='Enter'){__closeLoginUsernameDropdown();doLogin();}else if(event.key==='Escape'){__closeLoginUsernameDropdown();}">
+        <span class="lg-caret" aria-hidden="true">▾</span>
+        <div id="login-username-dropdown" class="combo-dropdown hidden"></div>
+      </div>
+      <label class="lg-label" for="login-password">รหัสผ่าน</label>
+      <div style="position:relative;">
+        <input type="password" id="login-password" class="lg-input" placeholder="รหัสผ่าน" autocomplete="current-password" style="padding-right:42px;" onkeydown="if(event.key==='Enter')doLogin()">
+        <button type="button" id="login-pw-toggle" onclick="__toggleLoginPwVisibility()" title="แสดง/ซ่อนรหัสผ่าน" class="lg-eye">
+          <svg id="login-pw-eye-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+        </button>
+      </div>
+      <button id="login-submit-btn" class="lg-btn" onclick="doLogin()">เข้าสู่ระบบ</button>
+    </div>
+  </div>
+</div>
+<script>
+/* ซ่อนหน้าเข้าสู่ระบบทันทีถ้ามี session อยู่แล้ว (ทำตรงนี้เลย ไม่รอ initLogin ที่ต้องรอโหลดรายชื่อจาก API — กันหน้าจอกะพริบ) */
+try{ var __s0 = JSON.parse(localStorage.getItem('saraban_shared_session')||'null'); if(__s0 && __s0.role && __s0.name) document.getElementById('login-gate').classList.add('hidden'); }catch(e){}
+</script>
+
 <div class="app">
   <aside class="sidebar">
     <div class="brand">
@@ -307,24 +363,6 @@
           <div class="avatar" id="user-avatar" onclick="__toggleUserMenu(event)"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a8 8 0 0 1 16 0v1"/></svg></div>
           <div class="user-menu-panel hidden" id="user-menu-panel">
             <span id="login-badge" class="pill pill-neutral" style="text-align:center;display:none;"></span>
-            <div id="login-box" style="display:flex;flex-direction:column;gap:8px;padding:4px 2px 2px;">
-              <div class="f-row" style="margin:0;position:relative;">
-                <input type="text" id="login-username" autocomplete="off" placeholder="พิมพ์ชื่อผู้ใช้"
-                  style="width:100%;padding:10px 13px;"
-                  oninput="__renderLoginUsernameDropdown();document.getElementById('login-username-dropdown').classList.remove('hidden')"
-                  onfocus="__openLoginUsernameDropdown()"
-                  onblur="setTimeout(__closeLoginUsernameDropdown,150)"
-                  onkeydown="if(event.key==='Enter'){__closeLoginUsernameDropdown();doLogin();}else if(event.key==='Escape'){__closeLoginUsernameDropdown();}">
-                <div id="login-username-dropdown" class="combo-dropdown hidden"></div>
-              </div>
-              <div class="f-row" style="margin:0;position:relative;">
-                <input type="password" id="login-password" placeholder="รหัสผ่าน" autocomplete="current-password" style="padding-right:34px;" onkeydown="if(event.key==='Enter')doLogin()">
-                <button type="button" id="login-pw-toggle" onclick="__toggleLoginPwVisibility()" title="แสดง/ซ่อนรหัสผ่าน" style="position:absolute;right:6px;top:9px;background:none;border:none;cursor:pointer;padding:2px;line-height:0;color:#8a97a8;">
-                  <svg id="login-pw-eye-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"/><circle cx="12" cy="12" r="3"/></svg>
-                </button>
-              </div>
-              <button id="login-submit-btn" class="btn btn-primary btn-sm" onclick="doLogin()" style="cursor:pointer;width:100%;justify-content:center;">เข้าสู่ระบบ</button>
-            </div>
             <button id="logout-btn" class="user-menu-item danger" onclick="doLogout()" style="display:none;">🚪 ออกจากระบบ</button>
           </div>
         </div>
@@ -1155,7 +1193,19 @@ function __selectLoginUsername(username){
 }
 let currentUserName = '';
 const __SHARED_SESSION_KEY = 'saraban_shared_session';
+/* หน้าเข้าสู่ระบบเต็มจอ: ใช้ตราเดียวกับแถบข้าง (คัดลอก src มา ไม่ต้องฝังรูป base64 ซ้ำอีกชุด) */
+(function(){
+  const src = document.querySelector('.brand-mark')?.getAttribute('src');
+  const logo = document.getElementById('login-gate-logo');
+  if(src && logo) logo.src = src;
+})();
+function __showLoginGate(show){
+  document.getElementById('login-gate').classList.toggle('hidden', !show);
+  if(show) setTimeout(()=>document.getElementById('login-username')?.focus(), 50);
+}
 async function initLogin(){
+  const hasSession = !!__getSharedSession();
+  if(!hasSession) __showLoginGate(true);
   await loadUsersFromApi();
   /* กู้คืนสถานะล็อกอินจาก session ที่แชร์ไว้ (ถ้ายังไม่หมดอายุ / ยังไม่ได้ logout) */
   try{
@@ -1166,7 +1216,7 @@ async function initLogin(){
       const logoutBtn = document.getElementById('logout-btn');
       const loginBox = document.getElementById('login-box');
       badge.innerHTML = __badgeHtml(s.name, s.position); badge.className = 'pill ' + (isAdmin() ? 'pill-ok' : 'pill-warn'); badge.style.display='block';
-      loginBox.style.display='none'; logoutBtn.style.display='flex';
+      logoutBtn.style.display='flex';
     }
   }catch(e){ /* ไม่มี session ที่บันทึกไว้ */ }
   document.getElementById('sec-tab-users').style.display = isOwner() ? '' : 'none';
@@ -1203,7 +1253,9 @@ async function doLogin(){
   const role = match.role || 'staff';
   localStorage_role = role; currentUserName = match.displayName;
   badge.innerHTML = __badgeHtml(match.displayName, match.position); badge.className = 'pill ' + (isAdmin() ? 'pill-ok' : 'pill-warn'); badge.style.display='block';
-  loginBox.style.display='none'; logoutBtn.style.display='flex';
+  logoutBtn.style.display='flex';
+  pwInput.value='';
+  __showLoginGate(false);
   /* แชร์สถานะเข้าสู่ระบบไปยังอีก 4 ระบบย่อย เพื่อไม่ต้องล็อกอินซ้ำ */
   localStorage.setItem(__SHARED_SESSION_KEY, JSON.stringify({role, name:match.displayName, position:match.position||'', photo:match.photo||null, username:match.username, ts:Date.now()}));
   document.getElementById('sec-tab-users').style.display = isOwner() ? '' : 'none';
@@ -1221,7 +1273,7 @@ function doLogout(){
   localStorage_role='guest'; currentUserName='';
   const badge = document.getElementById('login-badge');
   badge.textContent=''; badge.className='pill pill-neutral'; badge.style.display='none';
-  document.getElementById('login-box').style.display='flex';
+  __showLoginGate(true);
   document.getElementById('login-username').value='';
   document.getElementById('login-password').value='';
   document.getElementById('logout-btn').style.display='none';
